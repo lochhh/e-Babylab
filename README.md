@@ -1,5 +1,5 @@
 # IPL-2.0
-IPL-2.0 is an authoring tool that allows users or researchers to create, host, run, and manage online experiments---without the need for prior experience in programming. Using this tool, experiments can be configured to use any combinations of image, audio, and/or video contents as stimuli and accept key presses, clicks, and touches (on touchscreens) as responses. Other types of explicit responses (e.g., pointing gestures, verbal responses) as well as implicit responses (e.g., eye movement, vocal emotion) can additionally be captured via audio or video recordings.
+IPL-2.0 is an open source authoring tool that allows users or researchers to easily create, host, run, and manage online experiments, without writing a single line of code. Using this tool, experiments can be programmed to include any combinations of image, audio, and/or video contents as stimuli and record key presses, clicks, screen touches, audio, and video.
 
 ## Contents
 1. [Installation](#1-installation)
@@ -103,3 +103,5 @@ Allow the execution of the *wait-for-it.sh* script by executing the following co
 * [IPL-2.0 User Manual](https://github.com/lochhh/IPL-2.0/wiki)
 * [Django Tutorial](https://docs.djangoproject.com/en/2.0/intro/install/)
 * [Django with Docker](https://docs.docker.com/compose/django/)
+
+This software is licensed under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
