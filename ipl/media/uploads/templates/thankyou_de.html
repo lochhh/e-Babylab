@@ -1,0 +1,26 @@
+{% extends "experiments/base.html" %} 
+{% load static %}
+{% block title %}Fertig{% endblock %} 
+
+{% block content %}
+<div class="container" id="thankyou">
+    <div class="row">
+        <div class="col text-center">
+            <h1>Fertig</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="card-text">
+                        Die Studie ist nun abgeschlossen und die Webcamaufnahme wurde beendet.<br /><br />
+                        Vielen Dank für Ihre Teilnahme!<br /><br />
+                        Bitte schließen Sie jetzt dieses Browser-Fenster.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

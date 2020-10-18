@@ -1,0 +1,36 @@
+{% extends "experiments/base.html" %} 
+{% load static %}
+
+{% block title %}Experiment{% endblock %} 
+
+{% block content %}
+<div class="container h-100 text-center" id="fullscreen-message">
+    <div class="row h-100 justify-content-center align-items-center">
+        <div class="col">
+            <p class="card-text">
+                Gleich geht es los!<br /><br />
+                Bevor die Studie startet, möchten wir noch eine kurze Erklärung von Ihnen aufzeichnen. Lesen Sie dafür bitte den Text auf der nächsten Seite mit Ihrem Kind auf dem Schoß laut vor. <br /><br />
+                Diese wiederholte Erklärung ist uns wichtig, da wir wirklich sichergehen möchten, dass Sie die Rahmenbedingungen verstanden haben und mit Ihnen einverstanden sind. Sollte uns diese Aufnahme nicht vorliegen, werden wir Ihre Daten und Videos löschen. <br /><br />
+                Nach der Erklärung startet die Studie direkt. Folgen Sie dann bitte den Hinweisen auf dem Monitor. <br />
+                Die Studie wird im Vollbild dargeboten. Sollten Sie die Studie zwischendurch beenden oder unterbrechen wollen, klicken Sie bitte unten rechts auf „beenden“. <br /><br />
+                Um fortzufahren, klicken Sie bitte „Vollbild aktivieren“
+            </p>
+            <button id="fullscreen-button" type="button" class="btn btn-primary">Vollbild aktivieren</button>
+        </div>
+    </div>
+</div>
+
+<button id="exit-button" type="button" class="btn btn-secondary btn-sm">Beenden</button>
+
+<div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}"></div>
+
+<script>
+    var trials = {{ trials|safe }}
+    var loading_image = "{{ loading_image.url }}";
+    var global_timeout = "{{ global_timeout }}";
+    var include_pause_page = "{{ include_pause_page }}";
+    var recording_option = "{{ recording_option }}";
+</script>
+ 
+<script src="{% static "experiments/js/experiment.js" %}"></script>
+{% endblock %}

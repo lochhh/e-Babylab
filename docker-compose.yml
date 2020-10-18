@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:1.13
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./ipl:/ipl:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/ssl/certs/<your_ssl_cert.pem>:/etc/ssl/certs/cert.pem
+      - /etc/ssl/private/<your_ssl_private_key.key>:/etc/ssl/private/server.key
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+    depends_on:
+      - web
+    restart: always
+  db:
+    image: postgres:10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    restart: always
+  web:
+    build: ./ipl
+    image: ipl:latest
+    volumes:
+      - ./ipl:/usr/src/app
+    depends_on:
+      - db
+    command: "./wait-for-it.sh db:5432 -- uwsgi --ini /usr/src/app/uswgi.ini"
+    environment:
+      - DJANGO_ENV=prod
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+    restart: always
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "user@domain.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+    depends_on:
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"

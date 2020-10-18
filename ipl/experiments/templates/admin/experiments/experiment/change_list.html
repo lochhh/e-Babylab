@@ -1,0 +1,7 @@
+{% extends "admin/change_list_filter_sidebar.html" %} {% load i18n %} 
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a class="grp-add-link grp-state-focus" href={% url 'experiments:experimentImport' %}>Import experiment</a>
+    </li>
+{% endblock %}

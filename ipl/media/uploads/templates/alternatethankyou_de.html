@@ -1,0 +1,25 @@
+{% extends "experiments/base.html" %} 
+{% load static %}
+{% block title %}Fertig{% endblock %} 
+
+{% block content %}
+<div class="container" id="thankyou">
+    <div class="row">
+        <div class="col text-center">
+            <h1>Fertig</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="card-text">
+                        Schade, dass Sie die Studie abgebrochen haben. Die Webcamaufnahme wurde beendet. Bitte schließen Sie jetzt dieses Browser-Fenster.<br /><br />
+                        Wir würden gerne erfahren, warum Sie die Studie abgebrochen haben. Falls Sie uns dies mitteilen möchten, schreiben Sie bitte eine Email an XXX.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

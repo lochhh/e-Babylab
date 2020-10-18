@@ -1,0 +1,37 @@
+{% extends "experiments/base.html" %} {% load static %} {% block title %}Prüfe Kompatibilität des Browsers{% endblock %}
+{% block content %}
+<div class="container" id="information">
+    <div class="row">
+        <div class="col text-center">
+            <h1>Prüfe Kompatibilität des Browsers</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card active" id="webcam_step_1">
+                <!-- h4 class="card-header">1. Schritt</h4-->
+                <div class="card-body">
+                    <!--h4 class="card-title">Prüfe Kompatibilität des Browsers</h4-->
+                    <p class="card-text">
+                        Wir prüfen nun die Kompatibilität Ihres Browsers. Die Studie ist nur mit Firefox und Google Chrome kompatibel. Falls der Test fehlschlägt, starten Sie die Studie bitte erneut mit einem dieser Browser.
+                    </p>
+                    <div class="alert alert-success" role="alert" style="display: none;">
+                        Sie benutzen einen kompatiblen Browser. Bitte fahren Sie fort.
+                    </div>
+                    <div class="alert alert-danger" role="alert" style="display: none;">
+                        Sie benutzen einen inkompatiblen Browser. Bitte benutzen Sie Google Chrome oder Mozilla Firefox und öffnen Sie die Seite
+                        erneut.
+                    </div>
+                    <form action="{% url 'experiments:consentForm' experiment.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" disabled="disabled" class="btn btn-primary" id="nextbutton">Weiter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'experiments/js/detectrtc.min.js' %}"></script>
+<script src="{% static 'experiments/js/browser-check.js' %}"></script>
+{% endblock %}

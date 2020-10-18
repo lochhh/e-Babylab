@@ -1,0 +1,41 @@
+{% extends "experiments/base.html" %} 
+{% load static %}
+{% block title %}Einverständnis nicht erteilt{% endblock %} 
+
+{% block content %}
+<div class="container" id="consentFail">
+    <div class="row">
+        <div class="col text-center">
+            <h1>Einverständnis nicht erteilt</h1>
+        </div>
+    </div>
+    <!--div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="card-text">{{ experiment.consent_fail_reason|linebreaks }}</p>
+                    <form action="{% url 'experiments:consentForm' experiment.id %}" method="post">
+                        {% csrf_token %}        
+                        <button type="submit" class="btn btn-primary" id="resumebutton">Zurück</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div-->
+    <div class="row">
+        <div class="col text-center ">
+            <div class= "card-body alert alert-danger">
+                <p class="card-text">
+                        Sie waren nicht mit allen Punkten einverstanden. Daher können wir mit der Studie nicht fortfahren.<br /><br />
+                        Falls Sie tatsächlich nicht einverstanden sind, schließen Sie bitte Ihr Browserfenster.<br /><br />
+                        Falls Sie zurückkehren und Ihre Eingabe ändern möchten, klicken Sie bitte „zurück“.
+                </p>
+            </div>
+            <form action="{% url 'experiments:consentForm' experiment.id %}" method="post">
+            {% csrf_token %}        
+                <button type="submit" class="btn btn-primary" id="resumebutton">Zurück</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
