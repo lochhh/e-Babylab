@@ -1,4 +1,5 @@
-# ipl
+# IPL-2.0
+IPL-2.0 is an authoring tool that allows users or researchers to create, host, run, and manage online experiments---without the need for prior experience in programming. Using this tool, experiments can be configured to use any combinations of image, audio, and/or video contents as stimuli and accept key presses, clicks, and touches (on touchscreens) as responses. Other types of explicit responses (e.g., pointing gestures, verbal responses) as well as implicit responses (e.g., eye movement, vocal emotion) can additionally be captured via audio or video recordings.
 
 ## Contents
 1. [Installation](#1-installation)
