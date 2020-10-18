@@ -99,5 +99,6 @@ Allow the execution of the *wait-for-it.sh* script by executing the following co
 `chmod +x ipl/wait-for-it.sh`
 
 ## 5. Useful Links
+* [IPL-2.0 User Manual](https://github.com/lochhh/IPL-2.0/wiki)
 * [Django Tutorial](https://docs.djangoproject.com/en/2.0/intro/install/)
 * [Django with Docker](https://docs.docker.com/compose/django/)
