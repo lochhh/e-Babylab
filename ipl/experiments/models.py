@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.db import models
 from django.db.models import Max
 from django.contrib.auth.models import User
+from django.dispatch import receiver
+from django.conf import settings
 from colorfield.fields import ColorField
 from filebrowser.fields import FileBrowseField
 from django.contrib.auth.models import Group
@@ -265,6 +267,21 @@ class TrialResult(models.Model):
         """
         return os.path.basename(self.webcam_file.name)
 
+
+def _delete_file(path):
+   """ 
+   Deletes file from filesystem. 
+   """
+   if os.path.isfile(path):
+       os.remove(path)
+
+@receiver(models.signals.post_delete, sender=TrialResult, dispatch_uid='webcamfile_delete_signal')
+def delete_file(sender, instance, *args, **kwargs):
+    """ 
+    Deletes webcam file on `post_delete` 
+    """
+    if instance.webcam_file.name:
+        _delete_file(os.path.join(settings.WEBCAM_ROOT, instance.webcam_file.name))
 
 def validate_list(value):
     """
