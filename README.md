@@ -99,6 +99,9 @@ To upgrade an existing environment to the latest version of IPL, please run the 
 Allow the execution of the *wait-for-it.sh* script by executing the following command:
 `chmod +x ipl/wait-for-it.sh`
 
+### `"Server error (500)"` when attempting to download results
+Make sure that there is a "webcam" directory in the "ipl" directory (where manage.py and the Dockerfile are located). If it does not exist, create one. 
+
 ## 5. Useful Links
 * [IPL-2.0 User Manual](https://github.com/lochhh/IPL-2.0/wiki)
 * [Django Tutorial](https://docs.djangoproject.com/en/2.0/intro/install/)
