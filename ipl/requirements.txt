@@ -6,6 +6,6 @@ XlsxWriter
 uwsgi
 python-dateutil
 Pillow
-django-grappelli<=2.11.2
+django-grappelli==2.11.2
 git+https://github.com/herzog31/django-filebrowser.git#egg=django-filebrowser
 tablib
