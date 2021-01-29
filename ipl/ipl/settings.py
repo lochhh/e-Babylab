@@ -150,7 +150,7 @@ FILEBROWSER_EXTENSIONS = {
 # Admin page customisations
 
 GRAPPELLI_INDEX_DASHBOARD = 'ipl.dashboard.CustomIndexDashboard'
-GRAPPELLI_ADMIN_TITLE = 'Preferential Looking Experiments'
+GRAPPELLI_ADMIN_TITLE = 'e-Babylab'
 
 
 # Static files (CSS, JavaScript, Images)

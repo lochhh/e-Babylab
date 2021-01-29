@@ -33,7 +33,7 @@ urlpatterns = [
 ]
 
 #admin.site.site_header = "Experiments Administration"
-#admin.site.site_title = "Preferential Looking Experiments"
+#admin.site.site_title = "e-Babylab"
 
 # Webcam tests
 urlpatterns += static(settings.WEBCAM_TEST_URL, document_root=settings.WEBCAM_TEST_ROOT)
