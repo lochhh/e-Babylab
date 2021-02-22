@@ -17,10 +17,13 @@ from .models import Question, Experiment, SubjectData, ListItem, OuterBlockItem,
 from .forms import SubjectDataForm, ConsentForm, ImportForm
 from .reporter import Reporter
 from .admin import ExperimentAdmin
+from .decorators import login_required
 
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.contrib.admin.utils import NestedObjects
 
+
+@login_required(next='/admin/experiments/experiment')
 def experimentReport(request, experiment_id):
     """ 
     Generates the zip file containing the participants' results and webcam/audio data for an experiment. 

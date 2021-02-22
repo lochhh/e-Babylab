@@ -1,5 +1,5 @@
 from django.conf.urls import url
-
+from django.contrib import admin
 from . import views, webcam
 
 app_name = 'experiments'
@@ -28,4 +28,6 @@ urlpatterns = [
     url(r'^admin/experiments/experiment/(?P<experiment_id>[0-9A-Fa-f-]+)/report$', views.experimentReport, name='experimentReport'),
     url(r'^admin/experiments/experiment/(?P<experiment_id>[0-9A-Fa-f-]+)/export$', views.experimentExport, name='experimentExport'),
     url(r'^admin/experiments/import$', views.experimentImport, name='experimentImport'),
+
+    url('^accounts/', admin.site.urls),
 ]
