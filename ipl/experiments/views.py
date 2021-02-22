@@ -303,9 +303,28 @@ def experimentEnd(request, run_uuid):
 
         # if experiment incomplete, render end page after discontinuation
         if completed_count < tr_count:
-            return render(request, experiment.thank_you_abort_page_tpl.path, {'experiment':experiment})
-        return render(request, experiment.thank_you_page_tpl.path, {'experiment':experiment})
-    return render(request, experiment.thank_you_abort_page_tpl.path, {'experiment':experiment})
+            return render(request, experiment.thank_you_abort_page_tpl.path, {
+                'experiment':experiment,
+                'subject_id': run_uuid})
+        return render(request, experiment.thank_you_page_tpl.path, {
+            'experiment':experiment,
+            'subject_id': run_uuid})
+    return render(request, experiment.thank_you_abort_page_tpl.path, {
+        'experiment':experiment,
+        'subject_id': run_uuid})
+
+def deleteSubject(request, run_uuid):
+    """
+    Deletes a participant's results at the end of the experiment.
+    """
+
+    if request.method == 'POST':
+        subject_data = get_object_or_404(SubjectData, pk=run_uuid)
+        subject_data.delete()
+        # Return success status with no content
+        return HttpResponse(status=204)
+    else:
+        raise Http404("Page not found.")
 
 def index(request):
     """ 

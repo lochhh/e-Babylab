@@ -21,6 +21,7 @@ urlpatterns = [
     url(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/run/storeresult$', views.storeResult, name='storeResult'),
     url(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/run/pause$', views.experimentPause, name='experimentPause'),
     url(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/run/thankyou$', views.experimentEnd, name='experimentEnd'),
+    url(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/run/deletesubject$', views.deleteSubject, name='deleteSubject'),
     url(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/run/error$', views.experimentError, name='experimentError'),
 
     url(r'^$', views.index, name='index'),
