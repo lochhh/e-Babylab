@@ -118,6 +118,58 @@ class AnswerIntegerInline(AnswerBaseInline):
     model = AnswerInteger
 
 
+class TrialResultInline(admin.TabularInline):
+    model = TrialResult
+    extra = 0
+    exclude = ('webcam_file', 'start_time', 'end_time')
+    readonly_fields = ('trialitem', 'trial_blockitem', 'trial_audio', 'trial_visual', 
+                        'trial_input', 'trial_maxduration', 'response_time', 'key_pressed', 'webcam_file_link')
+    ordering = ('id',)
+    def trial_blockitem(self, obj):
+        return obj.trialitem.blockitem
+
+    trial_blockitem.short_description = 'Block item'
+
+    def trial_audio(self, obj):
+        return obj.trialitem.audio_file.filename
+
+    trial_audio.short_description = 'Audio file'
+
+    def trial_visual(self, obj):
+        return obj.trialitem.visual_file.filename
+
+    trial_visual.short_description = 'Visual file'
+
+    def trial_input(self, obj):
+        return obj.trialitem.user_input
+
+    trial_input.short_description = 'User input'
+
+    def trial_maxduration(self, obj):
+        return obj.trialitem.max_duration
+
+    trial_maxduration.short_description = 'Max duration'
+
+    def response_time(self, obj):
+        if obj.start_time and obj.end_time:
+            return str(obj.end_time - obj.start_time)
+        return ''
+
+    response_time.short_description = 'Response time'
+
+    def webcam_file_link(self, obj):
+        if obj.webcam_file:
+            return obj.webcam_file.name
+        else:
+            return "-"
+
+    webcam_file_link.allow_tags = True
+    webcam_file_link.short_description = 'Webcam file'
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 class ConsentQuestionInline(admin.StackedInline):
     model = ConsentQuestion
     extra = 0
@@ -466,7 +518,7 @@ class SubjectDataAdmin(admin.ModelAdmin):
     list_filter = ['experiment']
     inlines = [
         AnswerTextInline, AnswerRadioInline, AnswerSelectInline,
-        AnswerSelectMultipleInline, AnswerIntegerInline
+        AnswerSelectMultipleInline, AnswerIntegerInline, TrialResultInline
     ]
     # specifies the order as well as which fields to act on
     readonly_fields = ('id', 'participant_id', 'experiment', 'listitem',
