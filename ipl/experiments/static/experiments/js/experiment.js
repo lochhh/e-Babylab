@@ -4,6 +4,7 @@
 
     // Subject id
     const subjectUuid = $('#trials').data('subjectUuid');
+    const subjectId = $('#trials').data('subjectId');
 
     // Body tag reference
     let body = $('body');
@@ -116,7 +117,7 @@
             // Start webcam recording
             let recording;
             if(recording_option != 'NON') {
-                recording = webcam.startRecording(subjectUuid + "." + trialObj.trial_id + "." + trialObj.label, recording_option, mediaStream);
+                recording = webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream);
             }else{
                 recording = Promise.resolve();
             }

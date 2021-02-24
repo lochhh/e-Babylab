@@ -170,8 +170,9 @@ class Reporter:
                 continue
 
             # Create excel report
-            workbook_file = str(subject.participant_id) + '_' + subject.id + \
-                '_' + self.experiment.exp_name + '_' + subject.listitem.list_name + '.xlsx'
+            workbook_file = str(subject.participant_id) + '_' + \
+                self.experiment.exp_name + '_' + subject.created.strftime('%Y%m%d') + \
+                    '_' + subject.id + '.xlsx'
             workbook_file = get_valid_filename(workbook_file)
             workbook = xlsxwriter.Workbook(os.path.join(self.output_folder,
                                                         self.tmp_folder, workbook_file))
