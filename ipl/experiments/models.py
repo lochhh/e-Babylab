@@ -259,6 +259,7 @@ class TrialResult(models.Model):
     end_time = models.DateTimeField(blank=True, null=True)
     key_pressed = models.CharField(blank=True, null=True, max_length=255)
     webcam_file = models.FileField(upload_to=visual_folder, blank=True, null=True)
+    trial_number = models.IntegerField(default=0)
 
     @property
     def filename(self):

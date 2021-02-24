@@ -383,6 +383,7 @@
                     'start_time': trialObj.start_time,
                     'end_time': new Date().toISOString(),
                     'key_pressed': keysPressed,
+                    'trial_number': currentTrial + 1,
                 },
                 method: 'POST'
             }).done(function(data) {

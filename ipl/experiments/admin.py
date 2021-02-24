@@ -122,9 +122,10 @@ class TrialResultInline(admin.TabularInline):
     model = TrialResult
     extra = 0
     exclude = ('webcam_file', 'start_time', 'end_time')
-    readonly_fields = ('trialitem', 'trial_blockitem', 'trial_audio', 'trial_visual', 
+    readonly_fields = ('trial_number', 'trialitem', 'trial_blockitem', 'trial_audio', 'trial_visual', 
                         'trial_input', 'trial_maxduration', 'response_time', 'key_pressed', 'webcam_file_link')
-    ordering = ('id',)
+    ordering = ('trial_number',)
+    
     def trial_blockitem(self, obj):
         return obj.trialitem.blockitem
 

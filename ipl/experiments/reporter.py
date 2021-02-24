@@ -20,6 +20,7 @@ class Reporter:
         'Outer Block',
         'Inner Block',
         'Randomized',
+        'Trial Number',
         'Trial Label',
         'Visual Onset (ms)',
         'Audio Onset (ms)',
@@ -131,25 +132,25 @@ class Reporter:
         blocks = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk)
 
         for block in blocks:
-            trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('pk')
+            trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('trial_number', 'pk')
             for result in trial_results:
                 worksheet.write(current_row, 0, block.outerblockitem.outer_block_name)
                 worksheet.write(current_row, 1, block.label)
                 worksheet.write(current_row, 2, block.randomise_trials)
-                worksheet.write(current_row, 3, result.trialitem.label)
-                worksheet.write(current_row, 4, result.trialitem.visual_onset)
-                worksheet.write(current_row, 5, result.trialitem.audio_onset)
-                worksheet.write(current_row, 6, result.start_time.strftime("%H:%M:%S") if result.start_time else '')
-                worksheet.write(current_row, 7, result.end_time.strftime("%H:%M:%S") if result.end_time else '')
-                worksheet.write(current_row, 8, result.trialitem.visual_file.filename)
+                worksheet.write(current_row, 3, result.trial_number)
+                worksheet.write(current_row, 4, result.trialitem.label)
+                worksheet.write(current_row, 5, result.trialitem.visual_onset)
+                worksheet.write(current_row, 6, result.trialitem.audio_onset)
+                worksheet.write(current_row, 7, result.start_time.strftime("%H:%M:%S") if result.start_time else '')
+                worksheet.write(current_row, 8, result.end_time.strftime("%H:%M:%S") if result.end_time else '')
+                worksheet.write(current_row, 9, result.trialitem.visual_file.filename)
                 audio_file = result.trialitem.audio_file
-                worksheet.write(current_row, 9, audio_file.filename if audio_file else '')
-                worksheet.write(current_row, 10, result.trialitem.max_duration)
-                worksheet.write(current_row, 11, result.trialitem.user_input)
-                worksheet.write(current_row, 12, result.key_pressed)
-                worksheet.write(current_row, 13, self.calc_trial_duration(result.start_time,
-                                                                          result.end_time))
-                worksheet.write(current_row, 14, result.webcam_file.name)
+                worksheet.write(current_row, 10, audio_file.filename if audio_file else '')
+                worksheet.write(current_row, 11, result.trialitem.max_duration)
+                worksheet.write(current_row, 12, result.trialitem.user_input)
+                worksheet.write(current_row, 13, result.key_pressed)
+                worksheet.write(current_row, 14, self.calc_trial_duration(result.start_time, result.end_time))
+                worksheet.write(current_row, 15, result.webcam_file.name)
 
                 # Add webcam file to zip
                 self.zip_file.write(os.path.join("webcam", result.webcam_file.name),

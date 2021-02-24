@@ -238,6 +238,7 @@ def storeResult(request, run_uuid):
         trialresult.end_time = dateutil.parser.parse(request.POST.get('end_time'))
         trialresult.key_pressed = request.POST.get('key_pressed')
         #trialresult.webcam_file = request.POST.get('webcam_file')
+        trialresult.trial_number = int(request.POST.get('trial_number'))
         trialresult.save()
         return JsonResponse({'resultId': trialresult.pk})
     raise Http404("Page not found.")
