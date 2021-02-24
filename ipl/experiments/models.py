@@ -59,6 +59,7 @@ class Experiment(models.Model):
      (NONE,'Key/Click responses only'),
     )
     recording_option = models.CharField(max_length=3, choices=RECORDING_OPTIONS, default=VIDEO)
+    general_onset = models.IntegerField('wait to enable key/click response (ms)', default=0)
     
     # Templates
     information_page_tpl = FileBrowseField('welcome page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/information_de.html')

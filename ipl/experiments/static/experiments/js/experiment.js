@@ -1,6 +1,6 @@
 'use strict';
 
-(function (trials, loading_image, global_timeout, include_pause_page, recording_option) {
+(function (trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset) {
 
     // Subject id
     const subjectUuid = $('#trials').data('subjectUuid');
@@ -133,6 +133,9 @@
                     trialSetupPromises.push(showTrialImage(trialObj));
                 }
 
+                // wait before accepting responses
+                let waitTime = parseInt(general_onset);
+                trialSetupPromises.push(waitPromise(waitTime, trialObj));
                 return Promise.all(trialSetupPromises)
 
             }).then(function(values) {
@@ -196,6 +199,17 @@
             });
         }
     };
+
+    /**
+     * Returns a promise that resolves after waitTime with given param.
+     */
+    let waitPromise = function(waitTime, param) {
+        return new Promise(function(resolve) {
+            setTimeout(function() {
+                resolve(param);
+            }, waitTime);
+        });
+    }
 
     /**
      * Preload images of all trials.
@@ -381,7 +395,7 @@
                 data: {
                     'trialitem': trialObj.trial_id,
                     'start_time': trialObj.start_time,
-                    'end_time': new Date().toISOString(),
+                    'end_time': trialObj.end_time,
                     'key_pressed': keysPressed,
                     'trial_number': currentTrial + 1,
                     'resolution_w': window.screen.width,
@@ -539,4 +553,4 @@
         }
     });
 
-})(trials, loading_image, global_timeout, include_pause_page, recording_option);
+})(trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset);

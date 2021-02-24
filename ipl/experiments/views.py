@@ -220,6 +220,7 @@ def experimentRun(request, run_uuid):
         return render(request, experiment.experiment_page_tpl.path, {
             'subject_data': subject_data,
             'loading_image': loading_image,
+            'general_onset': experiment.general_onset,
             'global_timeout': list_item.global_timeout,
             'include_pause_page': experiment.include_pause_page,
             'recording_option': experiment.recording_option,

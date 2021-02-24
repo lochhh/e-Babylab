@@ -198,6 +198,7 @@ class ExperimentAdmin(admin.ModelAdmin):
                 'sharing_option',
                 'sharing_groups',
                 'list_selection_strategy',
+                'general_onset',
                 'recording_option',
                 'loading_image',
                 'include_pause_page',
