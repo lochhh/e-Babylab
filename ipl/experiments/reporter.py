@@ -32,7 +32,9 @@ class Reporter:
         'User Input',
         'Response Keys',
         'Response Time',
-        'Webcam File'
+        'Webcam File',
+        'Resolution (width)',
+        'Resolution (height)',
     ]
 
     def __init__(self, experiment):
@@ -151,6 +153,8 @@ class Reporter:
                 worksheet.write(current_row, 13, result.key_pressed)
                 worksheet.write(current_row, 14, self.calc_trial_duration(result.start_time, result.end_time))
                 worksheet.write(current_row, 15, result.webcam_file.name)
+                worksheet.write(current_row, 16, result.resolution_w)
+                worksheet.write(current_row, 17, result.resolution_h)
 
                 # Add webcam file to zip
                 self.zip_file.write(os.path.join("webcam", result.webcam_file.name),

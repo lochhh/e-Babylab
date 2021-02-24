@@ -384,6 +384,8 @@
                     'end_time': new Date().toISOString(),
                     'key_pressed': keysPressed,
                     'trial_number': currentTrial + 1,
+                    'resolution_w': window.screen.width,
+                    'resolution_h': window.screen.height,
                 },
                 method: 'POST'
             }).done(function(data) {

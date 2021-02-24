@@ -260,6 +260,8 @@ class TrialResult(models.Model):
     key_pressed = models.CharField(blank=True, null=True, max_length=255)
     webcam_file = models.FileField(upload_to=visual_folder, blank=True, null=True)
     trial_number = models.IntegerField(default=0)
+    resolution_w = models.IntegerField('Resolution width', default=0)
+    resolution_h = models.IntegerField('Resolution height', default=0)
 
     @property
     def filename(self):
