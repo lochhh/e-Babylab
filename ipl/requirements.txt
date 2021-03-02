@@ -10,3 +10,4 @@ django-grappelli>=2.14.3
 django-filebrowser>=3.13.2
 #git+https://github.com/herzog31/django-filebrowser.git#egg=django-filebrowser
 tablib
+django-tinymce

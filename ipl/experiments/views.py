@@ -4,14 +4,13 @@ from django.urls import reverse
 from django.views import generic
 from django.utils import timezone
 from django.conf import settings
-from random import shuffle
 from django.core.files.storage import FileSystemStorage
+from django.template import Template, RequestContext
+from django.db.utils import DEFAULT_DB_ALIAS
+from django.contrib.admin.utils import NestedObjects
 
 from datetime import datetime, date
-
-import dateutil.parser
-import simplejson as json
-import os.path
+from random import shuffle
 
 from .models import Question, Experiment, SubjectData, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, ConsentQuestion
 from .forms import SubjectDataForm, ConsentForm, ImportForm
@@ -19,8 +18,9 @@ from .reporter import Reporter
 from .admin import ExperimentAdmin
 from .decorators import login_required
 
-from django.db.utils import DEFAULT_DB_ALIAS
-from django.contrib.admin.utils import NestedObjects
+import dateutil.parser
+import simplejson as json
+import os.path
 
 
 @login_required(next='/admin/experiments/experiment')
@@ -65,16 +65,19 @@ def informationPage(request, experiment_id):
     Generates the first page, the welcome page of an experiment.
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
-
-    return render(request, experiment.information_page_tpl.path, {'experiment':experiment})
-
+    t = Template(experiment.information_page_tpl)
+    c = RequestContext(request, {'experiment':experiment})
+    return HttpResponse(t.render(c))
+   
 def browserCheck(request, experiment_id):
     """ 
     Generates the second page, the browser check page of an experiment.
     Only Firefox and Chrome are supported. 
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
-    return render(request, experiment.browser_check_page_tpl.path, {'experiment':experiment})
+    t = Template(experiment.browser_check_page_tpl)
+    c = RequestContext(request, {'experiment':experiment})
+    return HttpResponse(t.render(c))
 
 def consentForm(request, experiment_id):
     """ 
@@ -82,7 +85,9 @@ def consentForm(request, experiment_id):
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(experiment=experiment)
-    return render(request, experiment.introduction_page_tpl.path, {'consent_form': form, 'experiment': experiment})
+    t = Template(experiment.introduction_page_tpl)
+    c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
+    return HttpResponse(t.render(c))
 
 def consentFormSubmit(request, experiment_id):
     """ 
@@ -95,10 +100,13 @@ def consentFormSubmit(request, experiment_id):
         for key, value in request.POST.items():
             if key.startswith('question_'):
                 if value.lower() == 'no':
-                    return render(request, experiment.consent_fail_page_tpl.path, {'experiment':experiment})
-
+                    t = Template(experiment.consent_fail_page_tpl)
+                    c = RequestContext(request, {'experiment': experiment})
+                    return HttpResponse(t.render(c))
         return HttpResponseRedirect(reverse('experiments:subjectForm', args=(experiment_id,)))
-    return render(request, experiment.introduction_page_tpl.path, {'consent_form': form, 'experiment': experiment})
+    t = Template(experiment.introduction_page_tpl)
+    c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
+    return HttpResponse(t.render(c))
 
 def subjectForm(request, experiment_id):
     """ 
@@ -106,8 +114,10 @@ def subjectForm(request, experiment_id):
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
-    return render(request, experiment.demographic_data_page_tpl.path, {'subject_data_form': form, 'experiment': experiment})
-
+    t = Template(experiment.demographic_data_page_tpl)
+    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment})
+    return HttpResponse(t.render(c))
+    
 def subjectFormSubmit(request, experiment_id):
     """ 
     Validates the demographic/participant data form. 
@@ -121,9 +131,10 @@ def subjectFormSubmit(request, experiment_id):
             return HttpResponseRedirect(reverse('experiments:experimentRun', args = (str(response.id),)))
         else: # capture audio/video
             return HttpResponseRedirect(reverse('experiments:webcamTest', args = (str(response.id),)))
-
-    return render(request, experiment.demographic_data_page_tpl.path, {'subject_data_form': form, 'experiment': experiment})
-
+    t = Template(experiment.demographic_data_page_tpl)
+    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment})
+    return HttpResponse(t.render(c))
+ 
 def createTrialDict(trial, block):
     """ 
     Returns a dictionary containing the details of a trial. 
@@ -173,7 +184,7 @@ def experimentRun(request, run_uuid):
     completed_trials = []
     block_items = []
     loading_image = experiment.loading_image if experiment.loading_image else ''
-
+    
     try:
         # retrieve a certain list
         if subject_data.listitem is None:
@@ -217,7 +228,8 @@ def experimentRun(request, run_uuid):
     except (KeyError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist):
         return HttpResponseRedirect(reverse('experiments:index'))
     else:
-        return render(request, experiment.experiment_page_tpl.path, {
+        t = Template(experiment.experiment_page_tpl)
+        c = RequestContext(request, {
             'subject_data': subject_data,
             'loading_image': loading_image,
             'general_onset': experiment.general_onset,
@@ -226,6 +238,7 @@ def experimentRun(request, run_uuid):
             'recording_option': experiment.recording_option,
             'trials': json.dumps(trials),
             })
+        return HttpResponse(t.render(c))
 
 def storeResult(request, run_uuid):
     """ 
@@ -266,12 +279,10 @@ def experimentPause(request, run_uuid):
         trialresult.trialitem = last_trial_result.trialitem
         trialresult.key_pressed = 'PAUSE'
         trialresult.save()
-
-    return render(request, experiment.pause_page_tpl.path, {
-        'subject_id': run_uuid,
-        'trial_id': trial_id,
-        'experiment': experiment,
-        })
+    
+    t = Template(experiment.pause_page_tpl)
+    c = RequestContext(request, {'subject_id': run_uuid, 'trial_id': trial_id,'experiment': experiment,})
+    return HttpResponse(t.render(c))
 
 def experimentError(request, run_uuid):
     """ 
@@ -279,8 +290,9 @@ def experimentError(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-
-    return render(request, experiment.error_page_tpl.path, {})
+    t = Template(experiment.error_page_tpl)
+    c = RequestContext(request, {})
+    return HttpResponse(t.render(c))
 
 def experimentEnd(request, run_uuid):
     """ 
@@ -288,7 +300,9 @@ def experimentEnd(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-
+    t = Template(experiment.thank_you_abort_page_tpl)
+    c = RequestContext(request, {'experiment':experiment, 'subject_id': run_uuid})
+    
     if subject_data.listitem:
         listitem = get_object_or_404(ListItem, pk=subject_data.listitem.pk)
         # count number of trials in the listitem
@@ -305,18 +319,11 @@ def experimentEnd(request, run_uuid):
         # count participant's number of trial results
         completed_count = TrialResult.objects.filter(subject=run_uuid).exclude(key_pressed='PAUSE').count()
 
-        # if experiment incomplete, render end page after discontinuation
-        if completed_count < tr_count:
-            return render(request, experiment.thank_you_abort_page_tpl.path, {
-                'experiment':experiment,
-                'subject_id': run_uuid})
-        return render(request, experiment.thank_you_page_tpl.path, {
-            'experiment':experiment,
-            'subject_id': run_uuid})
-    return render(request, experiment.thank_you_abort_page_tpl.path, {
-        'experiment':experiment,
-        'subject_id': run_uuid})
-
+        # if experiment complete, render standard end page
+        if completed_count >= tr_count:
+            t = Template(experiment.thank_you_page_tpl)
+    return HttpResponse(t.render(c))
+    
 def deleteSubject(request, run_uuid):
     """
     Deletes a participant's results at the end of the experiment.

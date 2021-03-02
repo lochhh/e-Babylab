@@ -1,17 +1,22 @@
-import datetime
-import uuid
-import os
-import random
-
 from django.utils import timezone
 from django.db import models
 from django.db.models import Max
 from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.conf import settings
+from django.contrib.auth.models import Group
+
 from colorfield.fields import ColorField
 from filebrowser.fields import FileBrowseField
-from django.contrib.auth.models import Group
+from tinymce import models as tinymce_models
+
+from .template_defaults import *
+
+import datetime
+import uuid
+import os
+import random
+
 
 def experiment_folder(instance, filename):
     return '/'.join(['uploads', 'experiments', instance.exp_name, filename])
@@ -48,7 +53,7 @@ class Experiment(models.Model):
     )
     list_selection_strategy = models.CharField('list selection strategy', max_length=3, choices=LIST_SELECTION_STRATEGIES, default=LEASTPLAYED)
     include_pause_page = models.BooleanField(default=True, help_text='When global timeout is encountered / exit button is pressed, go to pause page instead of ending experiment immediately.')
-    loading_image = FileBrowseField(max_length=200, directory=experiment_folder, extensions=['.jpg','.jpeg','.gif','.png'], blank=True)
+    loading_image = FileBrowseField(max_length=200, directory=experiment_folder, extensions=['.jpg','.jpeg','.gif','.png'], blank=True, help_text='Shown at the end of the experiment, if media recordings are still being uploaded.')
     VIDEO = 'VID'
     AUDIO = 'AUD'
     NONE = 'NON'
@@ -62,17 +67,18 @@ class Experiment(models.Model):
     general_onset = models.IntegerField('wait to enable key/click response (ms)', default=0)
     
     # Templates
-    information_page_tpl = FileBrowseField('welcome page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/information_de.html')
-    browser_check_page_tpl = FileBrowseField('browser check page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/browsercheck_de.html')
-    introduction_page_tpl = FileBrowseField('consent form template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/consentForm_de.html')
-    consent_fail_page_tpl = FileBrowseField('consent failed page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/fail_de.html')
-    demographic_data_page_tpl = FileBrowseField('demographic data page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/subjectForm_de.html')
-    webcam_check_page_tpl = FileBrowseField('Webcam/Microphone check page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/webcamTest_de.html')
-    experiment_page_tpl = FileBrowseField('experiment page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/experiment_de.html')
-    pause_page_tpl = FileBrowseField('pause page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/pause_de.html')
-    thank_you_page_tpl = FileBrowseField('standard end page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/thankyou_de.html')
-    thank_you_abort_page_tpl = FileBrowseField('end page after discontinuation template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/alternatethankyou_de.html')
-    error_page_tpl = FileBrowseField('error page template', max_length=250, directory=template_folder, extensions=['.tpl', '.html'], default='uploads/templates/error_de.html')
+    information_page_tpl = tinymce_models.HTMLField('welcome page template', default=information_page_content)
+    browser_check_page_tpl = tinymce_models.HTMLField('browser check page template', default=browser_check_page_content)
+    introduction_page_tpl = tinymce_models.HTMLField('consent form template', default=introduction_page_content)
+    consent_fail_page_tpl = tinymce_models.HTMLField('consent failed page template', default=consent_fail_page_content)
+    demographic_data_page_tpl = tinymce_models.HTMLField('demographic data page template', default=demographic_data_page_content)
+    webcam_check_page_tpl = tinymce_models.HTMLField('webcam check page template (ignore if not applicable)', default=webcam_check_page_content)
+    microphone_check_page_tpl = tinymce_models.HTMLField('microphone check page template (ignore if not applicable)', default=microphone_check_page_content)
+    experiment_page_tpl = tinymce_models.HTMLField('experiment page template', default=experiment_page_content)
+    pause_page_tpl = tinymce_models.HTMLField('pause page template', default=pause_page_content)
+    thank_you_page_tpl = tinymce_models.HTMLField('standard end page template', default=thank_you_page_content)
+    thank_you_abort_page_tpl = tinymce_models.HTMLField('end page after discontinuation template', default=thank_you_abort_page_content)
+    error_page_tpl = tinymce_models.HTMLField('error page template', default=error_page_content)
 
     def __str__(self):
         return self.exp_name

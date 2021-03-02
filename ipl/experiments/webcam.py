@@ -7,6 +7,7 @@ from django.http import Http404, JsonResponse, HttpResponse
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
+from django.template import Template, RequestContext
 
 from .models import SubjectData, TrialResult, Experiment
 
@@ -16,10 +17,14 @@ def webcam_test(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    return render(request, experiment.webcam_check_page_tpl.path, {
-        'subject_data': subject_data,
-        'experiment': experiment,
-    })
+    c = RequestContext(request, {'subject_data': subject_data, 'experiment': experiment,})
+    
+    if experiment.recording_option == 'VID':
+        t = Template(experiment.webcam_check_page_tpl)
+    else: # audio
+        t = Template(experiment.microphone_check_page_tpl)    
+    #return render(request, experiment.webcam_check_page_tpl.path, {'subject_data': subject_data, 'experiment': experiment,})
+    return HttpResponse(t.render(c))
 
 def webcam_test_upload(request, run_uuid):
     """

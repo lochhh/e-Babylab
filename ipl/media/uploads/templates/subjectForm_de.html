@@ -20,31 +20,28 @@
                             Bitte füllen Sie die Felder unten aus. Sie müssen mindestens alle mit einem * versehenen Felder ausfüllen, um an der Studie teilnehmen zu können.
                         </p>
                         <p><br><span class="asterix">* Pflichtfeld</span></p>
-                        <ul class="subject-data-form">
-                            {% for field in subject_data_form %}
-                            {% if field.name == 'resolution_w' or field.name == 'resolution_h' %}
-                                {{ field }}
+                        {% for field in subject_data_form %}
+                        {% if field.name == 'resolution_w' or field.name == 'resolution_h' %}
+                            {{ field }}
+                        {% else %}
+                        <div class="q-item" value="{{ forloop.counter }}">
+                            {% if field.field.required %}
+                            <div class="field-wrapper question-required">
+                                {{ field.errors }}
+                                <label class="label-inline">{{ field.label }} <span class="asterix">*</span></label>
                             {% else %}
-                            <li class="q-item" value="{{ forloop.counter }}">
-                                {% if field.field.required %}
-                                <div class="field-wrapper question-required">
-                                    {{ field.errors }}
-                                    <label class="label-inline">{{ field.label }} <span class="asterix">*</span></label>
-                                {% else %}
-                                <div class="field-wrapper">
-                                    {{ field.errors }}
-                                    <label class="label-inline">{{ field.label }}</label>
-                                {% endif %}
-                                    <div class="form-field-body">
-                                        {{ field }}
-                                    </div>
-                                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                                </div>
-                            </li>
-                            <br>
+                            <div class="field-wrapper">
+                                {{ field.errors }}
+                                <label class="label-inline">{{ field.label }}</label>
                             {% endif %}
-                            {% endfor %}
-                        </ul>
+                                <div class="form-field-body">
+                                    {{ field }}
+                                </div>
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            </div>
+                        </div><br>
+                        {% endif %}
+                        {% endfor %}
                         <button type="submit" class="btn btn-primary">Weiter</button>
                     </form>
                 </div>

@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'colorfield'
+    'colorfield',
+    'tinymce',
 ]
 
 MIDDLEWARE = [
@@ -134,7 +135,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # File management settings
 
 FILE_UPLOAD_PERMISSIONS = 0o644
@@ -152,6 +152,21 @@ FILEBROWSER_EXTENSIONS = {
 GRAPPELLI_INDEX_DASHBOARD = 'ipl.dashboard.CustomIndexDashboard'
 GRAPPELLI_ADMIN_TITLE = 'e-Babylab'
 
+# Tinymce editor config
+
+TINYMCE_DEFAULT_CONFIG = {
+    'menubar': False,
+    'relative_urls': False,
+    'convert_urls': False,
+    'remove_script_host': False,
+    'forced_root_block': False,
+    'plugins': 'lists link image code',
+    'toolbar': 'undo redo | fontselect fontsizeselect | forecolor | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code | removeformat',
+    'fontsize_formats': '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+    'extended_valid_elements': 'script[language|type|src]',
+}
+TINYMCE_FILEBROWSER = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/

@@ -4,22 +4,21 @@ from django.conf import settings
 from django.conf.urls import re_path, include
 from django.contrib.auth.models import Group
 from django.core import serializers
-
-from filebrowser.base import FileObject
-
-from .models import Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, ConsentQuestion
-from .models import Question, SubjectData, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple, TrialResult
-from .forms import ExperimentForm
-
 from django.utils.html import format_html
 from django.urls import reverse
 from django.forms import Textarea
 from django.db import models
 from django.db.models import Q
 
+from filebrowser.base import FileObject
+from datetime import datetime
+
+from .models import Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, ConsentQuestion
+from .models import Question, SubjectData, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple, TrialResult
+from .forms import ExperimentForm
+
 import os
 import uuid
-from datetime import datetime
 import json
 
 
@@ -187,6 +186,16 @@ class ConsentQuestionInline(admin.StackedInline):
         },
     }
 
+"""
+Custom Help Text for Templates
+"""
+TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
+                                '<p>- Do not remove elements enclosed in curly braces, i.e., {{ ... }}, {% ... %}. <br />',
+                                '- Do not remove script elements, i.e., &lt;script&gt; ... &lt;/script&gt;. <br />',
+                                '- To edit the source code directly, click on the "<>" icon on the toolbar. <br />',
+                                '- Some elements (e.g., error messages, success messages) are not visible in the editor. ',
+                                'To change the text of these elements, use the source code view. <br />',
+                                '- To change button text, use the source code view. <br />'])
 
 class ExperimentAdmin(admin.ModelAdmin):
     form = ExperimentForm
@@ -213,12 +222,14 @@ class ExperimentAdmin(admin.ModelAdmin):
                 'consent_fail_page_tpl',
                 'demographic_data_page_tpl',
                 'webcam_check_page_tpl',
+                'microphone_check_page_tpl',
                 'experiment_page_tpl',
                 'pause_page_tpl',
                 'thank_you_page_tpl',
                 'thank_you_abort_page_tpl',
                 'error_page_tpl',
             ),
+            'description': '<div class="help">%s</div>' % TEMPLATES_HELP_TEXT,
         })
     ]
     inlines = [ConsentQuestionInline, QuestionInline, ListItemInline]

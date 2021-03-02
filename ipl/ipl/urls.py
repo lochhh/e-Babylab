@@ -30,6 +30,7 @@ urlpatterns = [
     path('grappelli/', include('grappelli.urls')),
     path('admin/filebrowser/', site.urls),
     path('admin/', admin.site.urls),
+    path('tinymce/', include('tinymce.urls')),
 ]
 
 #admin.site.site_header = "Experiments Administration"

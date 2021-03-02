@@ -21,19 +21,17 @@
                             Die Teilnahme an der Studie ist nur möglich, wenn Sie mit jedem der folgenden Punkte einverstanden sind.
                         </p>
                         <p><br><span class="asterix">* Pflichtfeld</span></p>
-                        <ol class="consent-form">
-                            {% for field in consent_form %}
-                            <li class="q-item" value="{{ forloop.counter }}">
-                                <div class="field-wrapper question-required">
-                                    {{ field.errors }}
-                                    <label class="label-inline">{{ field.label }}<span class="asterix"> * </span></label>
-                                    <div class="form-field-body">
-                                        {{ field }}
-                                    </div>
+                        {% for field in consent_form %}
+                        <div class="q-item" value="{{ forloop.counter }}">
+                            <div class="field-wrapper question-required">
+                                {{ field.errors }}
+                                <label class="label-inline">{{ field.label }}<span class="asterix"> * </span></label>
+                                <div class="form-field-body">
+                                    {{ field }}
                                 </div>
-                            </li><br>
-                            {% endfor %}
-                        </ol>
+                            </div>
+                        </div><br>
+                        {% endfor %}
                         <button type="submit" class="btn btn-primary">Weiter</button>
                     </form>
                 </div>
