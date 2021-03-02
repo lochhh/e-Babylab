@@ -185,6 +185,10 @@ class ConsentQuestionInline(admin.StackedInline):
             })
         },
     }
+    fields = (
+        'text', 'position',
+        ('response_yes', 'response_no'),
+    )
 
 """
 Custom Help Text for Templates

@@ -410,7 +410,9 @@ class ConsentQuestion(models.Model):
     """
     text = models.TextField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
-    position = models.PositiveSmallIntegerField("Position", null=True)
+    position = models.PositiveSmallIntegerField('Position', null=True)
+    response_yes = models.CharField('yes', max_length=50, default='Ja')
+    response_no = models.CharField('no', max_length=50, default='Nein')
 
     class Meta:
         ordering = ['position']

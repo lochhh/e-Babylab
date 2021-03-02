@@ -21,7 +21,7 @@ class ConsentForm(forms.Form):
 		data = kwargs.get('data')
 		for q in experiment.consent_questions():
 			self.fields["question_%d" % q.pk] = forms.ChoiceField(label=q.text, widget=forms.RadioSelect, choices=(
-                [('yes','Ja'), ('no','Nein'),]),)
+                [('yes', q.response_yes), ('no', q.response_no),]),)
 			self.fields["question_%d" % q.pk].widget.attrs["class"] = "required list-unstyled"
 			
 class SubjectDataForm(models.ModelForm):
