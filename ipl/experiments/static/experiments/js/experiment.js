@@ -116,7 +116,7 @@
 
             // Start webcam recording
             let recording;
-            if(recording_option != 'NON') {
+            if(recording_option != 'NON' && trialObj.record_media) {
                 recording = webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream);
             }else{
                 recording = Promise.resolve();

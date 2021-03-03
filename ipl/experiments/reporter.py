@@ -32,9 +32,10 @@ class Reporter:
         'User Input',
         'Response Keys',
         'Response Time',
+        'Record Media',
         'Webcam File',
-        'Resolution (width)',
-        'Resolution (height)',
+        'Screen Width',
+        'Screen Height',
     ]
 
     def __init__(self, experiment):
@@ -90,10 +91,12 @@ class Reporter:
             'Experiment Name': subject.experiment.exp_name,
             'Global Timeout': subject.listitem.global_timeout,
             'List': subject.listitem.list_name,
+            'Participant Number': subject.participant_id,
+            'Participant UUID': subject.id,
+            'Participation Date': subject.created.strftime("%d.%m.%Y %H:%M:%S"),
             'Aspect Ratio': '{}:{}'.format(int(subject.resolution_h / gcd),
                                            int(subject.resolution_w / gcd)),
             'Resolution': '{}x{}'.format(subject.resolution_w, subject.resolution_h),
-            'Subject Date': subject.created.strftime("%d.%m.%Y %H:%M:%S"),
             'Consent Questions': '',
         }
 
@@ -152,9 +155,10 @@ class Reporter:
                 worksheet.write(current_row, 12, result.trialitem.user_input)
                 worksheet.write(current_row, 13, result.key_pressed)
                 worksheet.write(current_row, 14, self.calc_trial_duration(result.start_time, result.end_time))
-                worksheet.write(current_row, 15, result.webcam_file.name)
-                worksheet.write(current_row, 16, result.resolution_w)
-                worksheet.write(current_row, 17, result.resolution_h)
+                worksheet.write(current_row, 15, result.trialitem.record_media)
+                worksheet.write(current_row, 16, result.webcam_file.name)
+                worksheet.write(current_row, 17, result.resolution_w)
+                worksheet.write(current_row, 18, result.resolution_h)
 
                 # Add webcam file to zip
                 self.zip_file.write(os.path.join("webcam", result.webcam_file.name),

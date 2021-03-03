@@ -170,7 +170,8 @@ def createTrialDict(trial, block):
         'max_duration': trial.max_duration,
         'response_keys': trial.response_keys.lower().replace(' ', '').split(','),
         'require_user_input': trial.user_input, #'NO', 'YES'
-        'trial_type': trial_type
+        'trial_type': trial_type,
+        'record_media': trial.record_media,
     }
     return trial_dict
 
