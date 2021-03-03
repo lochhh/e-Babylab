@@ -62,7 +62,11 @@ class SubjectDataForm(models.ModelForm):
 				question_choices = q.get_choices()
 				self.fields["question_%d" % q.pk] = forms.MultipleChoiceField(label=q.text, widget=forms.CheckboxSelectMultiple, choices = question_choices)
 			elif q.question_type == Question.INTEGER:
-				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text)
+				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, localize=True)
+			elif q.question_type == Question.NUM_RANGE:
+				question_choices = q.get_choices()
+				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, min_value = int(question_choices[0][0]), max_value = int(question_choices[1][0]), localize=True)
+				self.fields["question_%d" % q.pk].widget.attrs["step"] = "1"
 
 			# if the required, give it a corresponding css class.
 			if q.required:
@@ -112,7 +116,7 @@ class SubjectDataForm(models.ModelForm):
 				elif q.question_type == Question.SELECT_MULTIPLE:
 					a = AnswerSelectMultiple(question = q)
 					a.body = field_value
-				elif q.question_type == Question.INTEGER:
+				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE:
 					a = AnswerInteger(question = q)
 					a.body = field_value
 				print("creating answer to question %d of type %s" % (q_id, a.question.question_type))

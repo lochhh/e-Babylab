@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.conf import settings
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 
 from colorfield.fields import ColorField
 from filebrowser.fields import FileBrowseField
@@ -232,7 +233,7 @@ class TrialItem(models.Model):
 
     def __str__(self):
         return self.label
-        
+
 
 class SubjectData(models.Model):
     """
@@ -298,10 +299,27 @@ def validate_list(value):
     """
     Takes a text value and verifies that there is at least 1 comma.
     """
-    values = value.split(',')
+    # split by comma and remove empty strings
+    values = list(filter(None, value.split(',')))
     if len(values) < 2:
-        raise ValidationError("The selected field requires an associated list of choices. Choices must contain more than one item.")
+        raise ValidationError({'choices':('The selected question type requires an associated list of choices. Choices must contain more than one item.')})
 
+def validate_range(value):
+    """
+    Takes a text value and verifies that the min and max values are valid.
+    """
+    try: 
+        # split by comma and remove empty strings
+        values = list(filter(None, value.split(',')))
+        if len(values) != 2:
+            raise ValidationError({'choices':('The selected question type requires a minimum and a maximum value.')})
+        
+        # convert list to integers
+        min_max = list(map(int, values))
+        if min_max[0] >= min_max[1]:
+            raise ValidationError({'choices':('The minimum value must be greater than the maximum value.')})
+    except ValueError:
+        raise ValidationError({'choices':('The values can only be integers.')})
 
 class Question(models.Model):
     """
@@ -314,6 +332,7 @@ class Question(models.Model):
     SELECT = 'select'
     SELECT_MULTIPLE = 'select-multiple'
     INTEGER = 'integer'
+    NUM_RANGE = 'number-range'
 
     QUESTION_TYPES =(
      (TEXT, 'text'),
@@ -321,22 +340,24 @@ class Question(models.Model):
      (SELECT, 'select'),
      (SELECT_MULTIPLE, 'select multiple'),
      (INTEGER, 'integer'),
+     (NUM_RANGE, 'integer range'),
     )
 
     text = models.TextField()
     required = models.BooleanField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
     question_type = models.CharField(max_length=200, choices=QUESTION_TYPES, default=TEXT)
-    choices = models.TextField(blank=True, null=True, help_text='if the question type is "radio", "select", or "select multiple", provide a comma-separated list of options for this question.')
+    choices = models.TextField(blank=True, null=True, help_text='If the question type is "radio", "select", or "select multiple", provide a comma-separated list of options (e.g., a, b, c). If the question type is "integer range", provide the min and max integers (e.g., 1, 10).')
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
         ordering = ['position']
 
-    def save(self, *args, **kwargs):
+    def clean(self):
         if (self.question_type == Question.RADIO or self.question_type == Question.SELECT or self.question_type == Question.SELECT_MULTIPLE):
             validate_list(self.choices)
-        super(Question, self).save(*args, **kwargs)
+        if self.question_type == Question.NUM_RANGE:
+            validate_range(self.choices)
 
     def get_choices(self):
         """
