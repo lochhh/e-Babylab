@@ -155,7 +155,7 @@ class Reporter:
                 worksheet.write(current_row, 12, result.trialitem.user_input)
                 worksheet.write(current_row, 13, result.key_pressed)
                 worksheet.write(current_row, 14, self.calc_trial_duration(result.start_time, result.end_time))
-                worksheet.write(current_row, 15, result.trialitem.record_media)
+                worksheet.write(current_row, 15, block.outerblockitem.listitem.experiment.recording_option != 'NON' and result.trialitem.record_media)
                 worksheet.write(current_row, 16, result.webcam_file.name)
                 worksheet.write(current_row, 17, result.resolution_w)
                 worksheet.write(current_row, 18, result.resolution_h)
