@@ -3,7 +3,8 @@ import uuid
 import re
 
 from django.shortcuts import get_object_or_404, render
-from django.http import Http404, JsonResponse, HttpResponse
+from django.http import Http404, JsonResponse, HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
@@ -21,8 +22,10 @@ def webcam_test(request, run_uuid):
     
     if experiment.recording_option == 'VID':
         t = Template(experiment.webcam_check_page_tpl)
-    else: # audio
-        t = Template(experiment.microphone_check_page_tpl)    
+    elif experiment.recording_option == 'AUD': # audio
+        t = Template(experiment.microphone_check_page_tpl)  
+    else: # no recording required
+        return HttpResponseRedirect(reverse('experiments:experimentRun', args = (str(run_uuid),)))
     #return render(request, experiment.webcam_check_page_tpl.path, {'subject_data': subject_data, 'experiment': experiment,})
     return HttpResponse(t.render(c))
 
