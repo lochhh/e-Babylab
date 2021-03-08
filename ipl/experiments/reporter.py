@@ -4,6 +4,7 @@ import zipfile
 import xlsxwriter
 import shutil
 import datetime
+import re
 
 from .models import SubjectData, OuterBlockItem, BlockItem, TrialResult, AnswerBase, AnswerText, AnswerInteger, \
                     Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion
@@ -22,6 +23,7 @@ class Reporter:
         'Randomized',
         'Trial Number',
         'Trial Label',
+        'Trial Code',
         'Visual Onset (ms)',
         'Audio Onset (ms)',
         'Start Time',
@@ -31,6 +33,7 @@ class Reporter:
         'Max Duration',
         'User Input',
         'Response Keys',
+        'Area Clicked (row,col)',
         'Response Time',
         'Record Media',
         'Webcam File',
@@ -70,6 +73,25 @@ class Reporter:
         """
         if t1 and t2:
             return str(t2 - t1)
+        return ''
+
+    def calc_area_clicked(self, result):
+        """
+        Determines row and col clicked based on grid size defined for the trial. 
+        """
+        if 'mouse' in result.key_pressed and (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1):
+            width = result.resolution_w
+            height = result.resolution_h
+            boundaries_r = list(range(0, height, int(height/result.trialitem.grid_row)))
+            boundaries_r.append(height)
+            boundaries_c = list(range(0, width, int(width/result.trialitem.grid_col)))
+            boundaries_c.append(width)
+            coords = list(map(int, re.findall(r'\d+', result.key_pressed)))
+        
+            if len(coords) == 2:
+                col_num = next(i for i,c in enumerate(boundaries_c) if c > coords[0])
+                row_num = next(i for i,r in enumerate(boundaries_r) if r > coords[1])
+                return '({row_num},{col_num})'.format(row_num=row_num, col_num=col_num)
         return ''
 
     def gcd(self, a, b):
@@ -135,7 +157,7 @@ class Reporter:
         
         outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('id',flat=True))
         blocks = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk)
-
+        
         for block in blocks:
             trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('trial_number', 'pk')
             for result in trial_results:
@@ -144,21 +166,23 @@ class Reporter:
                 worksheet.write(current_row, 2, block.randomise_trials)
                 worksheet.write(current_row, 3, result.trial_number)
                 worksheet.write(current_row, 4, result.trialitem.label)
-                worksheet.write(current_row, 5, result.trialitem.visual_onset)
-                worksheet.write(current_row, 6, result.trialitem.audio_onset)
-                worksheet.write(current_row, 7, result.start_time.strftime("%H:%M:%S") if result.start_time else '')
-                worksheet.write(current_row, 8, result.end_time.strftime("%H:%M:%S") if result.end_time else '')
-                worksheet.write(current_row, 9, result.trialitem.visual_file.filename)
+                worksheet.write(current_row, 5, result.trialitem.code)
+                worksheet.write(current_row, 6, result.trialitem.visual_onset)
+                worksheet.write(current_row, 7, result.trialitem.audio_onset)
+                worksheet.write(current_row, 8, result.start_time.strftime("%H:%M:%S") if result.start_time else '')
+                worksheet.write(current_row, 9, result.end_time.strftime("%H:%M:%S") if result.end_time else '')
+                worksheet.write(current_row, 10, result.trialitem.visual_file.filename)
                 audio_file = result.trialitem.audio_file
-                worksheet.write(current_row, 10, audio_file.filename if audio_file else '')
-                worksheet.write(current_row, 11, result.trialitem.max_duration)
-                worksheet.write(current_row, 12, result.trialitem.user_input)
-                worksheet.write(current_row, 13, result.key_pressed)
-                worksheet.write(current_row, 14, self.calc_trial_duration(result.start_time, result.end_time))
-                worksheet.write(current_row, 15, block.outerblockitem.listitem.experiment.recording_option != 'NON' and result.trialitem.record_media)
-                worksheet.write(current_row, 16, result.webcam_file.name)
-                worksheet.write(current_row, 17, result.resolution_w)
-                worksheet.write(current_row, 18, result.resolution_h)
+                worksheet.write(current_row, 11, audio_file.filename if audio_file else '')
+                worksheet.write(current_row, 12, result.trialitem.max_duration)
+                worksheet.write(current_row, 13, result.trialitem.user_input)
+                worksheet.write(current_row, 14, result.key_pressed)
+                worksheet.write(current_row, 15, self.calc_area_clicked(result))
+                worksheet.write(current_row, 16, self.calc_trial_duration(result.start_time, result.end_time))
+                worksheet.write(current_row, 17, block.outerblockitem.listitem.experiment.recording_option != 'NON' and result.trialitem.record_media)
+                worksheet.write(current_row, 18, result.webcam_file.name)
+                worksheet.write(current_row, 19, result.resolution_w)
+                worksheet.write(current_row, 20, result.resolution_h)
 
                 # Add webcam file to zip
                 self.zip_file.write(os.path.join("webcam", result.webcam_file.name),

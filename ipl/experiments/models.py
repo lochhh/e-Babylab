@@ -223,9 +223,11 @@ class TrialItem(models.Model):
     audio_file = FileBrowseField(max_length=200, directory=experiment_folder, extensions= ['.mp3','.wav'], blank=True)
     visual_file = FileBrowseField(max_length=200, directory=experiment_folder, extensions=['.jpg','.jpeg','.gif','.png', '.mp4', '.ogg', '.webm'])
     user_input = models.CharField(max_length=3, choices=USER_INPUT_OPTIONS, default=NO)
-    response_keys = models.CharField('response key(s)', max_length=200, blank=True, null=True, help_text='provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b)')
+    response_keys = models.CharField('response key(s)', max_length=200, blank=True, null=True, help_text='Provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b)')
     max_duration = models.IntegerField('maximum duration (ms)', help_text='This value will be ignored for video trials which do not require user input.')
     record_media = models.BooleanField(default=True, help_text='This value will be ignored if the experiment is set to record key/click responses only.')
+    grid_row = models.IntegerField('rows', default = 1)
+    grid_col = models.IntegerField('columns', default = 1)
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:

@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.forms import Textarea
 from django.db import models
 from django.db.models import Q
+from django.utils.safestring import mark_safe
 
 from filebrowser.base import FileObject
 from datetime import datetime
@@ -22,6 +23,24 @@ import uuid
 import json
 
 
+
+"""
+Custom Help Text
+"""
+TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
+                                '<p>- Do not remove elements enclosed in curly braces, i.e., {{ ... }}, {% ... %}. <br />',
+                                '- Do not remove script elements, i.e., &lt;script&gt; ... &lt;/script&gt;. <br />',
+                                '- To edit the source code directly, click on the "<>" icon on the toolbar. <br />',
+                                '- Some elements (e.g., error messages, success messages) are not visible in the editor. ',
+                                'To change the text of these elements, use the source code view. <br />',
+                                '- To change button text, use the source code view. <br />'])
+
+GRID_LAYOUT_HELP_TEXT = ' '.join(['<p>Note:',
+                                '<p>Rows and Columns are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses only). <br />',
+                                'For instance, setting rows = 1 and cols = 2 would allow one to determine whether a click was on the left (1,1) or right side (1,2) of the visual stimulus. <br />',
+                                'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks. <br />'])
+
+
 class TrialItemInline(admin.StackedInline):
     model = TrialItem
     extra = 0
@@ -29,6 +48,14 @@ class TrialItemInline(admin.StackedInline):
     verbose_name_plural = "Trials"
     inline_classes = ['grp-collapse grp-open']
     sortable_field_name = "position"
+    fieldsets = (
+        (None, {
+            'fields': ('label', 'code', 'visual_onset', 'visual_file', 
+            'audio_onset', 'audio_file', 'user_input', 'response_keys',
+            'max_duration', 'record_media', ('grid_row', 'grid_col'), 'position'),
+            'description': '<div class="help">%s</div>' % GRID_LAYOUT_HELP_TEXT, 
+        }),
+    )
 
 
 class BlockItemInline(admin.StackedInline):
@@ -195,16 +222,6 @@ class ConsentQuestionInline(admin.StackedInline):
         ('response_yes', 'response_no'),
     )
 
-"""
-Custom Help Text for Templates
-"""
-TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
-                                '<p>- Do not remove elements enclosed in curly braces, i.e., {{ ... }}, {% ... %}. <br />',
-                                '- Do not remove script elements, i.e., &lt;script&gt; ... &lt;/script&gt;. <br />',
-                                '- To edit the source code directly, click on the "<>" icon on the toolbar. <br />',
-                                '- Some elements (e.g., error messages, success messages) are not visible in the editor. ',
-                                'To change the text of these elements, use the source code view. <br />',
-                                '- To change button text, use the source code view. <br />'])
 
 class ExperimentAdmin(admin.ModelAdmin):
     form = ExperimentForm
