@@ -114,31 +114,27 @@
             // Set background color
             body.css('background-color', trialObj.background_colour);
 
-            // Start webcam recording
-            let recording;
-            if(recording_option != 'NON' && trialObj.record_media) {
-                recording = webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream);
-            }else{
-                recording = Promise.resolve();
+            // Setup trial
+            let trialSetupPromises = [];
+            if (trialObj.audio_file != '') {
+                trialSetupPromises.push(playTrialAudio(trialObj));
             }
-            recording.then(function() {
-                // Setup trial
-                let trialSetupPromises = [];
-                if (trialObj.audio_file != '') {
-                    trialSetupPromises.push(playTrialAudio(trialObj));
-                }
-                if (trialObj.trial_type == 'video') {
-                    trialSetupPromises.push(playTrialVideo(trialObj));
-                } else {
-                    trialSetupPromises.push(showTrialImage(trialObj));
-                }
+            if (trialObj.trial_type == 'video') {
+                trialSetupPromises.push(playTrialVideo(trialObj));
+            } else {
+                trialSetupPromises.push(showTrialImage(trialObj));
+            }
 
-                // wait before accepting responses
-                let waitTime = parseInt(general_onset);
-                trialSetupPromises.push(waitPromise(waitTime, trialObj));
-                return Promise.all(trialSetupPromises)
+            // Start webcam recording
+            if(recording_option != 'NON' && trialObj.record_media) {
+                trialSetupPromises.push(webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream));
+            }
 
-            }).then(function(values) {
+            // Wait before accepting responses
+            let waitTime = parseInt(general_onset);
+            trialSetupPromises.push(waitPromise(waitTime, trialObj));
+
+            Promise.all(trialSetupPromises).then(function(values) {
                 let trialObj = values[0]; // Get trialObj from first promise
 
                 // Set start time
@@ -318,8 +314,10 @@
 
             // Video is already fully loaded
             if (video.readyState > 3) {
+                console.log("Video is loaded.");
                 setTimeout(displayVideo, Number(trialObj.visual_onset));
             }else{ // Video is still loading
+                console.log("Video is still loading.");
                 $(video).on('canplay', displayVideo);
             }
         });
