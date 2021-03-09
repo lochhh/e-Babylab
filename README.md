@@ -39,7 +39,7 @@ If you are running e-Babylab for the first time, you will need to:
 
 Once everything is set up, Django admin can be accessed at `http://localhost:8080/admin/`.
 
-If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose exec -f docker-compose.dev.yml web python manage.py makemigrations` and applied using `docker-compose exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/2.0/topics/migrations/).
+If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose exec -f docker-compose.dev.yml web python manage.py makemigrations` and applied using `docker-compose exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
 
 e-Babylab can be stopped using `Ctrl + C` or `docker-compose -f docker-compose.dev.yml down`. 
 To stop e-Babylab without destroying the containers, use `docker-compose -f docker-compose.dev.yml stop`.
@@ -76,7 +76,7 @@ docker-compose exec web django-admin <command> [options]
 docker-compose exec web python manage.py <command> [options]
 ```
 
-These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/2.0/ref/django-admin/).
+These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/3.1/ref/django-admin/).
 
 ## 3. Upgrade
 To upgrade an existing environment to the latest version of e-Babylab, please run the following steps:
@@ -89,7 +89,7 @@ To upgrade an existing environment to the latest version of e-Babylab, please ru
 
     Next run `docker-compose build` to force a rebuild of the e-Babylab container.
 
-    Finally you can restart the environment using `docker-commpose up -d`.
+    Finally you can restart the environment using `docker-compose up -d`.
 3. Next you need to perform the database migration. You can apply all migrations using `docker-compose exec web python manage.py migrate`.
 4. To expose new static files (e.g., JavaScript files), run `docker-compose exec web python manage.py collectstatic`.
 
@@ -105,7 +105,7 @@ Make sure that there is a "webcam" directory in the "ipl" directory (where manag
 ## 5. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
-* [Django Tutorial](https://docs.djangoproject.com/en/2.0/intro/install/)
+* [Django Tutorial](https://docs.djangoproject.com/en/3.1/intro/overview/)
 * [Django with Docker](https://docs.docker.com/compose/django/)
 
 This software is licensed under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
