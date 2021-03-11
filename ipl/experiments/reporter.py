@@ -60,6 +60,10 @@ class Reporter:
         self.zip_file = zipfile.ZipFile(os.path.join(self.output_folder, self.output_file),
                                         "w", zipfile.ZIP_DEFLATED)
 
+        # Create webcam directory if it doesn't exist
+        if not os.path.exists('webcam'):
+            os.makedirs('webcam')
+
     def write_trial_columns(self, worksheet):
         """
         Writes column headers to worksheet.
