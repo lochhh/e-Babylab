@@ -1,3 +1,9 @@
+from django.conf import settings
+from django.utils.text import get_valid_filename
+
+from .models import SubjectData, OuterBlockItem, BlockItem, TrialResult, AnswerBase, AnswerText, AnswerInteger, \
+                    Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion
+
 import uuid
 import os
 import zipfile
@@ -5,11 +11,11 @@ import xlsxwriter
 import shutil
 import datetime
 import re
+import logging
 
-from .models import SubjectData, OuterBlockItem, BlockItem, TrialResult, AnswerBase, AnswerText, AnswerInteger, \
-                    Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion
-from django.conf import settings
-from django.utils.text import get_valid_filename
+
+# Create a logger for this file
+logger = logging.getLogger(__name__)
 
 class Reporter:
     """
@@ -55,7 +61,8 @@ class Reporter:
         # Create zip file, delete if already exists
         try:
             os.remove(os.path.join(self.output_folder, self.output_file))
-        except OSError:
+        except OSError as e:
+            logger.exception('Failed to remove zip file: ' + str(e))
             pass
         self.zip_file = zipfile.ZipFile(os.path.join(self.output_folder, self.output_file),
                                         "w", zipfile.ZIP_DEFLATED)

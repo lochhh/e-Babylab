@@ -9,6 +9,11 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
 
 import uuid
+import logging
+
+
+# Create a logger for this file
+logger = logging.getLogger(__name__)
 
 class ConsentForm(forms.Form):
 	"""
@@ -119,10 +124,7 @@ class SubjectDataForm(models.ModelForm):
 				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE:
 					a = AnswerInteger(question = q)
 					a.body = field_value
-				print("creating answer to question %d of type %s" % (q_id, a.question.question_type))
-				print(a.question.text)
-				print("answer value: ")
-				print(field_value)
+				logger.info('Creating answer to "%s" (question %d) of type %s: %s' % (a.question.text, q_id, a.question.question_type, field_value))
 				a.subject_data = subjectData
 				a.save()
 		return subjectData

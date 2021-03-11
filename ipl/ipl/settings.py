@@ -80,6 +80,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ipl.wsgi.application'
 
+# Logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'root': {'level': 'INFO', 'handlers': ['file']},
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'backupCount': 10, # keep at most 10 log files
+            'maxBytes': 5242880, # 5MB
+            'formatter': 'app',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True
+        },
+    },
+    'formatters': {
+        'app': {
+            'format': (
+                u'%(asctime)s [%(levelname)-8s] '
+                '(%(module)s.%(funcName)s) %(message)s'
+            ),
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases

@@ -21,7 +21,11 @@ from .decorators import login_required
 import dateutil.parser
 import simplejson as json
 import os.path
+import logging
 
+
+# Create a logger for this file
+logger = logging.getLogger(__name__)
 
 @login_required(next='/admin/experiments/experiment')
 def experimentReport(request, experiment_id):
@@ -32,7 +36,7 @@ def experimentReport(request, experiment_id):
 
     r = Reporter(experiment)
     filename = r.create_report()
-    print(filename)
+    logger.info('Successfully created report with name %s.' % filename)
 
     fs = FileSystemStorage(location=settings.REPORTS_ROOT, base_url=settings.REPORTS_URL)
 
@@ -43,7 +47,7 @@ def experimentExport(request, experiment_id):
     Exports an experiment to a JSON file
     """
     json_data = ExperimentAdmin.exportToJSON(experiment_id)
-    response = HttpResponse(json.dumps(json_data), content_type="application/json")
+    response = HttpResponse(json.dumps(json_data), content_type='application/json')
     response['Content-Disposition'] = 'attachment; filename=\"' + Experiment.objects.get(id=experiment_id).exp_name + '.json\"'
     return response
 
@@ -226,7 +230,8 @@ def experimentRun(request, run_uuid):
             for t in trial_items:
                 trials.append(createTrialDict(t, b))
 
-    except (KeyError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist):
+    except (KeyError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist) as e:
+        logger.exception('Failed to run experiment: ' + str(e))
         return HttpResponseRedirect(reverse('experiments:index'))
     else:
         t = Template(experiment.experiment_page_tpl)
@@ -258,7 +263,9 @@ def storeResult(request, run_uuid):
         trialresult.resolution_h = int(request.POST.get('resolution_h'))
         trialresult.save()
         return JsonResponse({'resultId': trialresult.pk})
-    raise Http404("Page not found.")
+    else:
+        logger.error('Failed to store result.')
+        raise Http404('Page not found.')
 
 def experimentPause(request, run_uuid):
     """ 
@@ -329,14 +336,15 @@ def deleteSubject(request, run_uuid):
     """
     Deletes a participant's results at the end of the experiment.
     """
-
     if request.method == 'POST':
         subject_data = get_object_or_404(SubjectData, pk=run_uuid)
         subject_data.delete()
+        logger.info('Successfully deleted participant %s.' % run_uuid)
         # Return success status with no content
         return HttpResponse(status=204)
     else:
-        raise Http404("Page not found.")
+        logger.error('Failed to delete participant data.')
+        raise Http404('Page not found.')
 
 def index(request):
     """ 
