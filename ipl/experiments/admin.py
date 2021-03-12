@@ -151,7 +151,7 @@ class TrialResultInline(admin.TabularInline):
     readonly_fields = ('trial_number', 'trialitem', 'trial_blockitem', 'trial_audio', 'trial_visual', 
                         'trial_input', 'trial_maxduration', 'response_time', 'key_pressed', 'record_media', 'webcam_file_link',
                         'resolution_w', 'resolution_h')
-    ordering = ('trial_number',)
+    ordering = ('id',)
 
     def trial_blockitem(self, obj):
         return obj.trialitem.blockitem
