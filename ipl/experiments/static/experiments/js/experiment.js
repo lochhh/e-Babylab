@@ -191,7 +191,7 @@
                     $("div.alert").html(e);
                 });
 
-                console.log("Error during experiment:", e);
+                console.error("Error during experiment:", e);
             });
         }
     };
@@ -404,6 +404,7 @@
                 trialObj.resultId = data.resultId;
                 resolve(trialObj);
             }).fail(function() {
+                console.error('Failed to post result (ID: ' + trialObj.trial_id + ')');
                 reject(trialObj);
             });
         });
