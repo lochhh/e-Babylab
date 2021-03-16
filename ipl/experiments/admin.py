@@ -16,7 +16,7 @@ from datetime import datetime
 
 from .models import Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, ConsentQuestion
 from .models import Question, SubjectData, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple, TrialResult
-from .forms import ExperimentForm
+from .forms import ExperimentForm, QuestionInlineFormSet
 
 import os
 import uuid
@@ -34,6 +34,11 @@ TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
                                 '- Some elements (e.g., error messages, success messages) are not visible in the editor. ',
                                 'To change the text of these elements, use the source code view. <br />',
                                 '- To change button text, use the source code view. <br />'])
+
+CDI_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
+                                '<p>- To administer CDIs, make sure to obtain information on the child\'s age and sex in the participant form (configured in the "Demographic information" section). <br />',
+                                '- Use the "age" type to define the allowed age range (in months). This will appear on the participant form as an integer field with an automatic check that ensures the participant falls within the age range of the instrument. <br />',
+                                '- Use the "sex" type for the sex field. The first option must represent "female" and the second option must represent "male". <br />'])
 
 GRID_LAYOUT_HELP_TEXT = ' '.join(['<p>Note:',
                                 '<p>Rows and Columns are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses only). <br />',
@@ -89,7 +94,7 @@ class ListItemInline(admin.StackedInline):
 
 class QuestionInline(admin.StackedInline):
     model = Question
-    extra = 0
+    extra = 2
     verbose_name = "Field"
     verbose_name_plural = "Demographic information"
     classes = ['grp-collapse grp-closed']
@@ -103,6 +108,15 @@ class QuestionInline(admin.StackedInline):
             })
         },
     }
+    formset = QuestionInlineFormSet
+
+    def get_formset(self, request, obj=None, **kwargs):
+        if obj is None:
+            return super(QuestionInline, self).get_formset(request, obj, **kwargs)
+        kwargs['extra'] = 2
+        if Question.objects.filter(experiment=obj).count():
+            kwargs['extra'] = 0
+        return super(QuestionInline, self).get_formset(request, obj, **kwargs)
 
 
 class AnswerBaseInline(admin.StackedInline):
@@ -247,6 +261,7 @@ class ExperimentAdmin(admin.ModelAdmin):
                 'introduction_page_tpl',
                 'consent_fail_page_tpl',
                 'demographic_data_page_tpl',
+                'cdi_page_tpl',
                 'webcam_check_page_tpl',
                 'microphone_check_page_tpl',
                 'experiment_page_tpl',
@@ -256,6 +271,16 @@ class ExperimentAdmin(admin.ModelAdmin):
                 'error_page_tpl',
             ),
             'description': '<div class="help">%s</div>' % TEMPLATES_HELP_TEXT,
+        }),
+        ('CDI administration', {
+            'classes': ('grp-collapse grp-closed', ),
+            'fields': (
+                'instrument', 
+                'assess_type',
+                'num_words',
+                'typical_dev',
+            ),
+            'description': '<div class="help">%s</div>' % CDI_HELP_TEXT,
         })
     ]
     inlines = [ConsentQuestionInline, QuestionInline, ListItemInline]

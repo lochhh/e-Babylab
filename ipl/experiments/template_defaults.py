@@ -580,3 +580,61 @@ error_page_content = '''<div class="container" id="information">
         </div>
     </div>
 </div>'''
+
+cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Vocabulary Checklist{% endblock %} {% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col text-center">
+            <h1>Vocabulary Checklist</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    {% if error_message %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ error_message }}
+                    </div>
+                    {% endif %}
+
+                    <form id="parentform" action="{% url 'experiments:parentFormSubmit' subject_data.id %}" method="post" novalidate>
+                        {% csrf_token %}
+                        <p class="card-text">
+                            Please mark the boxes for words your child understands. If your child uses another word with the same meaning (e.g., nana for grandma), mark it anyway. </br></br>
+                        </p>
+                        {{ parent_form.non_field_errors }}
+                        {% for field in parent_form %}
+                        {% if field.name == 'resolution_w' or field.name == 'resolution_h' or field.name == 'experiment' or field.name == 'parent_form' %}
+                            {{ field }}
+                        {% else %}
+                        <div class="word-item" value="{{ forloop.counter }}">
+                            <div class="field-wrapper">
+                                {{ field.errors }}
+                                {{ field }} &emsp; <label class="label-inline">{{ field.label }}</label>
+                                    
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            </div>
+                        </div>
+                        <br>
+                        {% endif %}
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function() {
+        $("#parentform").on('submit', function() {
+            // to each unchecked checkbox
+            $('input:checkbox:not(:checked)').each(function () {
+                // add hidden checkbox to be posted
+                $("#parentform").append("<input type='hidden' name='" + this.name + "' value='0' />");
+            });
+        })
+    })
+</script>
+{% endblock %}'''

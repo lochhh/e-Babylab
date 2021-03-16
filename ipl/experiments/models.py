@@ -23,6 +23,28 @@ def experiment_folder(instance, filename):
     return '/'.join(['uploads', 'experiments', instance.exp_name, filename])
 
 template_folder = 'uploads/templates'
+instrument_folder = 'uploads/instruments'
+
+class Instrument(models.Model):
+    instr_name = models.CharField('instrument name', max_length=200)
+    words_list = FileBrowseField(max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    irt_params = FileBrowseField('IRT parameters', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_lm_np_mean = FileBrowseField('NP: M (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_lm_np_sd = FileBrowseField('NP: SD (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_lm_p_mean = FileBrowseField('P: M (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_lm_p_sd = FileBrowseField('P: SD (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_bmin = FileBrowseField('BMin (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    f_slope = FileBrowseField('Slope (female)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_lm_np_mean = FileBrowseField('NP: M (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_lm_np_sd = FileBrowseField('NP: SD (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_lm_p_mean = FileBrowseField('P: M (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_lm_p_sd = FileBrowseField('P: SD (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_bmin = FileBrowseField('BMin (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+    m_slope = FileBrowseField('Slope (male)', max_length=250, directory=instrument_folder, extensions=['.csv'], help_text='Only .csv files are supported.')
+
+    def __str__(self):
+        return self.instr_name
+
 
 class Experiment(models.Model):
     """
@@ -73,6 +95,7 @@ class Experiment(models.Model):
     introduction_page_tpl = tinymce_models.HTMLField('consent form template', default=introduction_page_content)
     consent_fail_page_tpl = tinymce_models.HTMLField('consent failed page template', default=consent_fail_page_content)
     demographic_data_page_tpl = tinymce_models.HTMLField('demographic data page template', default=demographic_data_page_content)
+    cdi_page_tpl = tinymce_models.HTMLField('CDI page template', default=cdi_page_content)
     webcam_check_page_tpl = tinymce_models.HTMLField('webcam check page template (ignore if not applicable)', default=webcam_check_page_content)
     microphone_check_page_tpl = tinymce_models.HTMLField('microphone check page template (ignore if not applicable)', default=microphone_check_page_content)
     experiment_page_tpl = tinymce_models.HTMLField('experiment page template', default=experiment_page_content)
@@ -81,6 +104,19 @@ class Experiment(models.Model):
     thank_you_abort_page_tpl = tinymce_models.HTMLField('end page after discontinuation template', default=thank_you_abort_page_content)
     error_page_tpl = tinymce_models.HTMLField('error page template', default=error_page_content)
 
+    # CDI
+    instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, null=True, blank=True)
+    COMP = 'COMP'
+    PROD = 'PROD'
+    
+    ASSESSMENT_TYPES = (
+     (COMP,'Comprehension'),
+     (PROD,'Production'),
+    )
+    assess_type = models.CharField('assessment type', max_length=4, choices=ASSESSMENT_TYPES, default=COMP)
+    num_words = models.IntegerField('vocabulary checklist length', default=25)
+    typical_dev = models.BooleanField('for typically-developing children', default=True, help_text='Uncheck this box if experiment involves non-typically developing children.')
+    
     def __str__(self):
         return self.exp_name
 
@@ -245,6 +281,7 @@ class SubjectData(models.Model):
     #id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id = models.CharField('Unique ID', primary_key=True, max_length=36)
     participant_id = models.IntegerField('Participant Number', blank=True, null=True)
+    cdi_estimate = models.FloatField(null=True, blank=True, default=None)
     experiment = models.ForeignKey(Experiment, on_delete=models.PROTECT)
     listitem = models.ForeignKey(ListItem, on_delete=models.PROTECT, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -327,7 +364,7 @@ class Question(models.Model):
     """
     Used in the demographic/participant data form.
 
-    This can be 1 of 5 different types.
+    This can be 1 of 8 different types.
     """
     TEXT = 'text'
     RADIO = 'radio'
@@ -335,6 +372,8 @@ class Question(models.Model):
     SELECT_MULTIPLE = 'select-multiple'
     INTEGER = 'integer'
     NUM_RANGE = 'number-range'
+    AGE = 'age'
+    SEX = 'sex'
 
     QUESTION_TYPES =(
      (TEXT, 'text'),
@@ -343,22 +382,24 @@ class Question(models.Model):
      (SELECT_MULTIPLE, 'select multiple'),
      (INTEGER, 'integer'),
      (NUM_RANGE, 'integer range'),
+     (AGE, 'age'),
+     (SEX, 'sex'),
     )
 
     text = models.TextField()
     required = models.BooleanField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
     question_type = models.CharField(max_length=200, choices=QUESTION_TYPES, default=TEXT)
-    choices = models.TextField(blank=True, null=True, help_text='If the question type is "radio", "select", or "select multiple", provide a comma-separated list of options (e.g., a, b, c). If the question type is "integer range", provide the min and max integers (e.g., 1, 10).')
+    choices = models.TextField(blank=True, null=True, help_text='For types "radio", "select", and "select multiple", provide a comma-separated list of options (e.g., a, b, c). For types "integer range" and "age", provide the min and max integers (e.g., 1, 10). For type "sex", provide the female followed by the male display text (e.g., female, male).')
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
         ordering = ['position']
 
     def clean(self):
-        if (self.question_type == Question.RADIO or self.question_type == Question.SELECT or self.question_type == Question.SELECT_MULTIPLE):
+        if (self.question_type == Question.RADIO or self.question_type == Question.SELECT or self.question_type == Question.SELECT_MULTIPLE or self.question_type == Question.SEX):
             validate_list(self.choices)
-        if self.question_type == Question.NUM_RANGE:
+        if self.question_type == Question.NUM_RANGE or self.question_type == Question.AGE:
             validate_range(self.choices)
 
     def get_choices(self):
@@ -444,3 +485,11 @@ class ConsentQuestion(models.Model):
     def __str__(self):
         return self.text
 
+
+class CdiResult(models.Model):
+    """
+    A CdiResult is the response for a CDI item.
+    """
+    subject = models.ForeignKey(SubjectData, on_delete=models.CASCADE)
+    given_label = models.CharField(blank=True, null=True, max_length=255)
+    response = models.BooleanField(blank=True, null=True)

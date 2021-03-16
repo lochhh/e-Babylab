@@ -112,7 +112,7 @@ class SubjectDataForm(models.ModelForm):
 				if q.question_type == Question.TEXT:
 					a = AnswerText(question = q)
 					a.body = field_value
-				elif q.question_type == Question.RADIO:
+				elif q.question_type == Question.RADIO or q.question_type == Question.SEX:
 					a = AnswerRadio(question = q)
 					a.body = field_value
 				elif q.question_type == Question.SELECT:
@@ -121,13 +121,23 @@ class SubjectDataForm(models.ModelForm):
 				elif q.question_type == Question.SELECT_MULTIPLE:
 					a = AnswerSelectMultiple(question = q)
 					a.body = field_value
-				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE:
+				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE or q.question_type == Question.AGE:
 					a = AnswerInteger(question = q)
 					a.body = field_value
 				logger.info('Creating answer to "%s" (question %d) of type %s: %s' % (a.question.text, q_id, a.question.question_type, field_value))
 				a.subject_data = subjectData
 				a.save()
 		return subjectData
+
+class QuestionInlineFormSet(models.BaseInlineFormSet):
+	def __init__(self, *args, **kwargs):
+		experiment = kwargs.get('instance', {})
+		if Question.objects.filter(experiment=experiment.pk).count() == 0:
+			kwargs.update({'initial': [
+				{'text': 'Age in months', 'question_type': 'age', 'required': True, },
+				{'text': 'Sex', 'question_type': 'sex', 'choices': 'Female, Male', 'required': True, },
+			]})
+		super(QuestionInlineFormSet, self).__init__(*args, **kwargs)
 
 class ExperimentForm(forms.ModelForm):
 	"""
