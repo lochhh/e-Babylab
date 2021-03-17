@@ -9,7 +9,7 @@ import tinymce.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('experiments', '0049_auto_20210308_1605'),
+        ('experiments', '0001_initial'),
     ]
 
     operations = [
