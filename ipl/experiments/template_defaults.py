@@ -402,6 +402,23 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
 
 <div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}"></div>
 
+<div id="exitStudyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exitStudyModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="exitStudyModalLabel" class="modal-title">Terminate the study</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"> <span aria-hidden="true">&times;</span> </button>
+            </div>
+            <div class="modal-body">
+                Media recordings are still being uploaded. If you quit the study now, these recordings will be lost. Are you sure you want to quit?
+            </div>
+            <div class="modal-footer">
+                <button id="confirmExitButton" class="btn btn-danger" type="button">Quit</button> 
+                <button class="btn btn-primary" type="button" data-dismiss="modal">Return to study</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     var trials = {{ trials|safe }}
     var loading_image = "{{ loading_image.url }}";

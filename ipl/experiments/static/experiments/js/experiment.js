@@ -314,8 +314,8 @@
 
             // Video is already fully loaded
             if (video.readyState > 3) {
-                console.log("Video is loaded.");
-                setTimeout(displayVideo, Number(trialObj.visual_onset));
+                console.log("Video is fully loaded.");
+                displayVideo();
             }else{ // Video is still loading
                 console.log("Video is still loading.");
                 $(video).on('canplay', displayVideo);
@@ -532,23 +532,34 @@
         }
     };
 
-    $(document).on('mozfullscreenchange webkitfullscreenchange fullscreenchange', function() {
-        let fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
-        // Go to pause page or end experiment immediately when leaving fullscreen
-        if(!fullScreen) {
-            if (include_pause_page.toLowerCase() == 'true') {
-                window.location.replace('/' + subjectUuid + '/run/pause');
-            } else {
-                window.location.replace('/' + subjectUuid + '/run/thankyou');
-            }
-        }
-    });
-
-    $("#exit-button").click(function() {
+    /**
+     * Go to exit/pause page.
+     */
+    let terminateStudy = function() {
         if (include_pause_page.toLowerCase() == 'true') {
             window.location.replace('/' + subjectUuid + '/run/pause');
         } else {
             window.location.replace('/' + subjectUuid + '/run/thankyou');
+        }
+    };
+
+    $(document).on('mozfullscreenchange webkitfullscreenchange fullscreenchange', function() {
+        let fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
+        // Go to pause page or end experiment immediately when leaving fullscreen
+        if(!fullScreen) {
+            terminateStudy();
+        }
+    });
+
+    $('#confirmExitButton').click(function() {
+        terminateStudy();
+    });
+    
+    $("#exit-button").click(function() {
+        if (webcam.getLength()) { // Upload queue is not empty, show confirmation dialog
+            $('#exitStudyModal').modal('show');
+        } else {
+            terminateStudy();
         }
     });
 
