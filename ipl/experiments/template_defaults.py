@@ -559,7 +559,8 @@ thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
 <script src="{% static 'experiments/js/endpage.js' %}"></script>
 {% endblock %}'''
 
-error_page_content = '''<div class="container" id="information">
+error_page_content = '''{% extends "experiments/base.html" %} {% block title %}Fehler{% endblock %} {% block content %}
+<div class="container" id="information">
     <div class="row">
         <div class="col text-center">
             <h1>Fehler</h1>
@@ -579,7 +580,8 @@ error_page_content = '''<div class="container" id="information">
             </div>
         </div>
     </div>
-</div>'''
+</div>
+{% endblock %}'''
 
 cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Vocabulary Checklist{% endblock %} {% block content %}
 <div class="container">

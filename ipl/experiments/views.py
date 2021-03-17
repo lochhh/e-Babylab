@@ -230,9 +230,9 @@ def experimentRun(request, run_uuid):
             for t in trial_items:
                 trials.append(createTrialDict(t, b))
 
-    except (KeyError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist) as e:
+    except (KeyError, AttributeError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist) as e:
         logger.exception('Failed to run experiment: ' + str(e))
-        return HttpResponseRedirect(reverse('experiments:index'))
+        return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))
     else:
         t = Template(experiment.experiment_page_tpl)
         c = RequestContext(request, {
