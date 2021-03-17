@@ -54,7 +54,7 @@ class SubjectDataForm(models.ModelForm):
 		for q in experiment.subject_questions():
 			if q.question_type == Question.TEXT:
 				self.fields["question_%d" % q.pk] = forms.CharField(label=q.text, widget=forms.Textarea(attrs={'rows': 1}))
-			elif q.question_type == Question.RADIO:
+			elif q.question_type == Question.RADIO or q.question_type == Question.SEX:
 				question_choices = q.get_choices()
 				self.fields["question_%d" % q.pk] = forms.ChoiceField(label=q.text, widget=forms.RadioSelect, choices=question_choices)
 			elif q.question_type == Question.SELECT:
@@ -68,7 +68,7 @@ class SubjectDataForm(models.ModelForm):
 				self.fields["question_%d" % q.pk] = forms.MultipleChoiceField(label=q.text, widget=forms.CheckboxSelectMultiple, choices = question_choices)
 			elif q.question_type == Question.INTEGER:
 				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, localize=True)
-			elif q.question_type == Question.NUM_RANGE:
+			elif q.question_type == Question.NUM_RANGE or q.question_type == Question.AGE:
 				question_choices = q.get_choices()
 				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, min_value = int(question_choices[0][0]), max_value = int(question_choices[1][0]), localize=True)
 				self.fields["question_%d" % q.pk].widget.attrs["step"] = "1"
