@@ -14,8 +14,8 @@ from django.utils.safestring import mark_safe
 from filebrowser.base import FileObject
 from datetime import datetime
 
-from .models import Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, ConsentQuestion
-from .models import Question, SubjectData, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple, TrialResult
+from .models import Instrument, Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, CdiResult, SubjectData
+from .models import ConsentQuestion, Question, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple
 from .forms import ExperimentForm, QuestionInlineFormSet
 
 import os
@@ -695,6 +695,7 @@ class TrialResultAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
+admin.site.register(Instrument)
 admin.site.register(Experiment, ExperimentAdmin)
 admin.site.register(ListItem, ListItemAdmin)
 admin.site.register(OuterBlockItem, OuterBlockItemAdmin)
