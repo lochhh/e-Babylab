@@ -22,8 +22,7 @@ import random
 def experiment_folder(instance, filename):
     return '/'.join(['uploads', 'experiments', instance.exp_name, filename])
 
-template_folder = 'uploads/templates'
-instrument_folder = 'uploads/instruments'
+instrument_folder = 'instruments'
 
 class Instrument(models.Model):
     instr_name = models.CharField('instrument name', max_length=200)
@@ -491,5 +490,5 @@ class CdiResult(models.Model):
     A CdiResult is the response for a CDI item.
     """
     subject = models.ForeignKey(SubjectData, on_delete=models.CASCADE)
-    given_label = models.CharField(blank=True, null=True, max_length=255)
+    given_label = models.CharField('item', blank=True, null=True, max_length=255)
     response = models.BooleanField(blank=True, null=True)

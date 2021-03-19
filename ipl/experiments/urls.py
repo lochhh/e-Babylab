@@ -1,7 +1,7 @@
 from django.conf.urls import re_path
 from django.contrib import admin
 
-from . import views, webcam
+from . import views, webcam, cdi
 
 app_name = 'experiments'
 
@@ -13,6 +13,9 @@ urlpatterns = [
 
     re_path(r'^(?P<experiment_id>[0-9A-Fa-f-]+)/form/$', views.subjectForm, name='subjectForm'),
     re_path(r'^(?P<experiment_id>[0-9A-Fa-f-]+)/form/submit$', views.subjectFormSubmit, name='subjectFormSubmit'),
+
+    re_path(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/vocab$', cdi.cdiRun, name='vocabChecklist'),
+    re_path(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/vocab/submit$', cdi.cdiSubmit, name='vocabChecklistSubmit'),
 
     re_path(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/test$', webcam.webcam_test, name='webcamTest'),
     re_path(r'^(?P<run_uuid>[0-9A-Fa-f-]+)/webcamtest/upload$', webcam.webcam_test_upload, name='webcamUpload'),

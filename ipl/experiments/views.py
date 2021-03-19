@@ -131,6 +131,8 @@ def subjectFormSubmit(request, experiment_id):
 
     if form.is_valid():
         response = form.save()
+        if experiment.instrument: # administer CDI if instrument is defined
+            return HttpResponseRedirect(reverse('experiments:vocabChecklist', args = (str(response.id),)))
         if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
             return HttpResponseRedirect(reverse('experiments:experimentRun', args = (str(response.id),)))
         else: # capture audio/video

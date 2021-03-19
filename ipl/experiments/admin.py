@@ -158,6 +158,15 @@ class AnswerIntegerInline(AnswerBaseInline):
     model = AnswerInteger
 
 
+class CdiResultInline(admin.TabularInline):
+    model = CdiResult
+    extra = 0
+    readonly_fields = ('given_label', 'response')
+    ordering = ('id',)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
 class TrialResultInline(admin.TabularInline):
     model = TrialResult
     extra = 0
@@ -583,7 +592,7 @@ class SubjectDataAdmin(admin.ModelAdmin):
     list_filter = ['experiment']
     inlines = [
         AnswerTextInline, AnswerRadioInline, AnswerSelectInline,
-        AnswerSelectMultipleInline, AnswerIntegerInline, TrialResultInline
+        AnswerSelectMultipleInline, AnswerIntegerInline, CdiResultInline, TrialResultInline
     ]
     # specifies the order as well as which fields to act on
     readonly_fields = ('id', 'participant_id', 'experiment', 'listitem',

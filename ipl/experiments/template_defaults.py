@@ -617,14 +617,14 @@ cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Voc
                     </div>
                     {% endif %}
 
-                    <form id="parentform" action="{% url 'experiments:parentFormSubmit' subject_data.id %}" method="post" novalidate>
+                    <form id="cdiForm" action="{% url 'experiments:vocabChecklistSubmit' subject_data.id %}" method="post" novalidate>
                         {% csrf_token %}
                         <p class="card-text">
-                            Please mark the boxes for words your child understands. If your child uses another word with the same meaning (e.g., nana for grandma), mark it anyway. </br></br>
+                            Please mark the box if your child understands the word. If your child uses another word with the same meaning (e.g., nana for grandma), mark it anyway. </br></br>
                         </p>
-                        {{ parent_form.non_field_errors }}
-                        {% for field in parent_form %}
-                        {% if field.name == 'resolution_w' or field.name == 'resolution_h' or field.name == 'experiment' or field.name == 'parent_form' %}
+                        {{ cdi_form.non_field_errors }}
+                        {% for field in cdi_form %}
+                        {% if field.name == 'experiment' %}
                             {{ field }}
                         {% else %}
                         <div class="word-item" value="{{ forloop.counter }}">
@@ -647,11 +647,11 @@ cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Voc
 </div>
 <script>
     $(document).ready(function() {
-        $("#parentform").on('submit', function() {
+        $("#cdiForm").on('submit', function() {
             // to each unchecked checkbox
             $('input:checkbox:not(:checked)').each(function () {
                 // add hidden checkbox to be posted
-                $("#parentform").append("<input type='hidden' name='" + this.name + "' value='0' />");
+                $("#cdiForm").append("<input type='hidden' name='" + this.name + "' value='0' />");
             });
         })
     })

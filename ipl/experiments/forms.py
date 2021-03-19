@@ -161,6 +161,20 @@ class ExperimentForm(forms.ModelForm):
 				raise ValidationError('Please select at least one group.')
 		return groups
 
+class VocabularyChecklistForm(forms.Form):
+	"""
+	Generates the vocabulary checklist form.
+	"""
+	def __init__(self, *args, **kwargs):
+		experiment = kwargs.pop('cdi_form')
+		word = kwargs.pop('word', None)
+		super(VocabularyChecklistForm, self).__init__(*args, **kwargs)
+
+		data = kwargs.get('data')
+		if word:
+			self.fields["word_%s" % word] = forms.BooleanField(label=word, widget=forms.CheckboxInput)
+			self.fields["word_%s" % word].widget.attrs["class"] = "list-unstyled"
+
 class ImportForm(forms.Form):
 	"""
 	Provides the form for JSON file upload when an experiment is to be imported.
