@@ -110,6 +110,8 @@ ipl/media/_versions/**
 ipl/media/uploads/experiments/**
 !ipl/media/uploads/.keep
 !ipl/media/uploads/templates/**
+ipl/media/uploads/instruments/**
+!ipl/media/uploads/instruments/*.r
 
 # Django static folder
 ipl/static/**
