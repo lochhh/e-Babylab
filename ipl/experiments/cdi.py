@@ -9,7 +9,7 @@ from django.template import Template, RequestContext
 from filebrowser.fields import FileBrowseField
 from scipy.stats import norm
 
-from .models import SubjectData, CdiResult, Experiment, Instrument
+from .models import SubjectData, CdiResult, Experiment, Instrument, Question, AnswerInteger, AnswerRadio
 from .forms import VocabularyChecklistForm
 
 import csv
@@ -18,8 +18,6 @@ import simplejson as json
 import numpy as np
 import os.path
 import pandas as pd
-import re
-import uuid
 import numexpr
 import tqdm
 import catsim
@@ -28,7 +26,7 @@ from catsim.initialization import FixedPointInitializer
 from catsim.selection import MaxInfoSelector
 from catsim.estimation import HillClimbingEstimator
 from catsim.stopping import MaxItemStopper
-from catsim.irt import icc, max_info_hpc, inf_hpc
+from catsim.irt import max_info_hpc, inf_hpc
 
 
 # Create a logger for this file
@@ -36,13 +34,87 @@ logger = logging.getLogger(__name__)
 
 def sort_items(item_params):
     """
-    Return ndarray of indices of items sorted by maximum item information.
+    Returns ndarray of indices of items sorted by maximum item information.
     """
     return (-inf_hpc(max_info_hpc(item_params), item_params)).argsort()
 
+def estimateCDI(run_uuid):
+    """
+    Computes CDI estimates based on Mayor and Mani (2019)
+    """
+    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
+    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
+    
+    estimate = 0
+    cdi_results = CdiResult.objects.filter(subject=run_uuid)
+    try:
+        words_list = instrument.words_list
+       
+        # parse instrument word list
+        all_words_reader = csv.DictReader(open(os.path.join(settings.MEDIA_ROOT, instrument.words_list.path), mode='r', encoding='utf-8-sig'), delimiter = ',')
+        
+        all_words = {}
+        for row in all_words_reader:
+            all_words[row['word']] = int(row['word_id'])
+
+        # get child's age and sex
+        age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
+        sex = (AnswerRadio.objects.filter(subject_data=subject_data, question__question_type='sex').first()).body
+        choices = (Question.objects.filter(experiment=experiment, question_type='sex').first()).choices
+        choices = list(filter(None, [x.strip() for x in choices.split(',')]))
+
+        # get lookup files for child's sex
+        if sex.strip().lower() == choices[0].lower(): # choices0 = female
+            lm_np_mean = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_lm_np_mean.path))
+            lm_np_sd = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_lm_np_sd.path))
+            lm_p_mean = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_lm_p_mean.path))
+            lm_p_sd = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_lm_p_sd.path))
+            bmin = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_bmin.path))
+            slope = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.f_slope.path))
+        else: # choices1 = male
+            lm_np_mean = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_lm_np_mean.path))
+            lm_np_sd = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_lm_np_sd.path))
+            lm_p_mean = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_lm_p_mean.path))
+            lm_p_sd = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_lm_p_sd.path))
+            bmin = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_bmin.path))
+            slope = pd.read_csv(os.path.join(settings.MEDIA_ROOT, instrument.m_slope.path))
+        
+        instr_num_words = len(lm_np_mean.index)
+        basis = np.ones(instr_num_words+1)
+        min_score = np.ones(instr_num_words+1)
+        max_score = np.ones(instr_num_words+1)
+        x_values = np.arange(instr_num_words+1)
+
+        for cr in cdi_results:
+            # retrieve row number via word_id, assuming row numbers are the same across all data files
+            word_idx = lm_np_mean[lm_np_mean['word_id'] == all_words.get(cr.given_label)].index[0]
+            if cr.response: # if can produce/comprehend word
+                basis = basis + np.log(norm.pdf(x_values, loc=lm_p_mean.at[word_idx,str(age)], scale=lm_p_sd.at[word_idx,str(age)]))
+            else: # cannot produce/comprehend word
+                basis = basis + np.log(norm.pdf(x_values, loc=lm_np_mean.at[word_idx,str(age)], scale=lm_np_sd.at[word_idx,str(age)]))
+            min_score = min_score + np.log(norm.pdf(x_values, loc=lm_np_mean.at[word_idx,str(age)], scale=lm_np_sd.at[word_idx,str(age)]))
+            max_score = max_score + np.log(norm.pdf(x_values, loc=lm_p_mean.at[word_idx,str(age)], scale=lm_p_sd.at[word_idx,str(age)]))
+
+        # get index of max value in basis
+        B = np.where(basis == np.amax(basis))
+        B = int(B[0][0])
+        estimate = (B-bmin.at[0,str(age)])/slope.at[0,str(age)]
+
+        # store CDI estimate in subject_data
+        subject_data.cdi_estimate = estimate
+        subject_data.save()
+
+    except KeyError as e:
+        logger.exception('Failed to estimate CDI score: ' + str(e))
+        return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))
+    else:
+        logger.info('CDI estimate: ' + str(estimate))
+        return estimate
+
 def cdiRun(request, run_uuid):
     """
-    Administer CDI-IRT
+    Administers CDI-IRT
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -74,7 +146,7 @@ def cdiRun(request, run_uuid):
         
         form = VocabularyChecklistForm(cdi_form=experiment, word=words[irt_run])
     except KeyError as e:
-        logger.exception('Failed to generate cdi item: ' + str(e))
+        logger.exception('Failed to generate CDI item: ' + str(e))
         return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))
     else:
         t = Template(experiment.cdi_page_tpl)
@@ -89,6 +161,8 @@ def cdiSubmit(request, run_uuid):
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     form = VocabularyChecklistForm(request.POST, cdi_form=experiment)
     
+    ### TODO: check for duplicates, i.e., changes in answer, then update irt_run accordingly
+
     # store current response as CdiResult and add to request.responses
     if form.is_valid():
         responses = request.session.get('responses')
@@ -113,6 +187,7 @@ def cdiSubmit(request, run_uuid):
             # generate subsequent item
             return cdiGenerateNextItem(request, run_uuid)      
         else: # proceed to experiment
+            estimateCDI(run_uuid)
             if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
                 return HttpResponseRedirect(reverse('experiments:experimentRun', args=(run_uuid,)))
             else: # capture audio/video
@@ -127,10 +202,7 @@ def cdiGenerateNextItem(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    
-    #est_theta = estimator.estimate(items=items, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
-    #request.session['est_theta'] = est_theta      
-    # generate subsequent items
+
     try:
         # estimate and update theta 
         irt_run = request.session.get('irt_run')

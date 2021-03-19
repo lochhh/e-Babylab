@@ -338,7 +338,7 @@ def validate_list(value):
     Takes a text value and verifies that there is at least 1 comma.
     """
     # split by comma and remove empty strings
-    values = list(filter(None, value.split(',')))
+    values = list(filter(None, [x.strip() for x in value.split(',')]))
     if len(values) < 2:
         raise ValidationError({'choices':('The selected question type requires an associated list of choices. Choices must contain more than one item.')})
 
@@ -348,7 +348,7 @@ def validate_range(value):
     """
     try: 
         # split by comma and remove empty strings
-        values = list(filter(None, value.split(',')))
+        values = list(filter(None, [x.strip() for x in value.split(',')]))
         if len(values) != 2:
             raise ValidationError({'choices':('The selected question type requires a minimum and a maximum value.')})
         

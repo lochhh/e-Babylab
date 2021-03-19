@@ -596,7 +596,7 @@ class SubjectDataAdmin(admin.ModelAdmin):
     ]
     # specifies the order as well as which fields to act on
     readonly_fields = ('id', 'participant_id', 'experiment', 'listitem',
-                       'created', 'updated', 'resolution_w', 'resolution_h')
+                       'created', 'updated', 'resolution_w', 'resolution_h', 'cdi_estimate')
     ordering = (
         'experiment',
         'participant_id',
