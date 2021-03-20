@@ -47,7 +47,9 @@ def estimateCDI(run_uuid):
     instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
     
     estimate = 0
-    cdi_results = CdiResult.objects.filter(subject=run_uuid)
+    # get the latest response for duplicate (i.e., modified) responses
+    cdi_results = CdiResult.objects.filter(subject=run_uuid).order_by('given_label', '-id').distinct('given_label')
+    
     try:
         words_list = instrument.words_list
        
@@ -169,7 +171,7 @@ def cdiSubmit(request, run_uuid):
         for key, value in request.POST.items():
             if key.startswith('word_'):
                 cdiresult = CdiResult()
-                cdiresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
+                cdiresult.subject = subject_data
                 cdiresult.given_label = key[5:]
                 if value.lower() == 'on':
                     cdiresult.response = True
@@ -182,7 +184,11 @@ def cdiSubmit(request, run_uuid):
         request.session['responses'] = responses     
 
         irt_run = request.session.get('irt_run')
-        if irt_run < experiment.num_words-1: 
+        
+         # count unique items
+        count_unique = CdiResult.objects.filter(subject=run_uuid).order_by('given_label').distinct('given_label').count()
+        logger.info('unique count: ' + str(count_unique))
+        if count_unique < experiment.num_words: 
             request.session['irt_run'] = irt_run + 1
             # generate subsequent item
             return cdiGenerateNextItem(request, run_uuid)      
