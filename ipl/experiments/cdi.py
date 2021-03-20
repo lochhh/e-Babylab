@@ -9,8 +9,9 @@ from django.template import Template, RequestContext
 from filebrowser.fields import FileBrowseField
 from scipy.stats import norm
 
-from .models import SubjectData, CdiResult, Experiment, Instrument, Question, AnswerInteger, AnswerRadio
+from .models import SubjectData, ListItem, CdiResult, Experiment, Instrument, Question, AnswerInteger, AnswerRadio
 from .forms import VocabularyChecklistForm
+from .views import proceedToExperiment
 
 import csv
 import logging
@@ -162,9 +163,7 @@ def cdiSubmit(request, run_uuid):
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     form = VocabularyChecklistForm(request.POST, cdi_form=experiment)
-    
-    ### TODO: check for duplicates, i.e., changes in answer, then update irt_run accordingly
-
+   
     # store current response as CdiResult and add to request.responses
     if form.is_valid():
         responses = request.session.get('responses')
@@ -185,19 +184,19 @@ def cdiSubmit(request, run_uuid):
 
         irt_run = request.session.get('irt_run')
         
-         # count unique items
+        # count unique items
         count_unique = CdiResult.objects.filter(subject=run_uuid).order_by('given_label').distinct('given_label').count()
         logger.info('unique count: ' + str(count_unique))
         if count_unique < experiment.num_words: 
             request.session['irt_run'] = irt_run + 1
             # generate subsequent item
             return cdiGenerateNextItem(request, run_uuid)      
-        else: # proceed to experiment
+        else: # proceed to experiment or end page
             estimateCDI(run_uuid)
-            if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
-                return HttpResponseRedirect(reverse('experiments:experimentRun', args=(run_uuid,)))
-            else: # capture audio/video
-                return HttpResponseRedirect(reverse('experiments:webcamTest', args=(run_uuid,)))
+            if ListItem.objects.filter(experiment=experiment):
+                return proceedToExperiment(experiment, run_uuid)
+            else:
+                return HttpResponseRedirect(reverse('experiments:experimentEnd', args=(run_uuid,)))
     t = Template(experiment.cdi_page_tpl)
     c = RequestContext(request, {'subject_data': subject_data, 'cdi_form':form, 'experiment': experiment,})
     return HttpResponse(t.render(c))

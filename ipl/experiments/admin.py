@@ -14,8 +14,8 @@ from django.utils.safestring import mark_safe
 from filebrowser.base import FileObject
 from datetime import datetime
 
-from .models import Instrument, Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, CdiResult, SubjectData
-from .models import ConsentQuestion, Question, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple
+from .models import Instrument, Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, CdiResult, SubjectData, \
+                    ConsentQuestion, Question, AnswerText, AnswerRadio, AnswerSelect, AnswerInteger, AnswerSelectMultiple
 from .forms import ExperimentForm, QuestionInlineFormSet
 
 import os

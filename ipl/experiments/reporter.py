@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.utils.text import get_valid_filename
-
+from django.core.exceptions import ObjectDoesNotExist
 from .models import SubjectData, OuterBlockItem, BlockItem, TrialResult, AnswerBase, AnswerText, AnswerInteger, \
-                    Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion
+                    Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion, CdiResult
 
 import uuid
 import os
@@ -61,8 +61,7 @@ class Reporter:
         # Create zip file, delete if already exists
         try:
             os.remove(os.path.join(self.output_folder, self.output_file))
-        except OSError as e:
-            logger.exception('Failed to remove zip file: ' + str(e))
+        except OSError:
             pass
         self.zip_file = zipfile.ZipFile(os.path.join(self.output_folder, self.output_file),
                                         "w", zipfile.ZIP_DEFLATED)
@@ -118,45 +117,54 @@ class Reporter:
         gcd = self.gcd(subject.resolution_w, subject.resolution_h)
         if gcd == 0:
             gcd = 1
-
-        subject_data = {
-            'Report Date': datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
-            'Experiment Name': subject.experiment.exp_name,
-            'Global Timeout': subject.listitem.global_timeout,
-            'List': subject.listitem.list_name,
-            'Participant Number': subject.participant_id,
-            'Participant UUID': subject.id,
-            'Participation Date': subject.created.strftime("%d.%m.%Y %H:%M:%S"),
-            'Aspect Ratio': '{}:{}'.format(int(subject.resolution_h / gcd),
+        try:
+            subject_data = {
+                'Report Date': datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                'Experiment Name': subject.experiment.exp_name,
+                'Global Timeout': subject.listitem.global_timeout if subject.listitem else '',
+                'List': subject.listitem.list_name if subject.listitem else '',
+                'Participant Number': subject.participant_id,
+                'Participant UUID': subject.id,
+                'Participation Date': subject.created.strftime("%d.%m.%Y %H:%M:%S"),
+                'Aspect Ratio': '{}:{}'.format(int(subject.resolution_h / gcd),
                                            int(subject.resolution_w / gcd)),
-            'Resolution': '{}x{}'.format(subject.resolution_w, subject.resolution_h),
-            'Consent Questions': '',
-        }
+                'Resolution': '{}x{}'.format(subject.resolution_w, subject.resolution_h),
+                'Consent Questions': '',
+            }
+        
+            consent_questions = ConsentQuestion.objects.filter(experiment_id=subject.experiment.id)
+            for consent_question in consent_questions:
+                subject_data[consent_question.text] = 'Y'
 
-        consent_questions = ConsentQuestion.objects.filter(experiment_id=subject.experiment.id)
-        for consent_question in consent_questions:
-            subject_data[consent_question.text] = 'Y'
+            answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
+            subject_data['Participant Form Responses'] = ''
+            for answer_base in answer_bases:
+                value = ''
+                if answer_base.question.question_type == Question.TEXT:
+                    value = str(AnswerText.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.INTEGER or answer_base.question.question_type == Question.NUM_RANGE or answer_base.question.question_type == Question.AGE:
+                    value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.RADIO or answer_base.question.question_type == Question.SEX:
+                    value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.SELECT:
+                    value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
+                    value = str(AnswerSelectMultiple.objects.get(pk=answer_base.pk).body)
+                subject_data[answer_base.question.text] = value
 
-        answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
-        for answer_base in answer_bases:
-            value = ''
-            if answer_base.question.question_type == Question.TEXT:
-                value = str(AnswerText.objects.get(pk=answer_base.pk).body)
-            elif answer_base.question.question_type == Question.INTEGER:
-                value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-            elif answer_base.question.question_type == Question.RADIO:
-                value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
-            elif answer_base.question.question_type == Question.SELECT:
-                value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
-            elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
-                value = str(AnswerSelectMultiple.objects.get(pk=answer_base.pk).body)
-            subject_data[answer_base.question.text] = value
-
-        current_row = 0
-        for key in subject_data:
-            worksheet.write(current_row, 0, key)
-            worksheet.write(current_row, 1, subject_data[key])
-            current_row += 1
+            cdi_results = CdiResult.objects.filter(subject=subject.id)
+            subject_data['CDI estimate'] = subject.cdi_estimate
+            subject_data['CDI'] = subject.experiment.instrument.instr_name if subject.experiment.instrument else ''
+            for cdi_result in cdi_results:
+                subject_data[cdi_result.given_label] = cdi_result.response
+        except ObjectDoesNotExist as e:
+            logger.exception('Object does not exist: ' + str(e))
+        finally:
+            current_row = 0
+            for key in subject_data:
+                worksheet.write(current_row, 0, key)
+                worksheet.write(current_row, 1, subject_data[key])
+                current_row += 1
 
     def create_trial_worksheet(self, worksheet, subject):
         """
@@ -209,10 +217,6 @@ class Reporter:
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
         for subject in subjects:
 
-            # Skip subject that don't have a list
-            if not subject.listitem_id:
-                continue
-
             # Create excel report
             workbook_file = str(subject.participant_id) + '_' + \
                 self.experiment.exp_name + '_' + subject.created.strftime('%Y%m%d') + \
@@ -221,14 +225,14 @@ class Reporter:
             workbook = xlsxwriter.Workbook(os.path.join(self.output_folder,
                                                         self.tmp_folder, workbook_file))
 
-            subject_worksheet = workbook.add_worksheet('Participant')
-            trials_worksheet = workbook.add_worksheet('Trials')
-
             # Create subject data worksheet
+            subject_worksheet = workbook.add_worksheet('Participant')
             self.create_subject_worksheet(subject_worksheet, subject)
 
-            # Create trial data worksheet
-            self.create_trial_worksheet(trials_worksheet, subject)
+            if subject.listitem:
+                # Create trial data worksheet
+                trials_worksheet = workbook.add_worksheet('Trials')
+                self.create_trial_worksheet(trials_worksheet, subject)
 
             # Close and store excel report
             workbook.close()

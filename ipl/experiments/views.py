@@ -27,6 +27,12 @@ import logging
 # Create a logger for this file
 logger = logging.getLogger(__name__)
 
+def proceedToExperiment(experiment, run_uuid):
+    if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
+        return HttpResponseRedirect(reverse('experiments:experimentRun', args = (run_uuid,)))
+    else: # capture audio/video
+        return HttpResponseRedirect(reverse('experiments:webcamTest', args = (run_uuid,)))
+
 @login_required(next='/admin/experiments/experiment')
 def experimentReport(request, experiment_id):
     """ 
@@ -133,10 +139,8 @@ def subjectFormSubmit(request, experiment_id):
         response = form.save()
         if experiment.instrument: # administer CDI if instrument is defined
             return HttpResponseRedirect(reverse('experiments:vocabChecklist', args = (str(response.id),)))
-        if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
-            return HttpResponseRedirect(reverse('experiments:experimentRun', args = (str(response.id),)))
-        else: # capture audio/video
-            return HttpResponseRedirect(reverse('experiments:webcamTest', args = (str(response.id),)))
+        else:
+            return proceedToExperiment(experiment, str(response.id))
     t = Template(experiment.demographic_data_page_tpl)
     c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment})
     return HttpResponse(t.render(c))
