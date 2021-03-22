@@ -46,8 +46,7 @@ To stop e-Babylab without destroying the containers, use `docker-compose -f dock
 For more information about their differences, please refer to the documentation for [docker-compose down](https://docs.docker.com/compose/reference/down/) and [docker-compose stop](https://docs.docker.com/compose/reference/stop/).
 
 ### Run in Production
-The production environment of e-Babylab additionally uses nginx for HTTPS/TLS support. Please add valid TLS certificates to the
-nginx container via volumes in `docker-compose.yml`. By default, the TLS certificates are expected to be at the following locations:
+The production environment of e-Babylab additionally uses nginx for HTTPS/TLS support. Please create `docker-compose.yml` by copying `docker-compose.yml.template` and adding valid TLS certificates to the nginx container via volumes in `docker-compose.yml`. By default, the TLS certificates are expected to be at the following locations:
 
 * `/etc/ssl/certs/cert.pem`
 * `/etc/ssl/private/server.key`
