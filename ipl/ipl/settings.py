@@ -26,6 +26,8 @@ SECRET_KEY = '=fz-fa3venl)w0_6the_5l4-p(n=av%!t1byl6b^b9xs4#(y^8'
 if os.getenv('DJANGO_ENV') == 'prod':
     DEBUG = False
     ALLOWED_HOSTS = ['*']
+    USE_X_FORWARDED_HOST = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 else:
     DEBUG = True
     ALLOWED_HOSTS = ['*']
