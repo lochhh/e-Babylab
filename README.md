@@ -106,6 +106,9 @@ Allow the execution of the *wait-for-it.sh* script by executing the following co
 ### `"Server error (500)"` when attempting to download results
 Make sure that there is a "webcam" directory in the "ipl" directory (where manage.py and the Dockerfile are located). If it does not exist, create one. 
 
+### `"Can't find a suitable configuration file in this directory or any parent. Are you in the right directory?"`
+Docker is unable to locate `docker-compose.yml`. Either create this file (by copying `docker-compose.yml.template`) or run `docker-compose` commands with `-f docker-compose.dev.yml` (e.g., `docker-compose -f docker-compose.dev.yml build`). 
+
 ## 5. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
