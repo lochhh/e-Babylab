@@ -33,13 +33,13 @@ You can find the credentials for pgadmin in the `docker-compose.dev.yml` file.
 
 If you are running e-Babylab for the first time, you will need to:
 
-1. Set up the database using `docker-compose exec web python manage.py migrate`. 
-2. Expose new static files (e.g., JavaScript files) using `docker-compose exec web python manage.py collectstatic`.
-3. Create a superuser (for logging into the admin interface) using `docker-compose exec web python manage.py createsuperuser`.
+1. Set up the database using `docker-compose exec -f docker-compose.dev.yml web python manage.py migrate`. 
+2. Expose new static files (e.g., JavaScript files) using `docker-compose exec -f docker-compose.dev.yml web python manage.py collectstatic`.
+3. Create a superuser (for logging into the admin interface) using `docker-compose exec -f docker-compose.dev.yml web python manage.py createsuperuser`.
 
 Once everything is set up, Django admin can be accessed at `http://localhost:8080/admin/`.
 
-If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose exec -f docker-compose.dev.yml web python manage.py makemigrations` and applied using `docker-compose exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
+If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose exec -f docker-compose.dev.yml web python manage.py makemigrations` and applied using `docker-compose exec -f docker-compose.dev.yml web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
 
 e-Babylab can be stopped using `Ctrl + C` or `docker-compose -f docker-compose.dev.yml down`. 
 To stop e-Babylab without destroying the containers, use `docker-compose -f docker-compose.dev.yml stop`.
