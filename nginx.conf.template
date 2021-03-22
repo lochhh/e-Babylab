@@ -5,15 +5,15 @@ upstream django {
 server {
     listen 443 http2 ssl;
 
-    server_name localhost <your_subdomain.com>;
+    server_name localhost <your_domain.com>;
 
     client_max_body_size 100M;
 
     proxy_read_timeout 30m;
     proxy_send_timeout 30m; 
 
-    ssl_certificate /etc/ssl/certs/<your_ssl_cert.pem>;
-    ssl_certificate_key /etc/ssl/private/<your_ssl_private_key.key>;
+    ssl_certificate /etc/ssl/certs/cert.pem;
+    ssl_certificate_key /etc/ssl/private/server.key;
 
     ssl on;
     ssl_session_cache builtin:1000  shared:SSL:10m;
@@ -48,7 +48,7 @@ server {
 
 server {
     listen 80;
-    server_name localhost <your_subdomain.com>;
+    server_name localhost <your_domain.com>;
 
     return 301 https://$host$request_uri;
 }

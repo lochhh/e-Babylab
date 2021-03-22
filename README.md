@@ -46,7 +46,12 @@ To stop e-Babylab without destroying the containers, use `docker-compose -f dock
 For more information about their differences, please refer to the documentation for [docker-compose down](https://docs.docker.com/compose/reference/down/) and [docker-compose stop](https://docs.docker.com/compose/reference/stop/).
 
 ### Run in Production
-The production environment of e-Babylab additionally uses nginx for HTTPS/TLS support. Please create `docker-compose.yml` by copying `docker-compose.yml.template` and adding valid TLS certificates to the nginx container via volumes in `docker-compose.yml`. By default, the TLS certificates are expected to be at the following locations:
+The production environment of e-Babylab additionally uses nginx for HTTPS/TLS support. You will need to:
+
+1. Create `docker-compose.yml` by copying `docker-compose.yml.template` and add valid TLS certificates to the nginx container via volumes in `docker-compose.yml`.
+2. Create `nginx.conf` by copying `nginx.conf.template` and replace `<your_domain.com>` with your actual domain.
+
+By default, the TLS certificates are expected to be at the following locations:
 
 * `/etc/ssl/certs/cert.pem`
 * `/etc/ssl/private/server.key`
@@ -59,7 +64,7 @@ Use the following command to start:
 docker-compose up -d
 ```
 
-After starting, Django admin will be available at `https://<your_subdomain.com>:8443/admin`. 
+After starting, Django admin will be available at `https://<your_domain.com>:8443/admin`. 
 
 As mentioned before, if you are running e-Babylab for the first time, you will need to:
 
