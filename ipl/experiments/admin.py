@@ -357,6 +357,12 @@ class ExperimentAdmin(admin.ModelAdmin):
         else:
             return obj.user == request.user or request.user.is_superuser
 
+    def has_add_permission(self, request, obj=None):
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        return True
+
     def experiment_buttons(self, obj):
         """
         Displays action buttons for the Experiment admin interface.
