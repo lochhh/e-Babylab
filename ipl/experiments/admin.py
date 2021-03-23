@@ -45,6 +45,9 @@ GRID_LAYOUT_HELP_TEXT = ' '.join(['<p>Note:',
                                 'For instance, setting rows = 1 and cols = 2 would allow one to determine whether a click was on the left (1,1) or right side (1,2) of the visual stimulus. <br />',
                                 'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks. <br />'])
 
+INSTRUMENT_HELP_TEXT = format_html('<p>To generate the required .csv files, download and run this <a href="{url_rscript}">R script</a>.',
+                                    url_rscript='/media/uploads/instruments/generateInstrumentFiles.r')
+
 
 class TrialItemInline(admin.StackedInline):
     model = TrialItem
@@ -244,6 +247,16 @@ class ConsentQuestionInline(admin.StackedInline):
         'text', 'position',
         ('response_yes', 'response_no'),
     )
+
+
+class InstrumentAdmin(admin.ModelAdmin):
+    def render_change_form(self, request, context, *args, **kwargs):
+        self.change_form_template = 'admin/experiments/change_form_help_text.html'
+        extra = {
+            'help_text': INSTRUMENT_HELP_TEXT, 
+        }
+        context.update(extra)
+        return super(InstrumentAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 
 class ExperimentAdmin(admin.ModelAdmin):
@@ -704,7 +717,7 @@ class TrialResultAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
-admin.site.register(Instrument)
+admin.site.register(Instrument, InstrumentAdmin)
 admin.site.register(Experiment, ExperimentAdmin)
 admin.site.register(ListItem, ListItemAdmin)
 admin.site.register(OuterBlockItem, OuterBlockItemAdmin)
