@@ -425,7 +425,7 @@ rownames(irtparam) <- 1:nrow(irtparam)
 
 IRT_Parameters <- irtparam %>% data.frame() %>% 
   mutate(word_id = colnames(data_irt) %>% as.numeric()) %>% 
-  select(word_id, colnames(.[,2:(ncol(.)-1)]))
+  select(word_id, colnames(.[,1:(ncol(.)-1)]))
 
 if (type == "WG") {
   fname8 <- paste("IRT_Parameters", lang, type, resp, sep="-")
