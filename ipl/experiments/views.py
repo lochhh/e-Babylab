@@ -314,7 +314,7 @@ def experimentEnd(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    t = Template(experiment.thank_you_abort_page_tpl)
+    t = Template(experiment.thank_you_page_tpl)
     c = RequestContext(request, {'experiment':experiment, 'subject_id': run_uuid})
     
     if subject_data.listitem:
@@ -333,9 +333,9 @@ def experimentEnd(request, run_uuid):
         # count participant's number of trial results
         completed_count = TrialResult.objects.filter(subject=run_uuid).exclude(key_pressed='PAUSE').count()
 
-        # if experiment complete, render standard end page
-        if completed_count >= tr_count:
-            t = Template(experiment.thank_you_page_tpl)
+        # if experiment incomplete, render end page after discontinuation
+        if completed_count < tr_count:
+            t = Template(experiment.thank_you_abort_page_tpl)
     return HttpResponse(t.render(c))
     
 def deleteSubject(request, run_uuid):
