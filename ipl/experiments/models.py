@@ -52,7 +52,7 @@ class Experiment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     exp_name = models.CharField('experiment name', max_length=200)
-    created_on = models.DateTimeField('date created')
+    created_on = models.DateTimeField('date created', auto_now_add=True)
     PRIVATE = 'OWN'
     MEMBERSONLY = 'GRP'
     PUBLIC = 'PUB'

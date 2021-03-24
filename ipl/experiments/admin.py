@@ -265,7 +265,6 @@ class ExperimentAdmin(admin.ModelAdmin):
         (None, {
             'fields': (
                 'exp_name',
-                'created_on',
                 'sharing_option',
                 'sharing_groups',
                 'list_selection_strategy',
