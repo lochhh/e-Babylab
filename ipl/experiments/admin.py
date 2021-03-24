@@ -257,15 +257,6 @@ class InstrumentAdmin(admin.ModelAdmin):
         }
         context.update(extra)
         return super(InstrumentAdmin, self).render_change_form(request, context, *args, **kwargs)
-    
-    def has_add_permission(self, request, obj=None):
-        return True
-
-    def has_delete_permission(self, request, obj=None):
-        return True
-
-    def has_change_permission(self, request, obj=None):
-        return True
 
 
 class ExperimentAdmin(admin.ModelAdmin):
@@ -356,12 +347,6 @@ class ExperimentAdmin(admin.ModelAdmin):
             return True
         else:
             return obj.user == request.user or request.user.is_superuser
-
-    def has_add_permission(self, request, obj=None):
-        return True
-    
-    def has_delete_permission(self, request, obj=None):
-        return True
 
     def experiment_buttons(self, obj):
         """
