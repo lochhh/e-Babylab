@@ -1,15 +1,11 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseRedirect, Http404, JsonResponse, HttpResponse
 from django.urls import reverse
-from django.views import generic
-from django.utils import timezone
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.template import Template, RequestContext
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.contrib.admin.utils import NestedObjects
 
-from datetime import datetime, date
 from random import shuffle
 
 from .models import Question, Experiment, SubjectData, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, ConsentQuestion
@@ -22,7 +18,7 @@ import dateutil.parser
 import simplejson as json
 import os.path
 import logging
-
+import requests
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
@@ -125,7 +121,7 @@ def subjectForm(request, experiment_id):
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
     t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment})
+    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
     return HttpResponse(t.render(c))
     
 def subjectFormSubmit(request, experiment_id):
@@ -134,15 +130,32 @@ def subjectFormSubmit(request, experiment_id):
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(request.POST, experiment=experiment)
-
+    t = Template(experiment.demographic_data_page_tpl)
+    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
+    
     if form.is_valid():
+        # validate reCAPTCHA
+        recaptcha_response = request.POST.get('g-recaptcha-response')
+        data = {
+            'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
+			'response': recaptcha_response
+		}
+        r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+        result = r.json()
+
+        if not result['success']:
+            c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 
+                                            'error_message': 'Invalid reCAPTCHA. Please try again.',
+                                            'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
+            logger.info('Invalid reCAPTCHA: ' + str(result))
+            return HttpResponse(t.render(c))
         response = form.save()
+        
         if experiment.instrument: # administer CDI if instrument is defined
             return HttpResponseRedirect(reverse('experiments:vocabChecklist', args = (str(response.id),)))
         else:
             return proceedToExperiment(experiment, str(response.id))
-    t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment})
+    
     return HttpResponse(t.render(c))
  
 def createTrialDict(trial, block):
@@ -354,6 +367,6 @@ def deleteSubject(request, run_uuid):
 
 def index(request):
     """ 
-    Generates the homepage, i.e., www.kinderstudien.uni-goettingen.de. 
+    Generates the homepage. 
     """
     return render(request, settings.MEDIA_ROOT + '/uploads/templates/index.html')

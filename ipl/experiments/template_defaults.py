@@ -170,7 +170,7 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
                         {{ error_message }}
                     </div>{% endif %}
 
-                    <form action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate>
+                    <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate>
                         {% csrf_token %}
                         <p class="card-text">
                             Bitte füllen Sie die Felder unten aus. Sie müssen mindestens alle mit einem * versehenen Felder ausfüllen, um an der Studie teilnehmen zu können.
@@ -198,6 +198,8 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
                         </div><br>
                         {% endif %}
                         {% endfor %}
+                        <!-- reCAPTCHA input -->
+                        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response"> 
                         <button type="submit" class="btn btn-primary">Weiter</button>
                     </form>
                 </div>
@@ -205,6 +207,21 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
         </div>
     </div>
 </div>
+<!-- reCAPTCHA API -->
+<script src='https://www.google.com/recaptcha/api.js?render={{recaptcha_site_key}}'></script>
+<script>
+    // global grecaptcha
+    grecaptcha.ready(function() {
+        $('#subjectForm').submit(function(e){
+            var form = this;
+            e.preventDefault();
+            grecaptcha.execute('{{recaptcha_site_key}}', {action: 'submit'}).then(function(token) {
+                $('#g-recaptcha-response').val(token);
+                form.submit();
+            });
+        });
+    });
+</script>
 {% endblock %}'''
 
 webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Webcam und Mikrofon einrichten{% endblock %} {% block content%}

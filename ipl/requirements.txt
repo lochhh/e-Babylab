@@ -17,3 +17,5 @@ tqdm==4.50.2
 scipy
 numpy
 pandas
+requests
+python-decouple
