@@ -20,6 +20,18 @@ To install Docker, please follow the instructions below:
 
 For development, we recommend you to study the [Docker](https://docs.docker.com/get-started/) and [Docker Compose](https://docs.docker.com/compose/gettingstarted/) documentation.
 
+### Define User-Specific Variables
+To set up e-Babylab, there are 3 variables (i.e., the Django SECRET KEY, the reCAPTCHA SITE KEY, and the reCAPTCHA SECRET KEY) specific to your own instance of e-Babylab, which you will have to define in a *.env* file:
+
+1. Create your `.env` file by copying `.env.template`. Make sure that this file is in the same directory as `.env.template`.
+2. Create your own Django SECRET KEY using `docker-compose -f docker-compose.dev.yml exec web python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'`.
+3. Go to [Google reCAPTCHA](https://www.google.com/recaptcha/about/) and click on [v3 Admin Console]{https://www.google.com/recaptcha/admin}. Sign in with a Google account and fill out the "site registration form".
+4. Provide a **label** (e.g., e-Babylab)
+5. Select `reCAPTCHA v3` as **reCAPTCHA type**.
+6. If you are running e-Babylab in a local development environment, add *localhost* to **Domains**, otherwise (i.e., running in production) add your own domain, e.g., *your_domain.com*. You can update and add new domains as needed later on.
+7. When you are done, click on "Submit" and you will have your **site key** and **secret key**.
+8. Copy the **site key** to `GOOGLE_RECAPTCHA_SITE_KEY` and the **secret key** to `GOOGLE_RECAPTCHA_SECRET_KEY` in your `.env` file.
+
 ### Run Local Development Environment
 For local development, you can run a development version of e-Babylab using the following command:
 
