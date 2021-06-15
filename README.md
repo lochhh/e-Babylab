@@ -121,6 +121,14 @@ Make sure that there is a "webcam" directory in the "ipl" directory (where manag
 ### `"Can't find a suitable configuration file in this directory or any parent. Are you in the right directory?"`
 Docker is unable to locate `docker-compose.yml`. Either create this file (by copying `docker-compose.yml.template`) or run `docker-compose` commands with `-f docker-compose.dev.yml` (e.g., `docker-compose -f docker-compose.dev.yml build`). 
 
+### `"invalid reCAPTCHA"` at Demographic Data page
+From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic Data (i.e., Participant Form) page. Experiments created *before 15.05.2021* do not have reCAPTCHA in the Demographic Data page template. To add this, you will need to copy and paste the HTML code of the Demographic Data page template of a new experiment: 
+
+1. Create a new experiment.
+2. Navigate to the Demographic Data page template.
+3. Open the *source code view* (accessed via the "<>" icon on the toolbar).
+4. Copy the HTML code and paste this to the Demographic Data page template of your experiment and modify the text accordingly.
+
 ## 5. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
