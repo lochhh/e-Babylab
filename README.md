@@ -49,7 +49,7 @@ If you are running e-Babylab for the first time, you will need to:
 2. Expose new static files (e.g., JavaScript files) using `docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic`.
 3. Create a superuser (for logging into the admin interface) using `docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser`.
 
-Once everything is set up, Django admin can be accessed at `http://localhost:8080/admin/`.
+Once everything is set up, e-Babylab can be accessed at `http://localhost:8080/admin/`.
 
 If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose -f docker-compose.dev.yml exec web python manage.py makemigrations` and applied using `docker-compose -f docker-compose.dev.yml exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
 
