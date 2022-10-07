@@ -1,5 +1,7 @@
 # e-Babylab
-e-Babylab is an open source authoring tool that allows users or researchers to easily create, host, run, and manage online experiments, without writing a single line of code. Using this tool, experiments can be programmed to include any combinations of image, audio, and/or video contents as stimuli and record key presses, clicks, screen touches, audio, and video.
+e-Babylab [(Lo et al., 2021)](https://psyarxiv.com/u73sy) is an open source authoring tool that allows users or researchers to easily create, host, run, and manage online experiments, without writing a single line of code. Using this tool, experiments can be programmed to include any combinations of image, audio, and/or video contents as stimuli and record key presses, clicks, screen touches, audio, video, and eye gaze[^1].
+
+[^1]: Online webcam eye-tracking is currently under beta testing and is available on the [eye-tracking branch](https://github.com/lochhh/e-Babylab/tree/eye-tracking). This feature is implemented based on WebGazer [(Papoutsaki et al., 2016)](https://jeffhuang.com/papers/WebGazer_IJCAI16.pdf) and allows self-calibration using participants' gaze to better suit e-Babylab's use with young children.
 
 ## Contents
 1. [Installation](#1-installation)
