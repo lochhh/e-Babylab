@@ -20,7 +20,12 @@ body, html {
     transform: translateX(-50%) translateY(-50%);
 }
 
-#webcam-calibration .card:not(.active), #thank-you .card:not(.active) {
+#calibration-instructions {
+    position: absolute; 
+    top: max(260px, 40%);
+}
+
+#webcam-calibration .card:not(.active), #thank-you .card:not(.active), #webgazer-init {
     display: none;
 }
 
@@ -58,6 +63,7 @@ body, html {
     margin: 40px auto;
     cursor: pointer;
 }
+
 #exit-button {
     display: block;
     cursor: pointer;
@@ -72,6 +78,7 @@ body, html {
     display: inline-block; 
     padding:0 5% 0 5%;
 }
+
 form .label-inline {
     font-weight: bold;
 }

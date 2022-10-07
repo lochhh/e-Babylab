@@ -54,7 +54,7 @@ $(function() {
             navigator.mediaDevices.getUserMedia(recordingConstraints).then(function (s) {
                 mediaStream = s;
 
-                if (recording_option == 'VID') {
+                if (recording_option != 'AUD') {
                     // Check video stream
                     if(mediaStream.getVideoTracks().length == 0) {
                         reject(new Error("Kein Zugriff auf Webcam."));
@@ -136,7 +136,7 @@ $(function() {
      */
     let firstChunk = true;
     var checkStepFour = function() {
-        if (recording_option == 'VID') {
+        if (recording_option != 'AUD') {
             $("#webcam_step_3 video").get(0).pause();
             $("#webcam_step_3").removeClass("active");
         } else {

@@ -24,7 +24,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 def proceedToExperiment(experiment, run_uuid):
-    if experiment.recording_option == 'NON': # capture key/click responses only, skip webcam/microphone test.
+    # skip webcam/microphone test if experiment not configured to record video/audio.
+    if experiment.recording_option == 'NON' or experiment.recording_option == 'EYE': 
         return HttpResponseRedirect(reverse('experiments:experimentRun', args = (run_uuid,)))
     else: # capture audio/video
         return HttpResponseRedirect(reverse('experiments:webcamTest', args = (run_uuid,)))
@@ -195,6 +196,9 @@ def createTrialDict(trial, block):
         'require_user_input': trial.user_input, #'NO', 'YES'
         'trial_type': trial_type,
         'record_media': trial.record_media,
+        'record_gaze': trial.record_gaze,
+        'is_calibration': trial.is_calibration,
+        'calibration_points': trial.calibration_points if trial.is_calibration else []
     }
     return trial_dict
 
@@ -261,6 +265,7 @@ def experimentRun(request, run_uuid):
             'global_timeout': list_item.global_timeout,
             'include_pause_page': experiment.include_pause_page,
             'recording_option': experiment.recording_option,
+            'show_gaze_estimations': experiment.show_gaze_estimations,
             'trials': json.dumps(trials),
             })
         return HttpResponse(t.render(c))
@@ -273,13 +278,14 @@ def storeResult(request, run_uuid):
         trialresult = TrialResult()
         trialresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
         trialresult.trialitem = get_object_or_404(TrialItem, pk=int(request.POST.get('trialitem')))
-        trialresult.start_time = dateutil.parser.parse(request.POST.get('start_time'))
-        trialresult.end_time = dateutil.parser.parse(request.POST.get('end_time'))
+        trialresult.start_time = request.POST.get('start_time')
+        trialresult.end_time = request.POST.get('end_time')
         trialresult.key_pressed = request.POST.get('key_pressed')
         #trialresult.webcam_file = request.POST.get('webcam_file')
         trialresult.trial_number = int(request.POST.get('trial_number'))
         trialresult.resolution_w = int(request.POST.get('resolution_w'))
         trialresult.resolution_h = int(request.POST.get('resolution_h'))
+        trialresult.webgazer_data = json.loads(request.POST.get('webgazer_data'))
         trialresult.save()
         return JsonResponse({'resultId': trialresult.pk})
     else:

@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.utils.safestring import mark_safe
 
 from colorfield.fields import ColorField
 from filebrowser.fields import FileBrowseField
@@ -76,16 +77,21 @@ class Experiment(models.Model):
     list_selection_strategy = models.CharField('list selection strategy', max_length=3, choices=LIST_SELECTION_STRATEGIES, default=LEASTPLAYED)
     include_pause_page = models.BooleanField(default=True, help_text='When global timeout is encountered / exit button is pressed, go to pause page instead of ending experiment immediately.')
     loading_image = FileBrowseField(max_length=200, directory=experiment_folder, extensions=['.jpg','.jpeg','.gif','.png'], blank=True, help_text='Shown at the end of the experiment, if media recordings are still being uploaded.')
+    show_gaze_estimations = models.BooleanField(default=False, help_text='Display webgazer estimations during experiment (for debugging purposes).')
+    ALL = 'ALL'
+    EYE = 'EYE'
     VIDEO = 'VID'
     AUDIO = 'AUD'
     NONE = 'NON'
 
     RECORDING_OPTIONS = (
-     (VIDEO,'Video'),
-     (AUDIO,'Audio only'),
-     (NONE,'Key/Click responses only'),
+     (NONE, 'Key/Click responses only'),
+     (AUDIO, 'Audio + key/click responses'),
+     (VIDEO, 'Video + key/click responses'),
+     (EYE, 'Eye-tracking + key/click responses'),
+     (ALL, 'Eye-tracking + video + key/click responses'),
     )
-    recording_option = models.CharField(max_length=3, choices=RECORDING_OPTIONS, default=VIDEO)
+    recording_option = models.CharField(max_length=3, choices=RECORDING_OPTIONS, default=NONE)
     general_onset = models.IntegerField('wait to enable key/click response (ms)', default=0)
     
     # Templates
@@ -235,6 +241,8 @@ def audio_folder(instance, filename):
     return '/'.join(['uploads', instance.blockitem.listitem.experiment.exp_name,
           instance.blockitem.listitem.list_name, 'audio', filename])
 
+def default_calibration_points():
+    return [[50,50], [50,12], [12,12], [12,50], [12,88], [50,88], [88,88], [88,50], [88,12]]
 
 class TrialItem(models.Model):
     """
@@ -258,11 +266,14 @@ class TrialItem(models.Model):
     audio_file = FileBrowseField(max_length=200, directory=experiment_folder, extensions= ['.mp3','.wav'], blank=True)
     visual_file = FileBrowseField(max_length=200, directory=experiment_folder, extensions=['.jpg','.jpeg','.gif','.png', '.mp4', '.ogg', '.webm'])
     user_input = models.CharField(max_length=3, choices=USER_INPUT_OPTIONS, default=NO)
-    response_keys = models.CharField('response key(s)', max_length=200, blank=True, null=True, help_text='Provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b)')
-    max_duration = models.IntegerField('maximum duration (ms)', help_text='This value will be ignored for video trials which do not require user input.')
+    response_keys = models.CharField('response key(s)', max_length=200, blank=True, null=True, help_text='Provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b).')
+    max_duration = models.IntegerField(mark_safe('maximum duration (ms)'), help_text='This value will be ignored for video trials which do not require user input.')
     record_media = models.BooleanField(default=True, help_text='This value will be ignored if the experiment is set to record key/click responses only.')
-    grid_row = models.IntegerField('rows', default = 1)
-    grid_col = models.IntegerField('columns', default = 1)
+    record_gaze = models.BooleanField('enable eye-tracking', default=True, help_text='This value will be ignored if the experiment is not set to record eye-tracking data.')
+    is_calibration = models.BooleanField('calibrate eye-tracker', default=False, help_text='This value will be ignored if the experiment is not set to record eye-tracking data.')
+    calibration_points = models.JSONField(default=default_calibration_points, null=False, help_text=mark_safe('These values will be ignored if "calibrate eye-tracker" is unchecked and the experiment is not set to record eye-tracking data.<br/>The duration for which each calibration point is shown is determined by dividing the <em>maximum duration</em> with the number of calibration points.'))
+    grid_row = models.IntegerField('rows', default=1)
+    grid_col = models.IntegerField('columns', default=1)
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
@@ -302,13 +313,14 @@ class TrialResult(models.Model):
     subject = models.ForeignKey(SubjectData, on_delete=models.CASCADE)
     trialitem = models.ForeignKey(TrialItem, on_delete=models.PROTECT)
     date = models.DateField(auto_now_add=True)
-    start_time = models.DateTimeField(blank=True, null=True)
-    end_time = models.DateTimeField(blank=True, null=True)
+    start_time = models.FloatField(blank=True, null=True)
+    end_time = models.FloatField(blank=True, null=True)
     key_pressed = models.CharField(blank=True, null=True, max_length=255)
     webcam_file = models.FileField(upload_to=visual_folder, blank=True, null=True)
     trial_number = models.IntegerField(default=0)
     resolution_w = models.IntegerField('Resolution width', default=0)
     resolution_h = models.IntegerField('Resolution height', default=0)
+    webgazer_data = models.JSONField(blank=True, null=False, default=list)
 
     @property
     def filename(self):
