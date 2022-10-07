@@ -25,7 +25,7 @@ import catsim
 
 from catsim.initialization import FixedPointInitializer
 from catsim.selection import MaxInfoSelector
-from catsim.estimation import HillClimbingEstimator
+from catsim.estimation import NumericalSearchEstimator
 from catsim.stopping import MaxItemStopper
 from catsim.irt import max_info_hpc, inf_hpc
 
@@ -103,7 +103,20 @@ def estimateCDI(run_uuid):
         B = np.where(basis == np.amax(basis))
         B = int(B[0][0])
         estimate = (B-bmin.at[0,str(age)])/slope.at[0,str(age)]
-
+        
+        # get index of max value in min_score
+        min_score_B = np.where(min_score == np.amax(min_score))
+        min_score_B = int(min_score_B[0][0])
+        min_score = (min_score_B-bmin.at[0,str(age)])/slope.at[0,str(age)]
+        
+        # get index of max value in max_score
+        max_score_B = np.where(max_score == np.amax(max_score))
+        max_score_B = int(max_score_B[0][0])
+        max_score = (max_score_B-bmin.at[0,str(age)])/slope.at[0,str(age)]
+        
+        # apply linear transformation
+        estimate = instr_num_words * (estimate - min_score) / (max_score - min_score)
+        
         # store CDI estimate in subject_data
         subject_data.cdi_estimate = estimate
         subject_data.save()
@@ -216,7 +229,7 @@ def cdiGenerateNextItem(request, run_uuid):
         administered_items = request.session.get('administered_items')
         responses = request.session.get('responses')
         est_theta = request.session.get('est_theta')
-        est_theta = HillClimbingEstimator().estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
+        est_theta = NumericalSearchEstimator(method='brent').estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
         request.session['est_theta'] = est_theta  
         words = request.session.get('words')
         all_words = json.loads(request.session.get('all_words'))
