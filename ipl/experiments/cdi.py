@@ -104,19 +104,6 @@ def estimateCDI(run_uuid):
         B = int(B[0][0])
         estimate = (B-bmin.at[0,str(age)])/slope.at[0,str(age)]
         
-        # get index of max value in min_score
-        min_score_B = np.where(min_score == np.amax(min_score))
-        min_score_B = int(min_score_B[0][0])
-        min_score = (min_score_B-bmin.at[0,str(age)])/slope.at[0,str(age)]
-        
-        # get index of max value in max_score
-        max_score_B = np.where(max_score == np.amax(max_score))
-        max_score_B = int(max_score_B[0][0])
-        max_score = (max_score_B-bmin.at[0,str(age)])/slope.at[0,str(age)]
-        
-        # apply linear transformation
-        estimate = instr_num_words * (estimate - min_score) / (max_score - min_score)
-        
         # store CDI estimate in subject_data
         subject_data.cdi_estimate = estimate
         subject_data.save()
