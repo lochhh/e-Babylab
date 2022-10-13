@@ -416,7 +416,7 @@ items <- mirt(data_irt, 1, itemtype = "2PL", method = "EM", SE=TRUE)
 for (i in 1:(length(items@ParObjects$pars) - 1)){
   print(i)
   if (i == 1) {
-    irtparam <- coef(items)[[i]][1,1:4] 
+    irtparam <- coef(items, IRTpars=TRUE)[[i]][1,1:4] 
   } else {
     irtparam <- rbind(irtparam, coef(items)[[i]][1,1:4]) 
   }
