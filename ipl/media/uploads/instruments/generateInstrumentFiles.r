@@ -418,7 +418,7 @@ for (i in 1:(length(items@ParObjects$pars) - 1)){
   if (i == 1) {
     irtparam <- coef(items, IRTpars=TRUE)[[i]][1,1:4] 
   } else {
-    irtparam <- rbind(irtparam, coef(items)[[i]][1,1:4]) 
+    irtparam <- rbind(irtparam, coef(items, IRTpars=TRUE)[[i]][1,1:4]) 
   }
 }
 rownames(irtparam) <- 1:nrow(irtparam)
