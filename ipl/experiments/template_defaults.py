@@ -461,7 +461,7 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
 </script>
  
 <script src="{% static 'experiments/js/experiment.js' %}"></script>
-<script src="{% static 'experiments/js/webgazer.js' %}"></script>
+<script src="{% static 'experiments/js/webgazer.min.js' %}"></script>
 <script src="{% static 'experiments/js/webgazer-calibration.js' %}"></script>
 {% endblock %}
 '''
