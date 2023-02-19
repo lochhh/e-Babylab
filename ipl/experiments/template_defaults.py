@@ -409,7 +409,7 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
                 The study is presented in full screen. If you want to exit or interrupt the study at any time, please click on "Exit" at the bottom right. <br /><br />
                 To proceed, please click "Activate full screen"
             </p>
-            <button id="fullscreen-button" type="button" class="btn btn-primary">Activate full screen</button>
+            <button id="fullscreen-button" type="button" class="btn btn-primary" disabled>Activate full screen</button>
         </div>
     </div>
 </div>

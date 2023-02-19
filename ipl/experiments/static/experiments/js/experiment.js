@@ -5,7 +5,7 @@
     // Subject id
     const subjectUuid = $('#trials').data('subjectUuid');
     const subjectId = $('#trials').data('subjectId');
-
+    
     // Body tag reference
     let body = $('body');
 
@@ -94,7 +94,7 @@
 
             // TODO: check here 
             webgazer.pause();
-            
+
             // Wait until webcam upload is done
             waitForWebcamUploadToFinish().then(function() {
                 webcam.stopUploading();
@@ -143,7 +143,7 @@
                     }
                 })); 
             }
-            
+
             // Wait before accepting responses
             if (trialObj.require_user_input == 'YES') {
                 let waitTime = parseInt(general_onset);
@@ -158,7 +158,7 @@
                 
                 // Register promise to determine end of trial
                 let trialDonePromises = [];
-
+                
                 if (trialObj.trial_type == 'video' && trialObj.require_user_input == 'NO') {
                     trialDonePromises.push(setupVideoEnd(trialObj));
                 }
@@ -185,7 +185,7 @@
 
                 trialObj.end_time = performance.now();
                 trialObj.webgazer_data = trialObj.webgazer_data.concat(webgazer_data);
-
+                
                 // Remove trial
                 if (trialObj.audio_file != '') {
                     removeTrialAudio();
@@ -405,9 +405,10 @@
      * Remove trial image from page.
      */
     let removeTrialImage = function() {
-        if (document.querySelector('.calibration-image')) {
-            document.querySelector('.calibration-image').outerHTML = '';
-        } else {
+        if (document.querySelectorAll('.calibration-image')) {
+            document.querySelectorAll('.calibration-image').forEach(img => img.remove())
+        } 
+        if (document.querySelector('.trial-image')) {
             document.querySelector('.trial-image').outerHTML = '';
         }
     };
@@ -454,7 +455,7 @@
                     'trial_number': currentTrial + 1,
                     'resolution_w': window.screen.width,
                     'resolution_h': window.screen.height,
-                    'webgazer_data': JSON.stringify(trialObj.webgazer_data),
+                    'webgazer_data': JSON.stringify(trialObj.webgazer_data), 
                 },
                 method: 'POST'
             }).done(function(data) {
@@ -616,7 +617,11 @@
             terminateStudy();
         }
     });
-
+    
+    $(window).on('load', function () {
+        $('#fullscreen-button').prop('disabled', false); // enable fullscreen button
+    });
+    
     $('#confirmExitButton').click(function() {
         terminateStudy();
     });
