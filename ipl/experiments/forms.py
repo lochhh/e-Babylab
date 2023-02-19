@@ -1,5 +1,6 @@
 from django import forms
 from django.forms import models
+from django.forms.widgets import DateInput
 from .models import Question, Experiment, SubjectData, AnswerInteger, AnswerRadio, AnswerSelect, AnswerSelectMultiple, AnswerText
 from django.utils.safestring import mark_safe
 from django.db.models import Max
@@ -8,6 +9,7 @@ from django.contrib.auth.models import Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
 
+import datetime
 import uuid
 import logging
 
@@ -68,11 +70,12 @@ class SubjectDataForm(models.ModelForm):
 				self.fields["question_%d" % q.pk] = forms.MultipleChoiceField(label=q.text, widget=forms.CheckboxSelectMultiple, choices = question_choices)
 			elif q.question_type == Question.INTEGER:
 				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, localize=True)
-			elif q.question_type == Question.NUM_RANGE or q.question_type == Question.AGE:
+			elif q.question_type == Question.NUM_RANGE:
 				question_choices = q.get_choices()
 				self.fields["question_%d" % q.pk] = forms.IntegerField(label=q.text, min_value = int(question_choices[0][0]), max_value = int(question_choices[1][0]), localize=True)
 				self.fields["question_%d" % q.pk].widget.attrs["step"] = "1"
-
+			elif q.question_type == Question.AGE:
+				self.fields["question_%d" % q.pk] = forms.DateField(label=q.text, initial=datetime.date.today, widget=DateInput(format=("%d-%m-%Y"), attrs={"type": "date"}))
 			# if the required, give it a corresponding css class.
 			if q.required:
 				self.fields["question_%d" % q.pk].required = True
@@ -84,7 +87,28 @@ class SubjectDataForm(models.ModelForm):
 			# initialise the form filed with values from a POST request, if any.
 			if data:
 				self.fields["question_%d" % q.pk].initial = data.get('question_%d' % q.pk)
+	
+	def clean(self):
+		cleaned_data = super().clean()
 		
+		# find datetime object
+		for field_name, field_value in cleaned_data.items():
+			if isinstance(field_value, datetime.date):
+				# get age range
+				age_question = Question.objects.filter(experiment=self.experiment.pk, question_type='age').first()
+				if age_question:
+					age_mo = ((datetime.date.today()- field_value).days)/(365/12)
+					age_range = age_question.get_choices()
+					min_age = int(age_range[0][0])
+					max_age = int(age_range[1][0])
+					if age_mo < min_age:
+						self.add_error(field_name, "Min: " + str(min_age) + " mo.")
+					if age_mo > max_age:
+						self.add_error(field_name, "Max: " + str(max_age) + " mo.")
+					logger.info("Age in months: " + str(round(age_mo)))
+					break
+		return cleaned_data
+
 	def save(self, commit=True):
 		"""
 		Save the SubjectData object
@@ -109,7 +133,7 @@ class SubjectDataForm(models.ModelForm):
 				q_id = int(field_name.split("_")[1])
 				q = Question.objects.get(pk=q_id)
 
-				if q.question_type == Question.TEXT:
+				if q.question_type == Question.TEXT or q.question_type == Question.AGE:
 					a = AnswerText(question = q)
 					a.body = field_value
 				elif q.question_type == Question.RADIO or q.question_type == Question.SEX:
@@ -121,13 +145,15 @@ class SubjectDataForm(models.ModelForm):
 				elif q.question_type == Question.SELECT_MULTIPLE:
 					a = AnswerSelectMultiple(question = q)
 					a.body = field_value
-				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE or q.question_type == Question.AGE:
+				elif q.question_type == Question.INTEGER or q.question_type == Question.NUM_RANGE:
 					a = AnswerInteger(question = q)
 					a.body = field_value
+				
 				logger.info('Creating answer to "%s" (question %d) of type %s: %s' % (a.question.text, q_id, a.question.question_type, field_value))
 				a.subject_data = subjectData
 				a.save()
 		return subjectData
+
 
 class QuestionInlineFormSet(models.BaseInlineFormSet):
 	def __init__(self, *args, **kwargs):

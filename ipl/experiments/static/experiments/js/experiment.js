@@ -1,11 +1,11 @@
 'use strict';
 
-(function (trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset) {
+(function (trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset, show_gaze_estimations) {
 
     // Subject id
     const subjectUuid = $('#trials').data('subjectUuid');
     const subjectId = $('#trials').data('subjectId');
-
+    
     // Body tag reference
     let body = $('body');
 
@@ -65,7 +65,7 @@
     let setGlobalTimer = function() {
         globaltimer = setTimeout(function() {
             
-            // TODO: Properly stop recording and make sure to delete files
+            // TODO: Properly stop recording
             webcam.stopUploading();
             if (include_pause_page.toLowerCase() == 'true') {
                 // go to pause page
@@ -92,6 +92,9 @@
             // Clear global timeout
             clearTimeout(globaltimer);
 
+            // TODO: check here 
+            webgazer.pause();
+
             // Wait until webcam upload is done
             waitForWebcamUploadToFinish().then(function() {
                 webcam.stopUploading();
@@ -115,6 +118,8 @@
             body.css('background-color', trialObj.background_colour);
 
             // Setup trial
+            trialObj.webgazer_data = [];
+            webgazer_data = [];
             let trialSetupPromises = [];
             if (trialObj.audio_file != '') {
                 trialSetupPromises.push(playTrialAudio(trialObj));
@@ -125,39 +130,62 @@
                 trialSetupPromises.push(showTrialImage(trialObj));
             }
 
-            // Start webcam recording
-            if(recording_option != 'NON' && trialObj.record_media) {
+            // Start webcam recording when recording_option == aud, vid, all 
+            if (recording_option != 'NON' && recording_option != 'EYE' && trialObj.record_media) {
                 trialSetupPromises.push(webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream));
             }
 
+            // Resume webgazer and start recording gaze
+            if (trialObj.is_calibration || trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                trialSetupPromises.push(webgazer.resume().then(() => {
+                    if (trialObj.record_gaze) {
+                        startGazeRecording();
+                    }
+                })); 
+            }
+
             // Wait before accepting responses
-            let waitTime = parseInt(general_onset);
-            trialSetupPromises.push(waitPromise(waitTime, trialObj));
+            if (trialObj.require_user_input == 'YES') {
+                let waitTime = parseInt(general_onset);
+                trialSetupPromises.push(waitPromise(waitTime, trialObj));
+            }
 
             Promise.all(trialSetupPromises).then(function(values) {
                 let trialObj = values[0]; // Get trialObj from first promise
 
                 // Set start time
-                trialObj.start_time = new Date().toISOString();
+                trialObj.start_time = performance.now();
                 
                 // Register promise to determine end of trial
                 let trialDonePromises = [];
+                
                 if (trialObj.trial_type == 'video' && trialObj.require_user_input == 'NO') {
                     trialDonePromises.push(setupVideoEnd(trialObj));
                 }
-                if (trialObj.trial_type == 'image' || (trialObj.trial_type == 'video' && trialObj.require_user_input == 'YES')) {
+                if ((trialObj.trial_type == 'image' && !trialObj.is_calibration) || (trialObj.trial_type == 'video' && trialObj.require_user_input == 'YES')) {
                     trialDonePromises.push(setupMaxDuration(trialObj));
                 }
-                if (trialObj.require_user_input == 'YES') {
+                if (trialObj.require_user_input == 'YES' && !trialObj.is_calibration) {
                     trialDonePromises.push(setupKeyPresses(trialObj));
+                }
+                if (trialObj.is_calibration && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                    trialDonePromises.push(calibrate(trialObj));
                 }
                 return Promise.race(trialDonePromises);
 
             }).then(function(trialObj) {
+                console.log(trialObj);
                 $(document).off('keydown');
                 $(document).off('click');
-                trialObj.end_time = new Date().toISOString();
+                // Pause webgazer
+                if (trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                    stopGazeRecording();
+                }
+                webgazer.pause();
 
+                trialObj.end_time = performance.now();
+                trialObj.webgazer_data = trialObj.webgazer_data.concat(webgazer_data);
+                
                 // Remove trial
                 if (trialObj.audio_file != '') {
                     removeTrialAudio();
@@ -167,6 +195,7 @@
                 } else {
                     removeTrialImage();
                 }
+
                 return postResult(trialObj);
                 
             }).then(function(trialObj) {
@@ -181,6 +210,12 @@
                 // Stop upload
                 webcam.stopUploading();
                 webcam.stopRecording("");
+
+                // Stop webgazer
+                if (trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                    stopGazeRecording();
+                }
+                webgazer.pause();
 
                 // Turn off listeners
                 $(document).off('keydown mozfullscreenchange webkitfullscreenchange fullscreenchange');
@@ -324,10 +359,25 @@
     };
 
     /**
-     * Load and show image trial.
+     * Load and show image.
      * @param {*} trialObj 
      */
     let showTrialImage = function(trialObj) {
+        if (trialObj.is_calibration && (recording_option == 'EYE' || recording_option == 'ALL')) {
+            if (trialObj.calibration_points.length == 0) {
+                trialObj.calibration_points = defaultPoints;
+            }
+            timePerPoint = trialObj.max_duration / trialObj.calibration_points.length;
+            trialObj.calibration_points.forEach(function (pt, i) {
+                let img = document.createElement('img');
+                img.className = 'calibration-image';
+                img.src = trialObj.visual_file;
+                img.id = 'Pt' + i;
+                img.style = `width: 6vw; position: absolute; transform: translate(-50%, -50%); left: ${pt[0]}%; top: ${pt[1]}%; display: none`;
+                body.append(img);
+            });
+            return waitPromise(Number(trialObj.visual_onset), trialObj);
+        }
         return new Promise(function(resolve, reject) {
             let img = document.createElement('div');
             img.className = 'trial-image';
@@ -355,16 +405,23 @@
      * Remove trial image from page.
      */
     let removeTrialImage = function() {
-        document.querySelector('.trial-image').outerHTML = '';
+        if (document.querySelectorAll('.calibration-image')) {
+            document.querySelectorAll('.calibration-image').forEach(img => img.remove())
+        } 
+        if (document.querySelector('.trial-image')) {
+            document.querySelector('.trial-image').outerHTML = '';
+        }
     };
 
     /**
      * Remove trial audio from page.
      */
     let removeTrialAudio = function() {
-        $('.trial-audio audio').off('canplay');
-        document.querySelector('.trial-audio audio').pause();
-        document.querySelector('.trial-audio').outerHTML = '';
+        if (document.querySelector('.trial-audio audio')) {
+            $('.trial-audio audio').off('canplay');
+            document.querySelector('.trial-audio audio').pause();
+            document.querySelector('.trial-audio').outerHTML = '';
+        }
     };
 
     /**
@@ -398,6 +455,7 @@
                     'trial_number': currentTrial + 1,
                     'resolution_w': window.screen.width,
                     'resolution_h': window.screen.height,
+                    'webgazer_data': JSON.stringify(trialObj.webgazer_data), 
                 },
                 method: 'POST'
             }).done(function(data) {
@@ -475,6 +533,7 @@
         });
     };
 
+    //$('#webgazer-init').hide();
     // Preload images
     preloadImages().then(function() {
 
@@ -491,7 +550,7 @@
         // Ask user to click button to go into fullscreen
         return new Promise(function(resolve, reject) {
             $("#fullscreen-button").click(function() {
-                var docElem = document.documentElement;
+                let docElem = document.documentElement;
                 if(docElem.requestFullscreen) {
                     docElem.requestFullscreen();
                 }else if(docElem.mozRequestFullScreen) {
@@ -510,6 +569,14 @@
         // Start webcam uploading
         webcam.startUploading(subjectUuid);
 
+        // Check if eye-tracking is required
+        if (recording_option == 'EYE' || recording_option == 'ALL') {
+            // initialise and setup webgazer
+            return initWebgazer();
+        } else {
+            return Promise.resolve();
+        }
+    }).then(function() {
         // Start with first trial
         showNextTrial();
         
@@ -550,7 +617,11 @@
             terminateStudy();
         }
     });
-
+    
+    $(window).on('load', function () {
+        $('#fullscreen-button').prop('disabled', false); // enable fullscreen button
+    });
+    
     $('#confirmExitButton').click(function() {
         terminateStudy();
     });
@@ -563,4 +634,4 @@
         }
     });
 
-})(trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset);
+})(trials, loading_image, global_timeout, include_pause_page, recording_option, general_onset, show_gaze_estimations);

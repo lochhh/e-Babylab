@@ -20,7 +20,7 @@ gen_list <- c("Female", "Male")
 ########## Functions 
 # Get data from word bank
 prep_data <- function(){
-  admin_ws <<- get_administration_data(lang, type)
+  admin_ws <<- get_administration_data(lang, type, include_demographic_info = TRUE)
   if(lang == "English (American)"){
     admin_ws <<- admin_ws #%>% filter(norming=="TRUE")
   }
@@ -31,9 +31,9 @@ prep_data <- function(){
   items_ws <<- get_item_data(lang, type)
   
   # reduce datasets
-  items_ws <<- subset(items_ws, type=="word")
+  items_ws <<- subset(items_ws, item_kind=="word")
   num_words <<- nrow(items_ws)
-  data_ws <<- data_ws %>% filter(num_item_id %in% items_ws$num_item_id)
+  data_ws <<- data_ws %>% filter(item_id %in% items_ws$item_id)
   if (type == "WS" | (type == "WG" & resp == "production")) {
     data_ws <- data_ws %>% 
       mutate(value = ifelse(value %in% c("produces", "yes", "sometimes", "often"),
@@ -59,8 +59,8 @@ data_in <- function(){
 
 # Get percentages for each word in each age
 perc_word <- function(){
-  temp <- select(admin_data_all,num_item_id,value,age)
-  word_dist <<- temp %>% dplyr::group_by(age,num_item_id) %>% dplyr::summarise(perc = mean(value))
+  temp <- select(admin_data_all,item_id,value,age)
+  word_dist <<- temp %>% dplyr::group_by(age,item_id) %>% dplyr::summarise(perc = mean(value))
 }
 
 # Order percentage word
@@ -108,9 +108,9 @@ mle_model <- function(dfdata,...){
 # Fill in "missing" words and Reorder according to word_purr
 fill_in_and_sort <- function(dfage,df){
   # ex <- data.frame(1:num_words)
-  sorted <<- word_dist$num_item_id %>% unique() %>% data.frame()
-  colnames(sorted) <- "num_item_id"
-  full_join(sorted, df, by = "num_item_id")
+  sorted <<- word_dist$item_id %>% unique() %>% data.frame()
+  colnames(sorted) <- "item_id"
+  full_join(sorted, df, by = "item_id")
 }
 
 # Configuration for polynomial
@@ -273,10 +273,10 @@ default_test <- c(num_words, 400, 200, 100, 50, 25, 10, 5)
 test <- c(num_words, default_test[default_test < num_words])
 
 # Convert admin_data_all and word_dist for purr and furr
-data_purr <- admin_data_all %>% group_by(sex, value, age, num_item_id) %>%
+data_purr <- admin_data_all %>% group_by(sex, value, age, item_id) %>%
   nest() # main set
 
-word_purr <- word_dist %>% select(-c("num_item_id")) %>% group_by(age) %>% nest() %>%
+word_purr <- word_dist %>% select(-c("item_id")) %>% group_by(age) %>% nest() %>%
   mutate(data = map(data, get_order))
 
 # Modeling
@@ -310,7 +310,7 @@ idpoly <- poly_cfg(mode = poly_mode) # polynomial flexible, f(MAD)
 poly_purr <- prep_purr
 poly_purr$lm_mean <- pmap(list(prep_purr$age, prep_purr$data2), poly_fit_mean)
 poly_purr$lm_sd <- pmap(list(prep_purr$age, prep_purr$data2), poly_fit_sd)
-poly_purr <- poly_purr %>% unnest %>% nest(-c(sex,value,age,num_item_id))
+poly_purr <- poly_purr %>% unnest(cols = c(data2, lm_mean, lm_sd)) %>% nest(data = -c(sex,value,age,item_id))
 
 #Mod# log PDF of normal distribution
 log_pdf_purr_raw <- poly_purr
@@ -337,24 +337,24 @@ for (gen in c("Female", "Male")) {
     select(age, slope) %>% spread(age, slope)
   Bmin = np_param %>% ungroup() %>% filter(sex == gen) %>% 
     select(age, B) %>% spread(age, B)
-  poly_unnest <- poly_purr %>% unnest()
+  poly_unnest <- poly_purr %>% unnest(cols = c(data))
   
   lm_p_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>% 
-    select(age, lm_mean, num_item_id) %>% spread(age, lm_mean) %>% 
-    mutate(word_id = num_item_id) %>%
-    select(-num_item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
+    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>% 
+    mutate(word_id = item_id) %>%
+    select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
   lm_p_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>% 
-    select(age, lm_sd, num_item_id) %>% spread(age, lm_sd) %>% 
-    mutate(word_id = num_item_id) %>%
-    select(-num_item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
+    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>% 
+    mutate(word_id = item_id) %>%
+    select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
   lm_np_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>% 
-    select(age, lm_mean, num_item_id) %>% spread(age, lm_mean) %>% 
-    mutate(word_id = num_item_id) %>%
-    select(-num_item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
+    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>% 
+    mutate(word_id = item_id) %>%
+    select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
   lm_np_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>% 
-    select(age, lm_sd, num_item_id) %>% spread(age, lm_sd) %>% 
-    mutate(word_id = num_item_id) %>%
-    select(-num_item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
+    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>% 
+    mutate(word_id = item_id) %>%
+    select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
   
   if (type == "WS") {
     fname1 <- paste("p_m", gen, lang, type, sep="-")
@@ -395,36 +395,36 @@ for (gen in c("Female", "Male")) {
 
 fname7 <- paste("word_list", lang, type, resp, sep="-")
 fname7 <- paste(fname7, "csv", sep = ".")
-wordonly <- items_ws %>% mutate(word = definition, word_id = num_item_id) %>%
+wordonly <- items_ws %>% mutate(word = item_definition, word_id = item_id) %>%
   select(word_id, word)
 readr::write_csv(wordonly, fname7)
 
 #### Item Response Theory, IRT
 cat_cfg(mode = "NoPreCAT") # NoPreCAT
 
-num_words <- max(admin_data_all$num_item_id)
+num_words <- max(admin_data_all$item_id)
 test <- c(num_words, 400, 200, 100, 50, 25, 10, 5)
 
 # Fit IRT (overall)
 data_irt <- admin_data_all %>% #filter(between(age, 16, 30)) %>%
-  select(value,num_item_id,data_id) %>%
-  spread(num_item_id,value) %>% select(-data_id)
-data_irt <- Filter(var,data_irt)
+  select(value,item_id,data_id) %>%
+  spread(item_id,value) %>% select(-data_id)
+data_irt <- Filter(var,data_irt) %>% select(str_sort(names(.), numeric = TRUE))
 items <- mirt(data_irt, 1, itemtype = "2PL", method = "EM", SE=TRUE)
 
 # Extract parameters only (a1, d, g, u)
 for (i in 1:(length(items@ParObjects$pars) - 1)){
   print(i)
   if (i == 1) {
-    irtparam <- coef(items)[[i]][1,1:4] 
+    irtparam <- coef(items, IRTpars=TRUE)[[i]][1,1:4] 
   } else {
-    irtparam <- rbind(irtparam, coef(items)[[i]][1,1:4]) 
+    irtparam <- rbind(irtparam, coef(items, IRTpars=TRUE)[[i]][1,1:4]) 
   }
 }
 rownames(irtparam) <- 1:nrow(irtparam)
 
 IRT_Parameters <- irtparam %>% data.frame() %>% 
-  mutate(word_id = colnames(data_irt) %>% as.numeric()) %>% 
+  mutate(word_id = gsub(pattern = "item_", replacement = "", x = names(data_irt))) %>% 
   select(word_id, colnames(.[,1:(ncol(.)-1)]))
 
 if (type == "WG") {
@@ -437,4 +437,3 @@ if (type == "WG") {
 
 readr::write_csv(IRT_Parameters, fname8)
 ### END of Modeling ###
-

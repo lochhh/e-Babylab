@@ -25,7 +25,7 @@ def webcam_test(request, run_uuid):
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     c = RequestContext(request, {'subject_data': subject_data, 'experiment': experiment,})
     
-    if experiment.recording_option == 'VID':
+    if experiment.recording_option == 'VID' or experiment.recording_option == 'ALL':
         t = Template(experiment.webcam_check_page_tpl)
     elif experiment.recording_option == 'AUD': # audio
         t = Template(experiment.microphone_check_page_tpl)  

@@ -9,11 +9,12 @@ from django.template import Template, RequestContext
 from filebrowser.fields import FileBrowseField
 from scipy.stats import norm
 
-from .models import SubjectData, ListItem, CdiResult, Experiment, Instrument, Question, AnswerInteger, AnswerRadio
+from .models import SubjectData, ListItem, CdiResult, Experiment, Instrument, Question, AnswerText, AnswerRadio
 from .forms import VocabularyChecklistForm
 from .views import proceedToExperiment
 
 import csv
+import datetime
 import logging
 import simplejson as json
 import numpy as np
@@ -25,7 +26,7 @@ import catsim
 
 from catsim.initialization import FixedPointInitializer
 from catsim.selection import MaxInfoSelector
-from catsim.estimation import HillClimbingEstimator
+from catsim.estimation import NumericalSearchEstimator
 from catsim.stopping import MaxItemStopper
 from catsim.irt import max_info_hpc, inf_hpc
 
@@ -62,7 +63,9 @@ def estimateCDI(run_uuid):
             all_words[row['word']] = int(row['word_id'])
 
         # get child's age and sex
-        age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
+        #age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
+        dob = datetime.date.fromisoformat((AnswerText.objects.filter(subject_data=subject_data, question__question_type='age').first()).body)
+        age = round(((subject_data.created.date() - dob).days)/(365/12))
         sex = (AnswerRadio.objects.filter(subject_data=subject_data, question__question_type='sex').first()).body
         choices = (Question.objects.filter(experiment=experiment, question_type='sex').first()).choices
         choices = list(filter(None, [x.strip() for x in choices.split(',')]))
@@ -216,7 +219,7 @@ def cdiGenerateNextItem(request, run_uuid):
         administered_items = request.session.get('administered_items')
         responses = request.session.get('responses')
         est_theta = request.session.get('est_theta')
-        est_theta = HillClimbingEstimator().estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
+        est_theta = NumericalSearchEstimator(method='brent').estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
         request.session['est_theta'] = est_theta  
         words = request.session.get('words')
         all_words = json.loads(request.session.get('all_words'))

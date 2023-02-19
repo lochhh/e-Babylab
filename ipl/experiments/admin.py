@@ -36,14 +36,18 @@ TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
                                 '- To change button text, use the source code view. <br />'])
 
 CDI_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
-                                '<p>- To administer CDIs, make sure to obtain information on the child\'s age and sex in the participant form (configured in the "Demographic information" section). <br />',
-                                '- Use the "age" type to define the allowed age range (in months). This will appear on the participant form as an integer field with an automatic check that ensures the participant falls within the age range of the instrument. <br />',
-                                '- Use the "sex" type for the sex field. The first option must represent "female" and the second option must represent "male". <br />'])
+                        '<p>- To administer CDIs, make sure to obtain information on the child\'s age and sex in the participant form (configured in the "Demographic information" section). <br />',
+                        '- Use the "age" type to define the allowed age range (in months). This will appear on the participant form as a Date field with an automatic check that ensures the participant falls within the age range of the instrument. <br />',
+                        '- Use the "sex" type for the sex field. The first option must represent "female" and the second option must represent "male". <br />'
+                        ])
 
 GRID_LAYOUT_HELP_TEXT = ' '.join(['<p>Note:',
-                                '<p>Rows and Columns are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses only). <br />',
+                                '<p><em>Rows</em> and <em>Columns</em> are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses only). <br />',
                                 'For instance, setting rows = 1 and cols = 2 would allow one to determine whether a click was on the left (1,1) or right side (1,2) of the visual stimulus. <br />',
-                                'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks. <br />'])
+                                'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks. <br />',
+                                '<em>Calibration points</em> for eye-tracking are defined in percentages. <br />',
+                                'For instance, specifying [10,50] places the visual stimulus at 10% of the width of the screen from the left edge and 50% of the height of the screen from the top edge. <br />',
+                                ])
 
 INSTRUMENT_HELP_TEXT = format_html('<p>To generate the required .csv files, download and run this <a href="{url_rscript}">R script</a>.',
                                     url_rscript='/media/uploads/instruments/generateInstrumentFiles.r')
@@ -60,7 +64,8 @@ class TrialItemInline(admin.StackedInline):
         (None, {
             'fields': ('label', 'code', 'visual_onset', 'visual_file', 
             'audio_onset', 'audio_file', 'user_input', 'response_keys',
-            'max_duration', 'record_media', ('grid_row', 'grid_col'), 'position'),
+            'max_duration', 'record_media', 'record_gaze', 'is_calibration', 
+            'calibration_points', ('grid_row', 'grid_col'), 'position'),
             'description': '<div class="help">%s</div>' % GRID_LAYOUT_HELP_TEXT, 
         }),
     )
@@ -175,8 +180,8 @@ class TrialResultInline(admin.TabularInline):
     extra = 0
     exclude = ('webcam_file', 'start_time', 'end_time')
     readonly_fields = ('trial_number', 'trialitem', 'trial_blockitem', 'trial_audio', 'trial_visual', 
-                        'trial_input', 'trial_maxduration', 'response_time', 'key_pressed', 'record_media', 'webcam_file_link',
-                        'resolution_w', 'resolution_h')
+                        'trial_input', 'trial_maxduration', 'response_time', 'key_pressed', 'webcam_file_link',
+                        'resolution_w', 'resolution_h', 'webgazer_data')
     ordering = ('id',)
 
     def trial_blockitem(self, obj):
@@ -210,11 +215,6 @@ class TrialResultInline(admin.TabularInline):
         return ''
 
     response_time.short_description = 'Response time'
-
-    def record_media(self, obj):
-        return obj.trialitem.record_media
-    
-    record_media.short_description = 'Record media'
 
     def webcam_file_link(self, obj):
         if obj.webcam_file:
@@ -272,6 +272,7 @@ class ExperimentAdmin(admin.ModelAdmin):
                 'recording_option',
                 'loading_image',
                 'include_pause_page',
+                'show_gaze_estimations',
             )
         }),
         ('Templates', {
