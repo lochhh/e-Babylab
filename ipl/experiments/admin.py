@@ -37,7 +37,7 @@ TEMPLATES_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
 
 CDI_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
                         '<p>- To administer CDIs, make sure to obtain information on the child\'s age and sex in the participant form (configured in the "Demographic information" section). <br />',
-                        '- Use the "age" type to define the allowed age range (in months). This will appear on the participant form as an integer field with an automatic check that ensures the participant falls within the age range of the instrument. <br />',
+                        '- Use the "age" type to define the allowed age range (in months). This will appear on the participant form as a Date field with an automatic check that ensures the participant falls within the age range of the instrument. <br />',
                         '- Use the "sex" type for the sex field. The first option must represent "female" and the second option must represent "male". <br />'
                         ])
 

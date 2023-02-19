@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from .models import SubjectData, OuterBlockItem, BlockItem, TrialResult, AnswerBase, AnswerText, AnswerInteger, \
                     Question, AnswerRadio, AnswerSelect, AnswerSelectMultiple, ConsentQuestion, CdiResult
 
-from datetime import datetime
+import datetime
 import uuid
 import os
 import zipfile
@@ -72,7 +72,7 @@ class Reporter:
         if not os.path.exists('webcam'):
             os.makedirs('webcam')
 
-    
+
     def calc_trial_duration(self, t1, t2):
         """
         Calculates trial duration based on the start and end times.
@@ -81,7 +81,7 @@ class Reporter:
             return str(t2 - t1)
         return ''
 
-    
+
     def calc_roi_response(self, result, coords):
         """
         Determines row and col responded to (click/gaze) based on grid size defined for the trial. 
@@ -105,7 +105,7 @@ class Reporter:
             return '({row_num},{col_num})'.format(row_num=row_num, col_num=col_num)
         return ''
 
-
+    
     def gcd(self, a, b):
         if b == 0:
             return a
@@ -122,7 +122,7 @@ class Reporter:
             gcd = 1
         try:
             subject_data = {
-                'Report Date': datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                'Report Date': datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
                 'Experiment Name': subject.experiment.exp_name,
                 'Global Timeout': subject.listitem.global_timeout if subject.listitem else '',
                 'List': subject.listitem.list_name if subject.listitem else '',
@@ -145,7 +145,14 @@ class Reporter:
                 value = ''
                 if answer_base.question.question_type == Question.TEXT:
                     value = str(AnswerText.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.INTEGER or answer_base.question.question_type == Question.NUM_RANGE or answer_base.question.question_type == Question.AGE:
+                elif answer_base.question.question_type == Question.AGE:
+                    if AnswerText.objects.filter(pk=answer_base.pk).first():
+                        value = str(AnswerText.objects.get(pk=answer_base.pk).body)
+                        dob = datetime.date.fromisoformat(value)
+                        value += ' (' + str(round(((subject.created.date() - dob).days)/(365/12))) + ' mo.)'
+                    else:
+                        value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.INTEGER or answer_base.question.question_type == Question.NUM_RANGE:
                     value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
                 elif answer_base.question.question_type == Question.RADIO or answer_base.question.question_type == Question.SEX:
                     value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
@@ -204,7 +211,7 @@ class Reporter:
                     result.resolution_h,
                     (block.outerblockitem.listitem.experiment.recording_option in ['EYE', 'ALL'] and result.trialitem.record_gaze),
                 ])
-
+                    
                 # Add webcam file to zip
                 self.zip_file.write(os.path.join("webcam", result.webcam_file.name),
                                     result.webcam_file.name)
@@ -215,31 +222,33 @@ class Reporter:
         """
         Creates a worksheet per participant containing the eye-tracking results.
         """
-
+        
         outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('id',flat=True))
         blocks = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk)
         validation_data = pd.DataFrame()
         webgazer_data = pd.DataFrame()
-
+        
         for block in blocks:
             trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('trial_number', 'pk')
             for result in trial_results:
                 # skip trials where gaze is not recorded
-                if not result.trialitem.record_gaze:
+                if not result.trialitem.record_gaze or not result.webgazer_data:
                     continue
-
+                
                 if result.trialitem.is_calibration:
                     curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data[1:]))
                     curr_validation_data = pd.read_json(json.dumps(result.webgazer_data[0])).drop(columns=['trial_type'])
                     curr_validation_data.insert(0, 'trial number', result.trial_number)
+                    curr_validation_data.insert(1, 'trial label', result.trialitem.label)
                     validation_data = pd.concat([
                         validation_data, 
                         curr_validation_data,
                     ])
                 else:
                     curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data))
-
+                
                 curr_webgazer_data.insert(0, 'trial number', result.trial_number)
+                curr_webgazer_data.insert(1, 'trial label', result.trialitem.label)
                 curr_webgazer_data['nrows'] = result.trialitem.grid_row
                 curr_webgazer_data['ncols'] = result.trialitem.grid_col
                 if (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1):
@@ -250,7 +259,7 @@ class Reporter:
                     webgazer_data, 
                     curr_webgazer_data,
                 ])
-
+    
         return [webgazer_data, validation_data]
 
 
@@ -267,7 +276,7 @@ class Reporter:
                 self.experiment.exp_name + '_' + subject.created.strftime('%Y%m%d') + \
                     '_' + subject.id + '.xlsx'
             workbook_file = get_valid_filename(workbook_file)
-            
+
             # Create Pandas Excel writer using XlsxWriter as the engine
             writer = pd.ExcelWriter(os.path.join(self.output_folder,
                                                  self.tmp_folder, workbook_file),
@@ -284,7 +293,7 @@ class Reporter:
                     webgazer_worksheets = self.create_webgazer_worksheet(subject)
                     webgazer_worksheets[0].to_excel(writer, sheet_name='EyeTrackingData', index=False)
                     webgazer_worksheets[1].to_excel(writer, sheet_name='EyeTrackingValidation', index=False)
-
+            
             # Close the Pandas Excel writer and store excel report
             writer.save()
             self.zip_file.write(os.path.join(self.output_folder,

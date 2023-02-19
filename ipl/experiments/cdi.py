@@ -9,11 +9,12 @@ from django.template import Template, RequestContext
 from filebrowser.fields import FileBrowseField
 from scipy.stats import norm
 
-from .models import SubjectData, ListItem, CdiResult, Experiment, Instrument, Question, AnswerInteger, AnswerRadio
+from .models import SubjectData, ListItem, CdiResult, Experiment, Instrument, Question, AnswerText, AnswerRadio
 from .forms import VocabularyChecklistForm
 from .views import proceedToExperiment
 
 import csv
+import datetime
 import logging
 import simplejson as json
 import numpy as np
@@ -62,7 +63,9 @@ def estimateCDI(run_uuid):
             all_words[row['word']] = int(row['word_id'])
 
         # get child's age and sex
-        age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
+        #age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
+        dob = datetime.date.fromisoformat((AnswerText.objects.filter(subject_data=subject_data, question__question_type='age').first()).body)
+        age = round(((subject_data.created.date() - dob).days)/(365/12))
         sex = (AnswerRadio.objects.filter(subject_data=subject_data, question__question_type='sex').first()).body
         choices = (Question.objects.filter(experiment=experiment, question_type='sex').first()).choices
         choices = list(filter(None, [x.strip() for x in choices.split(',')]))
@@ -103,7 +106,7 @@ def estimateCDI(run_uuid):
         B = np.where(basis == np.amax(basis))
         B = int(B[0][0])
         estimate = (B-bmin.at[0,str(age)])/slope.at[0,str(age)]
-        
+
         # store CDI estimate in subject_data
         subject_data.cdi_estimate = estimate
         subject_data.save()
