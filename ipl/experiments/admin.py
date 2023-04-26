@@ -42,9 +42,9 @@ CDI_HELP_TEXT = ' '.join(['<p><strong>Note:</strong>',
                         ])
 
 GRID_LAYOUT_HELP_TEXT = ' '.join(['<p>Note:',
-                                '<p><em>Rows</em> and <em>Columns</em> are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses only). <br />',
-                                'For instance, setting rows = 1 and cols = 2 would allow one to determine whether a click was on the left (1,1) or right side (1,2) of the visual stimulus. <br />',
-                                'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks. <br />',
+                                '<p><em>Rows</em> and <em>Columns</em> are for defining a grid layout (nrow * ncol), for establishing areas of interest (applicable to click responses and/or eye-tracking). <br />',
+                                'For instance, setting rows = 1 and cols = 2 would allow one to determine whether a click and/or gaze was on the left (1,1) or right side (1,2) of the visual stimulus. <br />',
+                                'A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2), bottom-left (2,1), and bottom-right (2,2) clicks and/or gazes. <br />',
                                 '<em>Calibration points</em> for eye-tracking are defined in percentages. <br />',
                                 'For instance, specifying [10,50] places the visual stimulus at 10% of the width of the screen from the left edge and 50% of the height of the screen from the top edge. <br />',
                                 ])
