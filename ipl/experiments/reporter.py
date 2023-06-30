@@ -137,7 +137,8 @@ class Reporter:
         
             consent_questions = ConsentQuestion.objects.filter(experiment_id=subject.experiment.id)
             for consent_question in consent_questions:
-                subject_data[consent_question.text] = 'Y'
+                # format dictionary key with pos to ensure uniqueness 
+                subject_data[f'{consent_question.position + 1}. {consent_question.text}'] = 'Y'
 
             answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
             subject_data['Participant Form Responses'] = ''
@@ -160,7 +161,8 @@ class Reporter:
                     value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
                 elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
                     value = str(AnswerSelectMultiple.objects.get(pk=answer_base.pk).body)
-                subject_data[answer_base.question.text] = value
+                # format dictionary key with pos to ensure uniqueness 
+                subject_data[f'{answer_base.question.position + 1}. {answer_base.question.text}'] = value
 
             cdi_results = CdiResult.objects.filter(subject=subject.id)
             subject_data['CDI estimate'] = subject.cdi_estimate
