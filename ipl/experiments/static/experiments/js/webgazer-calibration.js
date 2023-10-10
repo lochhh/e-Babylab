@@ -158,12 +158,12 @@ let calibrateGaze = function(ptId) {
         let ptStart = performance.now() + timeToSaccade;
         let ptEnd = performance.now() + timeToSaccade + timePerPoint;
   
-        requestAnimationFrame(function watch_dot() {
+        requestAnimationFrame(function watchDot() {
             if (performance.now() > ptStart) {
                 webgazer.recordScreenPosition(x, y, 'click');
             }
             if (performance.now() < ptEnd) {
-                requestAnimationFrame(watch_dot);
+                requestAnimationFrame(watchDot);
             } else {
                 resolve(ptId);
             }
@@ -188,12 +188,27 @@ let validateGaze = function(trialObj) {
         setTimeout(function() {
             webgazer.params.storingPoints = false;
             let past50 = webgazer.getStoredPoints();
-            let precisionMeasurement = calculatePrecision(past50);
+            let target = document.querySelector('#Pt0').getBoundingClientRect();
+            // Calculate the centre position of the target
+            let targetX = target.left + target.width / 2; 
+            let targetY = target.top + target.height / 2;
+            let numPredictions = past50[0].filter(Boolean).length;
+            let accuracy = calculateAccuracy(past50, numPredictions, targetX, targetY);
+            let precisionRMS = calculatePrecisionRMS(past50, numPredictions);
+            let precisionSD = calculatePrecisionSD(past50, numPredictions);
+            //let precisionMeasurement = calculatePrecision(past50, numPredictions, targetX, targetY);
+
             let d = {
                 trial_type: 'validation',
-                accuracy: precisionMeasurement,
-                x_points: past50[0],
-                y_points: past50[1],
+                target_x: targetX,
+                target_y: targetY,
+                x: past50[0],
+                y: past50[1],
+                accuracy: accuracy,
+                precision_rms: precisionRMS,
+                precision_sd_x: precisionSD[0],
+                precision_sd_y: precisionSD[1],
+                //precision_perc: precisionMeasurement,
             };
             trialObj.webgazer_data.push(d);
             trialObj.keysPressed = '-';
@@ -231,43 +246,131 @@ let handleGazeDataUpdate = function(data, elapsedTime) {
     }
 };
 
-/*
+/**
+ * This function calculates Accuracy as the mean Euclidean distance (in pixels)
+ * between a given array of gaze locations and the centre position of the target.
+ * 
+ * See Holmqvist, K., Nystroem, M., Andersson, R., Dewhurst, R., Halszka, J., & van de Weijer, J. (2011).
+ * @param {*} past50Array
+ * @param {number} numPredictions
+ * @param {number} targetX
+ * @param {number} targetY
+ */
+let calculateAccuracy = function(past50Array, numPredictions, targetX, targetY) {
+    let totalDistance = 0;
+
+    for (let i = 0; i < numPredictions; i++) {
+        let xDiff = past50Array[0][i] - targetX;
+        let yDiff = past50Array[1][i] - targetY;
+        let distance = Math.sqrt((xDiff * xDiff) + (yDiff * yDiff));
+        totalDistance += distance;
+    }
+    
+    let accuracy = totalDistance / numPredictions;
+
+    return accuracy;    
+};
+
+/**
+ * This function calculates precision as the root mean square distance between 
+ * successive gaze locations. Since such inter-sample distances only compare 
+ * temporally adjacent samples, they may be less sensitive to large overall spatial 
+ * dispersion of the data.
+ * 
+ * See Holmqvist, K., Nystroem, M., Andersson, R., Dewhurst, R., Halszka, J., & van de Weijer, J. (2011).
+ * @param {*} past50Array
+ * @param {number} numPredictions
+ */
+let calculatePrecisionRMS = function(past50Array, numPredictions) {
+    let sumSquaredDistances = 0;
+
+    for (let i = 1; i < numPredictions; i++) {
+        let xDiff = past50Array[0][i] - past50Array[0][i - 1];
+        let yDiff = past50Array[1][i] - past50Array[1][i - 1];
+        let squaredDistance = (xDiff * xDiff) + (yDiff * yDiff);
+        sumSquaredDistances += squaredDistance;
+    }
+
+    let meanSquaredDistance = sumSquaredDistances / (numPredictions - 1);
+    let precision = Math.sqrt(meanSquaredDistance);
+
+    return precision;
+};
+
+/**
+ * This function calculates precision as the standard deviation of the gaze 
+ * locations in the X and Y dimensions separately. This measures how dispersed
+ * samples are from their mean value.
+ * 
+ * See Holmqvist, K., Nystroem, M., Andersson, R., Dewhurst, R., Halszka, J., & van de Weijer, J. (2011).
+ * @param {*} past50Array
+ * @param {number} numPredictions
+ */
+let calculatePrecisionSD = function(past50Array, numPredictions) {
+    // Calculate mean x and y coordinates
+    let meanX = 0;
+    let meanY = 0;
+    for (let i = 0; i < numPredictions; i++) {
+        meanX += past50Array[0][i];
+        meanY += past50Array[1][i];
+    }
+    meanX /= numPredictions;
+    meanY /= numPredictions;
+
+    // Calculate sum of squared differences for x and y dimensions
+    let sumSquaredDifferencesX = 0;
+    let sumSquaredDifferencesY = 0;
+    for (let i = 0; i < numPredictions; i++) {
+        let diffX = past50Array[0][i] - meanX;
+        let diffY = past50Array[1][i] - meanY;
+        sumSquaredDifferencesX += diffX * diffX;
+        sumSquaredDifferencesY += diffY * diffY;
+    }
+
+    // Calculate variance for x and y dimensions
+    let varX = sumSquaredDifferencesX / numPredictions;
+    let varY = sumSquaredDifferencesY / numPredictions;
+
+    // Calculate standard deviation for x and y dimensions
+    let sdX = Math.sqrt(varX);
+    let sdY = Math.sqrt(varY);
+
+    return [sdX, sdY];
+};
+
+
+/**
  * This function calculates a measurement for how precise 
  * the eye tracker currently is which is displayed to the user
  */
-let calculatePrecision = function(past50Array) {
+let calculatePrecision = function(past50Array, numPredictions, targetX, targetY) {
     let windowHeight = $(window).height();
     //let windowWidth = $(window).width();
-    let br = document.querySelector('#Pt0').getBoundingClientRect();
-   
+
     // Retrieve the last 50 gaze prediction points
     let x50 = past50Array[0];
     let y50 = past50Array[1];
-  
-    // Calculate the position of the point the user is staring at
-    let staringPointX = br.left + br.width / 2; //windowWidth / 2;
-    let staringPointY = br.top + br.height / 2; //windowHeight / 2;
-  
-    let precisionPercentages = new Array(50);
-    calculatePrecisionPercentages(precisionPercentages, windowHeight, x50, y50, staringPointX, staringPointY);
-    let precision = calculateAverage(precisionPercentages);
-  
+
+    let precisionPercentages = new Array(numPredictions);
+    calculatePrecisionPercentages(precisionPercentages, numPredictions, windowHeight, x50, y50, targetX, targetY);
+    let precision = calculateAverage(precisionPercentages, numPredictions);
+
     // Return the precision measurement as a rounded percentage
     return Math.round(precision);
 };
-  
+
 /*
 * Calculate percentage accuracy for each prediction based on distance of
 * the prediction point from the centre point (uses the window height as
 * lower threshold 0%)
 */
-let calculatePrecisionPercentages = function(precisionPercentages, windowHeight, x50, y50, staringPointX, staringPointY) {
-    for (x = 0; x < 50; x++) {
+let calculatePrecisionPercentages = function(precisionPercentages, numPredictions, windowHeight, x50, y50, targetX, targetY) {
+    for (let i = 0; i < numPredictions; i++) {
         // Calculate distance between each prediction and staring point
-        let xDiff = staringPointX - x50[x];
-        let yDiff = staringPointY - y50[x];
+        let xDiff = targetX - x50[i];
+        let yDiff = targetY - y50[i];
         let distance = Math.sqrt((xDiff * xDiff) + (yDiff * yDiff));
-  
+
         // Calculate precision percentage
         let halfWindowHeight = windowHeight / 2;
         let precision = 0;
@@ -278,20 +381,20 @@ let calculatePrecisionPercentages = function(precisionPercentages, windowHeight,
         } else if (distance > -1) {
             precision = 100;
         }
-  
+
         // Store the precision
-        precisionPercentages[x] = precision;
+        precisionPercentages[i] = precision;
     }
 };
-  
+
 /*
 * Calculates the average of all precision percentages calculated
 */
-let calculateAverage = function(precisionPercentages) {
+let calculateAverage = function(precisionPercentages, numPredictions) {
     let precision = 0;
-    for (x = 0; x < 50; x++) {
-        precision += precisionPercentages[x];
+    for (let i = 0; i < numPredictions; i++) {
+        precision += precisionPercentages[i];
     }
-    precision = precision / 50;
+    precision = precision / numPredictions;
     return precision;
 };
