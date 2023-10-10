@@ -102,7 +102,7 @@ class Reporter:
                 row_num = len(boundaries_r) - 1
             else:
                 row_num = next(i for i,r in enumerate(boundaries_r) if r >= coords[1])
-            return '({row_num},{col_num})'.format(row_num=row_num, col_num=col_num)
+            return f'({row_num},{col_num})'
         return ''
 
     
@@ -129,9 +129,8 @@ class Reporter:
                 'Participant Number': subject.participant_id,
                 'Participant UUID': subject.id,
                 'Participation Date': subject.created.strftime("%d.%m.%Y %H:%M:%S"),
-                'Aspect Ratio': '{}:{}'.format(int(subject.resolution_h / gcd),
-                                           int(subject.resolution_w / gcd)),
-                'Resolution': '{}x{}'.format(subject.resolution_w, subject.resolution_h),
+                'Aspect Ratio': f'{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}',
+                'Resolution': f'{subject.resolution_w}x{subject.resolution_h}',
                 'Consent Questions': '',
             }
         
@@ -255,8 +254,8 @@ class Reporter:
             curr_webgazer_data.insert(0, 'Trial Number', trial_number)
             curr_webgazer_data.insert(1, 'Trial Label', result.trialitem.label)
             curr_webgazer_data.insert(2, 'Trial Code', result.trialitem.code)
-            curr_webgazer_data['NRows'] = result.trialitem.grid_row
-            curr_webgazer_data['NCols'] = result.trialitem.grid_col
+            curr_webgazer_data['Nrows'] = result.trialitem.grid_row
+            curr_webgazer_data['Ncols'] = result.trialitem.grid_col
             if (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1):
                 curr_webgazer_data['Gaze Area (row,col)'] = curr_webgazer_data.apply(lambda x: self.calc_roi_response(result, [x.x, x.y]), axis=1)
             else:

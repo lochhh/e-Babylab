@@ -424,7 +424,7 @@ class ExperimentAdmin(admin.ModelAdmin):
             new_primary_key = str(listItem.object.id)
 
             # Replace all list ids
-            json_data = json_data.replace('"listitem": {},'.format(old_primary_key), '"listitem": {},'.format(new_primary_key))
+            json_data = json_data.replace(f'"listitem": {old_primary_key},', f'"listitem": {new_primary_key},')
 
         # Import outer blocks
         for outerBlockItem in serializers.deserialize("json", json.dumps(json.loads(json_data)['outerblocks'])):
@@ -437,7 +437,7 @@ class ExperimentAdmin(admin.ModelAdmin):
             new_primary_key = str(outerBlockItem.object.id)
 
             # Replace all outer block ids
-            json_data = json_data.replace('"outerblockitem": {},'.format(old_primary_key), '"outerblockitem": {},'.format(new_primary_key))
+            json_data = json_data.replace(f'"outerblockitem": {old_primary_key},', f'"outerblockitem": {new_primary_key},')
 
         # Import inner blocks
         for innerBlockItem in serializers.deserialize("json", json.dumps(json.loads(json_data)['innerblocks'])):
@@ -450,7 +450,7 @@ class ExperimentAdmin(admin.ModelAdmin):
             new_primary_key = str(innerBlockItem.object.id)
 
             # Replace all inner block ids
-            json_data = json_data.replace('"blockitem": {},'.format(old_primary_key), '"blockitem": {},'.format(new_primary_key))
+            json_data = json_data.replace(f'"blockitem": {old_primary_key},', f'"blockitem": {new_primary_key},')
 
         # Import trials
         for trialItem in serializers.deserialize("json", json.dumps(json.loads(json_data)['trials'])):
