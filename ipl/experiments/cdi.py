@@ -219,7 +219,7 @@ def cdiGenerateNextItem(request, run_uuid):
         administered_items = request.session.get('administered_items')
         responses = request.session.get('responses')
         est_theta = request.session.get('est_theta')
-        est_theta = NumericalSearchEstimator(method='brent').estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
+        est_theta = NumericalSearchEstimator(method='bounded').estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
         request.session['est_theta'] = est_theta  
         words = request.session.get('words')
         all_words = json.loads(request.session.get('all_words'))
