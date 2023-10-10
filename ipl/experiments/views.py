@@ -30,6 +30,7 @@ def proceedToExperiment(experiment, run_uuid):
     else: # capture audio/video
         return HttpResponseRedirect(reverse('experiments:webcamTest', args = (run_uuid,)))
 
+
 @login_required(next='/admin/experiments/experiment')
 def experimentReport(request, experiment_id):
     """ 
@@ -45,6 +46,7 @@ def experimentReport(request, experiment_id):
 
     return redirect(fs.url(os.path.basename(filename)))
 
+
 def experimentExport(request, experiment_id):
     """
     Exports an experiment to a JSON file
@@ -53,6 +55,7 @@ def experimentExport(request, experiment_id):
     response = HttpResponse(json.dumps(json_data), content_type='application/json')
     response['Content-Disposition'] = 'attachment; filename=\"' + Experiment.objects.get(id=experiment_id).exp_name + '.json\"'
     return response
+
 
 def experimentImport(request):
     """
@@ -67,6 +70,7 @@ def experimentImport(request):
     form = ImportForm()
     return render(request, 'admin/experiments/import_form.html', {'form': form})
 
+
 def informationPage(request, experiment_id):
     """ 
     Generates the first page, the welcome page of an experiment.
@@ -75,7 +79,8 @@ def informationPage(request, experiment_id):
     t = Template(experiment.information_page_tpl)
     c = RequestContext(request, {'experiment':experiment})
     return HttpResponse(t.render(c))
-   
+
+
 def browserCheck(request, experiment_id):
     """ 
     Generates the second page, the browser check page of an experiment.
@@ -86,6 +91,7 @@ def browserCheck(request, experiment_id):
     c = RequestContext(request, {'experiment':experiment})
     return HttpResponse(t.render(c))
 
+
 def consentForm(request, experiment_id):
     """ 
     Generates the third page, the consent form of an experiment. 
@@ -95,6 +101,7 @@ def consentForm(request, experiment_id):
     t = Template(experiment.introduction_page_tpl)
     c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
     return HttpResponse(t.render(c))
+
 
 def consentFormSubmit(request, experiment_id):
     """ 
@@ -115,6 +122,7 @@ def consentFormSubmit(request, experiment_id):
     c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
     return HttpResponse(t.render(c))
 
+
 def subjectForm(request, experiment_id):
     """ 
     Generates the fourth page, the demographic/participant data form of an experiment. 
@@ -124,7 +132,8 @@ def subjectForm(request, experiment_id):
     t = Template(experiment.demographic_data_page_tpl)
     c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
     return HttpResponse(t.render(c))
-    
+
+
 def subjectFormSubmit(request, experiment_id):
     """ 
     Validates the demographic/participant data form. 
@@ -158,8 +167,9 @@ def subjectFormSubmit(request, experiment_id):
             return proceedToExperiment(experiment, str(response.id))
     
     return HttpResponse(t.render(c))
- 
-def createTrialDict(trial, block):
+
+
+def createTrialDict(trial, block, trial_number):
     """ 
     Returns a dictionary containing the details of a trial. 
     """
@@ -185,6 +195,7 @@ def createTrialDict(trial, block):
 
     trial_dict = {
         'trial_id': trial.id,
+        'trial_number': trial_number,
         'background_colour': block.background_colour,
         'label': trial.label,
         'visual_onset': trial.visual_onset,
@@ -202,9 +213,10 @@ def createTrialDict(trial, block):
     }
     return trial_dict
 
+
 def experimentRun(request, run_uuid):
     """ 
-    Generates the fifth page, which is the main part of an experiment. 
+    Generates the (main) experimental task of an experiment. 
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -212,8 +224,10 @@ def experimentRun(request, run_uuid):
     completed_trials = []
     block_items = []
     loading_image = experiment.loading_image if experiment.loading_image else ''
-    
+    trial_number = 1
+
     try:
+        
         # retrieve a certain list
         if subject_data.listitem is None:
             list_item = experiment.get_list_item()
@@ -225,7 +239,11 @@ def experimentRun(request, run_uuid):
         outer_block_items = list_item.outerblockitem_set.all().order_by('position')
 
         # search for existing trial results
-        trial_results = TrialResult.objects.filter(subject__id=run_uuid).exclude(key_pressed='PAUSE')
+        all_trial_results = TrialResult.objects.filter(subject__id=run_uuid)
+        trial_number += all_trial_results.count()
+        
+        # exclude pause trials
+        trial_results = all_trial_results.exclude(key_pressed='PAUSE')
         if trial_results.exists():
             # construct list of completed trials
             for tr in list(trial_results):
@@ -251,7 +269,8 @@ def experimentRun(request, run_uuid):
             trial_items = [x for x in trial_items if x not in completed_trials]
 
             for t in trial_items:
-                trials.append(createTrialDict(t, b))
+                trials.append(createTrialDict(t, b, trial_number))
+                trial_number += 1
 
     except (KeyError, AttributeError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist) as e:
         logger.exception('Failed to run experiment: ' + str(e))
@@ -269,6 +288,7 @@ def experimentRun(request, run_uuid):
             'trials': json.dumps(trials),
             })
         return HttpResponse(t.render(c))
+
 
 def storeResult(request, run_uuid):
     """ 
@@ -292,6 +312,7 @@ def storeResult(request, run_uuid):
         logger.error('Failed to store result.')
         raise Http404('Page not found.')
 
+
 def experimentPause(request, run_uuid):
     """ 
     Generates the pause page of an experiment.
@@ -303,19 +324,23 @@ def experimentPause(request, run_uuid):
     if request.method == 'POST':
         trial_id = int(request.POST.get('trialitem'))
 
-    # retrieve TrialItem from the last trial result as a TrialItem is required for the creation of a TrialResult.
-    last_trial_result = TrialResult.objects.filter(subject=subject_data).exclude(key_pressed='PAUSE').order_by('-id').first()
-
+    # retrieve completed trials
+    all_trial_results = TrialResult.objects.filter(subject=subject_data)
+    # retrieve the last trial result as a TrialItem is required for the creation of a TrialResult.
+    last_trial_result = all_trial_results.exclude(key_pressed='PAUSE').order_by('-id').first()
+        
     if last_trial_result: # only store pause as trial result when not the first trial
         trialresult = TrialResult()
         trialresult.subject = subject_data
         trialresult.trialitem = last_trial_result.trialitem
         trialresult.key_pressed = 'PAUSE'
+        trialresult.trial_number = all_trial_results.count() + 1
         trialresult.save()
     
     t = Template(experiment.pause_page_tpl)
     c = RequestContext(request, {'subject_id': run_uuid, 'trial_id': trial_id,'experiment': experiment,})
     return HttpResponse(t.render(c))
+
 
 def experimentError(request, run_uuid):
     """ 
@@ -326,6 +351,7 @@ def experimentError(request, run_uuid):
     t = Template(experiment.error_page_tpl)
     c = RequestContext(request, {})
     return HttpResponse(t.render(c))
+
 
 def experimentEnd(request, run_uuid):
     """ 
@@ -356,7 +382,8 @@ def experimentEnd(request, run_uuid):
         if completed_count < tr_count:
             t = Template(experiment.thank_you_abort_page_tpl)
     return HttpResponse(t.render(c))
-    
+
+
 def deleteSubject(request, run_uuid):
     """
     Deletes a participant's results at the end of the experiment.
@@ -370,6 +397,7 @@ def deleteSubject(request, run_uuid):
     else:
         logger.error('Failed to delete participant data.')
         raise Http404('Page not found.')
+
 
 def index(request):
     """ 

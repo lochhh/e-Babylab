@@ -132,7 +132,7 @@
 
             // Start webcam recording when recording_option == aud, vid, all 
             if (recording_option != 'NON' && recording_option != 'EYE' && trialObj.record_media) {
-                trialSetupPromises.push(webcam.startRecording(subjectId + "_trial" + String(currentTrial+1) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream));
+                trialSetupPromises.push(webcam.startRecording(subjectId + "_trial" + String(trialObj.trial_number) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream));
             }
 
             // Resume webgazer and start recording gaze
@@ -452,7 +452,7 @@
                     'start_time': trialObj.start_time,
                     'end_time': trialObj.end_time,
                     'key_pressed': keysPressed,
-                    'trial_number': currentTrial + 1,
+                    'trial_number': trialObj.trial_number,
                     'resolution_w': window.screen.width,
                     'resolution_h': window.screen.height,
                     'webgazer_data': JSON.stringify(trialObj.webgazer_data), 
