@@ -401,7 +401,7 @@ class Question(models.Model):
     required = models.BooleanField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
     question_type = models.CharField(max_length=200, choices=QUESTION_TYPES, default=TEXT)
-    choices = models.TextField(blank=True, null=True, help_text='For types "radio", "select", and "select multiple", provide a comma-separated list of options (e.g., a, b, c). For types "integer range" and "age", provide the min and max integers (e.g., 1, 10). For type "sex", provide the female followed by the male display text (e.g., female, male).')
+    choices = models.TextField(blank=True, null=True, help_text='For types "radio", "select", and "select multiple", provide a comma-separated list of options (e.g., a, b, c). For type "integer range", provide the min and max integers (e.g., 1, 10) for range check. For type "age", provide the min and max integers (in months) for age check (e.g., 12, 36 - for limiting participation to 1-to-3-year-olds). For type "sex", provide the female followed by the male display text (e.g., female, male).')
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
@@ -487,8 +487,8 @@ class ConsentQuestion(models.Model):
     text = models.TextField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
     position = models.PositiveSmallIntegerField('Position', null=True)
-    response_yes = models.CharField('yes', max_length=50, default='Ja')
-    response_no = models.CharField('no', max_length=50, default='Nein')
+    response_yes = models.CharField('yes', max_length=50, default='Yes')
+    response_no = models.CharField('no', max_length=50, default='No')
 
     class Meta:
         ordering = ['position']

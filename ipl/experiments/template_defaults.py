@@ -295,7 +295,7 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
                 </button>
             </div>
             <div class="modal-body">
-                If you could not hear any sound or see any image: Please make sure that your webcam and speakers are on and connected to your computer. Please also check that the volumne is not turned down too low.
+                If you could not hear any sound or see any image: Please make sure that your webcam and speakers are on and connected to your computer. Please also check that the volume is not turned down too low.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -372,7 +372,7 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load
                 </button>
             </div>
             <div class="modal-body">
-                If you could not hear any sound: Please make sure that your speakers are on and connected to your computer. Please also check that the volumne is not turned down too low.
+                If you could not hear any sound: Please make sure that your speakers are on and connected to your computer. Please also check that the volume is not turned down too low.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>

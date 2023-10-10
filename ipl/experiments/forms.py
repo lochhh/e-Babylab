@@ -160,7 +160,7 @@ class QuestionInlineFormSet(models.BaseInlineFormSet):
 		experiment = kwargs.get('instance', {})
 		if Question.objects.filter(experiment=experiment.pk).count() == 0:
 			kwargs.update({'initial': [
-				{'text': 'Age in months', 'question_type': 'age', 'required': True, },
+				{'text': 'Date of birth', 'question_type': 'age', 'required': True, },
 				{'text': 'Sex', 'question_type': 'sex', 'choices': 'Female, Male', 'required': True, },
 			]})
 		super(QuestionInlineFormSet, self).__init__(*args, **kwargs)
