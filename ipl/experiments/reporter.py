@@ -181,42 +181,44 @@ class Reporter:
         and adds the corresponding webcam/audio files to the final zip file.
         """
         trial_data = []
-        outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('id',flat=True))
-        blocks = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk)
-        
-        for block in blocks:
-            trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('trial_number', 'pk')
-            for result in trial_results:
-                audio_file = result.trialitem.audio_file
-                coords = list(map(int, re.findall(r'\d+', result.key_pressed)))
-                trial_data.append([
-                    block.outerblockitem.outer_block_name,
-                    block.label,
-                    block.randomise_trials,
-                    result.trial_number,
-                    result.trialitem.label,
-                    result.trialitem.code,
-                    result.trialitem.visual_onset,
-                    result.trialitem.audio_onset,
-                    result.trialitem.visual_file.filename,
-                    (audio_file.filename if audio_file else ''),
-                    result.trialitem.max_duration,
-                    result.trialitem.user_input,
-                    result.key_pressed,
-                    result.trialitem.grid_row,
-                    result.trialitem.grid_col,
-                    (self.calc_roi_response(result, coords) if 'mouse' in result.key_pressed and (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1) else ''),
-                    self.calc_trial_duration(result.start_time, result.end_time),
-                    (block.outerblockitem.listitem.experiment.recording_option in ['AUD', 'VID'] and result.trialitem.record_media),
-                    result.webcam_file.name,
-                    result.resolution_w,
-                    result.resolution_h,
-                    (block.outerblockitem.listitem.experiment.recording_option in ['EYE', 'ALL'] and result.trialitem.record_gaze),
-                ])
-                    
-                # Add webcam file to zip
-                self.zip_file.write(os.path.join("webcam", result.webcam_file.name),
-                                    result.webcam_file.name)
+        outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('pk', flat=True))
+        blocks_pk = list(BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk).values_list('pk', flat=True))
+        trial_results = TrialResult.objects.filter(trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id).order_by('pk', 'trial_number')
+        trial_numbers = trial_results.values_list('trial_number', flat=True) 
+        unique_trial_number = (len(trial_numbers) == len(set(trial_numbers))) # need to infer trial number if non-unique
+        for result in trial_results:
+            audio_file = result.trialitem.audio_file
+            coords = list(map(int, re.findall(r'\d+', result.key_pressed)))
+            block = result.trialitem.blockitem
+            trial_data.append([
+                block.outerblockitem.outer_block_name,
+                block.label,
+                block.randomise_trials,
+                (result.trial_number if unique_trial_number else (trial_results.filter(pk__lt = result.pk).count() + 1)),
+                result.trialitem.label,
+                result.trialitem.code,
+                result.trialitem.visual_onset,
+                result.trialitem.audio_onset,
+                result.trialitem.visual_file.filename,
+                (audio_file.filename if audio_file else ''),
+                result.trialitem.max_duration,
+                result.trialitem.user_input,
+                result.key_pressed,
+                result.trialitem.grid_row,
+                result.trialitem.grid_col,
+                (self.calc_roi_response(result, coords) if 'mouse' in result.key_pressed and (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1) else ''),
+                self.calc_trial_duration(result.start_time, result.end_time),
+                (block.outerblockitem.listitem.experiment.recording_option in ['AUD', 'VID'] and result.trialitem.record_media),
+                result.webcam_file.name,
+                result.resolution_w,
+                result.resolution_h,
+                (block.outerblockitem.listitem.experiment.recording_option in ['EYE', 'ALL'] and result.trialitem.record_gaze),
+            ])
+                
+            # Add webcam file to zip
+            self.zip_file.write(os.path.join("webcam", result.webcam_file.name),
+                                result.webcam_file.name)
+
         return pd.DataFrame(trial_data, columns=self.trial_columns)
 
 
@@ -225,43 +227,45 @@ class Reporter:
         Creates a worksheet per participant containing the eye-tracking results.
         """
         
-        outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('id',flat=True))
-        blocks = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk)
+        outer_blocks_pk = list(OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list('pk',flat=True))
+        blocks_pk = list(BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_pk).values_list('pk', flat=True))
+        trial_results = TrialResult.objects.filter(trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id).order_by('pk', 'trial_number')
+        trial_numbers = trial_results.values_list('trial_number', flat=True) 
+        unique_trial_number = (len(trial_numbers) == len(set(trial_numbers))) # need to infer trial number if non-unique
         validation_data = pd.DataFrame()
         webgazer_data = pd.DataFrame()
-        
-        for block in blocks:
-            trial_results = TrialResult.objects.filter(trialitem__blockitem__pk=block.pk, subject_id=subject.id).order_by('trial_number', 'pk')
-            for result in trial_results:
-                # skip trials where gaze is not recorded
-                if not result.trialitem.record_gaze or not result.webgazer_data:
-                    continue
-                
-                if result.trialitem.is_calibration:
-                    curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data[1:]))
-                    curr_validation_data = pd.read_json(json.dumps(result.webgazer_data[0])).drop(columns=['trial_type'])
-                    curr_validation_data.insert(0, 'trial number', result.trial_number)
-                    curr_validation_data.insert(1, 'trial label', result.trialitem.label)
-                    validation_data = pd.concat([
-                        validation_data, 
-                        curr_validation_data,
-                    ])
-                else:
-                    curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data))
-                
-                curr_webgazer_data.insert(0, 'trial number', result.trial_number)
-                curr_webgazer_data.insert(1, 'trial label', result.trialitem.label)
-                curr_webgazer_data['nrows'] = result.trialitem.grid_row
-                curr_webgazer_data['ncols'] = result.trialitem.grid_col
-                if (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1):
-                    curr_webgazer_data['gaze area'] = curr_webgazer_data.apply(lambda x: self.calc_roi_response(result, [x.x , x.y]), axis=1)
-                else:
-                    curr_webgazer_data['gaze area'] = ''
-                webgazer_data = pd.concat([
-                    webgazer_data, 
-                    curr_webgazer_data,
+        logger.info(trial_results)
+        for result in trial_results:
+            # skip trials where gaze is not recorded
+            if (not result.trialitem.record_gaze) or (not result.webgazer_data):
+                continue
+            trial_number = (result.trial_number if unique_trial_number else (trial_results.filter(pk__lt = result.pk).count() + 1))
+            if result.trialitem.is_calibration:
+                curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data[1:]))
+                curr_validation_data = pd.read_json(json.dumps(result.webgazer_data[0])).drop(columns=['trial_type'])
+                curr_validation_data.insert(0, 'Trial Number', trial_number)
+                curr_validation_data.insert(1, 'Trial Label', result.trialitem.label)
+                curr_validation_data.insert(2, 'Trial Code', result.trialitem.code)
+                validation_data = pd.concat([
+                    validation_data, 
+                    curr_validation_data,
                 ])
-    
+            else:
+                curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data))
+            curr_webgazer_data.insert(0, 'Trial Number', trial_number)
+            curr_webgazer_data.insert(1, 'Trial Label', result.trialitem.label)
+            curr_webgazer_data.insert(2, 'Trial Code', result.trialitem.code)
+            curr_webgazer_data['NRows'] = result.trialitem.grid_row
+            curr_webgazer_data['NCols'] = result.trialitem.grid_col
+            if (result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1):
+                curr_webgazer_data['Gaze Area (row,col)'] = curr_webgazer_data.apply(lambda x: self.calc_roi_response(result, [x.x, x.y]), axis=1)
+            else:
+                curr_webgazer_data['Gaze Area (row,col)'] = ''
+            webgazer_data = pd.concat([
+                webgazer_data, 
+                curr_webgazer_data,
+            ])
+
         return [webgazer_data, validation_data]
 
 
