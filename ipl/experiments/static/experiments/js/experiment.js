@@ -394,8 +394,14 @@
      */
     let waitForWebcamUploadToFinish = function() {
         // Show loading image
-        $('#trials').css({'height':'100%', 'width':'100%'}); 
-        $('#trials').html('<img src="' + loading_image + '" alt="Loading..." style="display: block; max-height:100%; margin: 0 auto;"/>');
+        $('#trials').css({
+            'height':'100%', 'width':'100%', 
+            'background-image': "url('" + loading_image + "')",
+            'background-position': 'center', 
+            'background-repeat': 'no-repeat', 
+            'background-size': 'contain'
+        }); 
+        //$('#trials').html('<img src="' + loading_image + '" alt="Loading..." style="display: block; max-height:100%; margin: 0 auto;"/>');
         $('#trials').show();
         console.log("Check queue.");
         return webcam.waitForQueue(0);
