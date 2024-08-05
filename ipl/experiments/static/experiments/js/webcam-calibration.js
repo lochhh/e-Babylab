@@ -57,13 +57,13 @@ $(function() {
                 if (recording_option != 'AUD') {
                     // Check video stream
                     if(mediaStream.getVideoTracks().length == 0) {
-                        reject(new Error("Kein Zugriff auf Webcam."));
+                        reject(new Error("No webcam access."));
                     }
                 }
 
                 // Check audio stream
                 if(mediaStream.getAudioTracks().length == 0) {
-                    reject(new Error("Kein Zugriff auf Mikrofon."));
+                    reject(new Error("No microphone access."));
                 }
 
                 resolve();
@@ -175,12 +175,7 @@ $(function() {
             });
     };
 
-    var enableFinalContinue = function() {
-        var button = $("#webcam_step_4 button.btn-primary");
-        button.removeAttr("disabled");
-        button.click(function() {
-            window.location = $(this).data("target");
-        });
+    var enableRepeat = function() {
         var repeatButton = $("#webcam_step_4 button.btn-warning");
         repeatButton.removeAttr("disabled");
 
@@ -188,6 +183,15 @@ $(function() {
         modelRepeatButton.one('click', function() {
             checkStepFour();
         });
+    };
+
+    var enableFinalContinue = function() {
+        var button = $("#webcam_step_4 button.btn-primary");
+        button.removeAttr("disabled");
+        button.click(function() {
+            window.location = $(this).data("target");
+        });
+        enableRepeat();
     };
 
     var recordStream = function() {
@@ -266,6 +270,7 @@ $(function() {
             alertWindow.show();
             alertWindow.append(error);
             console.error(xhr, status, error);
+            enableRepeat();
         });
     };
 
