@@ -290,8 +290,5 @@ $(function() {
     });
     
     // Start webcam calibration
-    DetectRTC.load(function() {
-        checkStepTwo();
-    });
-
+    checkStepTwo();
 });

@@ -3,7 +3,7 @@
 $(function() {
     // Check MediaRecorder support
     var mediaRecorderSupported = !(window.MediaRecorder == undefined);
-
+    var getUserMediaSupported = navigator.mediaDevices;
     /*
      * Step 1
      */
@@ -12,16 +12,15 @@ $(function() {
         var successWindow = $("#webcam_step_1 .alert-success");
         var button = $("#webcam_step_1 button");
 
-        // TODO: Try to check manually (DetectRTC could be removed then)
-        if(!DetectRTC.isGetUserMediaSupported) {
+        if(!getUserMediaSupported) {
             alertWindow.show();
-            alertWindow.append("<br />Ihr Browser unterstützt den Zugriff auf Webcam und Mikrofon nicht (getUserMedia).");
+            alertWindow.append("<br />Your browser does not support webcam and microphone access (getUserMedia).");
             return;
         }
 
         if(!mediaRecorderSupported) {
             alertWindow.show();
-            alertWindow.append("<br />Ihr Browser unterstützt die Aufnahme von Videos über Webcam und Mikrofon nicht (MediaRecorder).");
+            alertWindow.append("<br />Your browser does not support media recording via webcam and microphone (MediaRecorder).");
             return;
         }
 
@@ -30,7 +29,5 @@ $(function() {
     };
 
     // Start webcam calibration
-    DetectRTC.load(function() {
-        checkStepOne();
-    });
+    checkStepOne();
 });

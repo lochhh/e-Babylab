@@ -77,7 +77,6 @@ browser_check_page_content = '''{% extends "experiments/base.html" %} {% load st
         </div>
     </div>
 </div>
-<script src="{% static 'experiments/js/detectrtc.min.js' %}"></script>
 <script src="{% static 'experiments/js/browser-check.js' %}"></script>
 {% endblock %}'''
 
@@ -311,7 +310,6 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
     var include_pause_page = "{{ experiment.include_pause_page }}";
     var recording_option = "{{ experiment.recording_option }}";
 </script>
-<script src="{% static 'experiments/js/detectrtc.min.js' %}"></script>
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
@@ -388,7 +386,6 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load
     var include_pause_page = "{{ experiment.include_pause_page }}";
     var recording_option = "{{ experiment.recording_option }}";
 </script>
-<script src="{% static 'experiments/js/detectrtc.min.js' %}"></script>
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
