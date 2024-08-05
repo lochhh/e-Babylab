@@ -136,7 +136,7 @@
             }
 
             // Resume webgazer and start recording gaze
-            if (trialObj.is_calibration || trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+            if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
                 trialSetupPromises.push(webgazer.resume().then(() => {
                     if (trialObj.record_gaze) {
                         startGazeRecording();
@@ -178,7 +178,7 @@
                 $(document).off('keydown');
                 $(document).off('click');
                 // Pause webgazer
-                if (trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
                     stopGazeRecording();
                 }
                 webgazer.pause();
@@ -212,7 +212,7 @@
                 webcam.stopRecording("");
 
                 // Stop webgazer
-                if (trialObj.record_gaze && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
                     stopGazeRecording();
                 }
                 webgazer.pause();
