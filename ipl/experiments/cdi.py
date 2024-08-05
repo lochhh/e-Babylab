@@ -104,7 +104,7 @@ def estimateCDI(run_uuid):
 
         # get index of max value in basis
         B = np.where(basis == np.amax(basis))
-        B = int(B[0][0])
+        B = int(B[0][0]) + 1
         estimate = (B-bmin.at[0,str(age)])/slope.at[0,str(age)]
 
         # store CDI estimate in subject_data
