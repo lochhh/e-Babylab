@@ -105,8 +105,7 @@ docker-compose exec web python manage.py <command> [options]
 These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/3.1/ref/django-admin/).
 
 ## 3. Upgrade
-To upgrade an existing environment to the latest version of e-Babylab, please run the following steps:
-
+To upgrade an existing environment to the latest version of e-Babylab, please follow the steps below:
 1. To pull the latest changes from the repository, run `git pull`.
 2. To upgrade, we first need to recreate all containers, so that they are using the latest version of e-Babylab. Follow these steps:
     - Shut down the environment using `docker-compose down`. This will remove all containers, but retain the volumes which contain all of your data.
@@ -114,6 +113,20 @@ To upgrade an existing environment to the latest version of e-Babylab, please ru
     - Restart the environment using `docker-compose up -d`.
 3. Next you need to perform the database migration. You can apply all migrations using `docker-compose exec web python manage.py migrate`.
 4. To expose new static files (e.g., JavaScript files), run `docker-compose exec web python manage.py collectstatic`.
+
+To upgrade the database to a newer version, please follow the steps below:
+1. Backup your database to a `.sql` file named `all_db.sql` using `docker-compose exec db pg_dumpall -U postgres > /path/to/all_db.sql`.
+2. Stop the running containers using `docker-compose down`.
+3. Rename the old database directory to `postgres-data.old` using `mv postgres-data postgres-data.old`.
+4. Restart the containers using `docker-compose up -d`.
+5. Copy the backup file into the running database container (e.g. `e-babylab-db-1`) using `docker cp /path/to/all_db.sql e-babylab-db-1:./all_db.sql`
+6. Restore the database using `docker-compose exec db psql -U postgres -f ./all_db.sql`
+7. Update the password for the `postgres` user: 
+   - `docker-compose exec db psql -U postgres`
+   - `\password` to change the password.
+   - Enter the new password and confirm it. This needs to be the same as `POSTGRES_PASSWORD` in the `docker-compose.yml` file and `DATABASES['PASSWORD']` in the `ipl/ipl/settings.py` file.
+   - `\q` to exit. 
+8. Restart the containers using `docker-compose down` and `docker-compose up -d`.
 
 ## 4. Troubleshooting
 
