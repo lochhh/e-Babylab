@@ -300,7 +300,7 @@ class Reporter:
                     webgazer_worksheets[1].to_excel(writer, sheet_name='EyeTrackingValidation', index=False)
             
             # Close the Pandas Excel writer and store excel report
-            writer.save()
+            writer.close()
             self.zip_file.write(os.path.join(self.output_folder,
                                              self.tmp_folder, workbook_file),
                                 workbook_file)
