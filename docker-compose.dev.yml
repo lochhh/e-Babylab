@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:10
+    image: postgres
     logging:
       driver: "json-file"
       options:
