@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginx:1.13
+    image: nginx
     ports:
       - "8080:80"
       - "8443:443"
@@ -17,7 +17,7 @@ services:
       - web
     restart: always
   db:
-    image: postgres:10
+    image: postgres
     logging:
       driver: "json-file"
       options:
