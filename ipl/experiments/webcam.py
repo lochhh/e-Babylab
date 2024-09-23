@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
 from django.template import Template, RequestContext
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import SubjectData, TrialResult, Experiment
 
@@ -17,6 +18,7 @@ import logging
 # Create a logger for this file
 logger = logging.getLogger(__name__)
 
+@ensure_csrf_cookie
 def webcam_test(request, run_uuid):
     """
     Generates webcam/microphone test page.
