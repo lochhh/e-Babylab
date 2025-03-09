@@ -60,6 +60,30 @@
     });
 
     /**
+     * Create and add an empty audio container.
+     * @returns {Promise<HTMLDivElement>} - Promise that resolves with the audio container.
+     */
+    let createAudioContainer = function() {
+        return new Promise(function(resolve) {
+            let div = document.createElement('div');
+            div.className = 'embed-responsive trial-audio';
+
+            let audio = document.createElement('audio');
+            audio.className = 'embed-responsive-item';
+            audio.hidden = 'hidden';
+
+            let source = document.createElement('source');
+            source.src = '';
+            source.type = 'audio/mpeg';
+
+            audio.append(source);
+            div.append(audio);
+            body.append(div);
+            resolve(div);
+        });
+    };
+
+    /**
      * Setup global timeout.
      */
     let setGlobalTimer = function() {
@@ -307,20 +331,8 @@
      */
     let playTrialAudio = function(trialObj) {
         return new Promise(function(resolve, reject) {
-            let div = document.createElement('div');
-            div.className = 'embed-responsive trial-audio';
-
-            let audio = document.createElement('audio');
-            audio.className = 'embed-responsive-item';
-            audio.hidden = 'hidden';
-
-            let source = document.createElement('source');
-            source.src = trialObj.audio_file;
-            source.type = 'audio/mpeg';
-
-            audio.append(source);
-            div.append(audio);
-            body.append(div);
+            let audio = document.querySelector('.trial-audio audio');
+            audio.querySelector('source').src = trialObj.audio_file;
             $(audio).on('canplay', function() {
                 setTimeout(function() {
                     audio.play();
@@ -420,13 +432,14 @@
     };
 
     /**
-     * Remove trial audio from page.
+     * Remove trial audio source.
      */
     let removeTrialAudio = function() {
         if (document.querySelector('.trial-audio audio')) {
             $('.trial-audio audio').off('canplay');
             document.querySelector('.trial-audio audio').pause();
-            document.querySelector('.trial-audio').outerHTML = '';
+            // set audio src to empty string
+            document.querySelector('.trial-audio audio source').src = '';
         }
     };
 
@@ -540,9 +553,12 @@
     };
 
     //$('#webgazer-init').hide();
-    // Preload images
-    preloadImages().then(function() {
 
+    // Insert empty audio element
+    createAudioContainer().then(function() {
+        // Preload images
+        return preloadImages();
+    }).then(function() {
         // Prompt webcam/microphone access before fullscreen
         if(recording_option != 'NON') {
             mediaStream = webcam.initStream(recording_option);
