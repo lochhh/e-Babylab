@@ -13,22 +13,28 @@ type <- "WS" # "WS" or "WG"
 resp <- "production" # "comprehension" or "production"
 
 d_poly <- 3
-poly_mode <- "Flexi" #"Fixed" #"Fixed" # or
+poly_mode <- "Flexi" # "Fixed" or "Flexi"
 criteria <- "incl.anyFinite" # or "excl.Inf" — for evaluation of log = -inf
 gen_list <- c("Female", "Male")
 
 ########## Functions 
+# Convert item_id to an integer
+convert_item_id <- function(data) {
+  data %>% 
+    mutate(item_id = as.integer(gsub("item_", "", item_id)))
+}
+
 # Get data from word bank
 prep_data <- function(){
   admin_ws <<- get_administration_data(lang, type, include_demographic_info = TRUE)
   if(lang == "English (American)"){
     admin_ws <<- admin_ws #%>% filter(norming=="TRUE")
   }
-  data_ws <<- get_instrument_data(lang, type)
+  data_ws <<- get_instrument_data(lang, type) %>% convert_item_id
   if(lang == "English (American)"){
     data_ws <<- data_ws %>% filter(data_id %in% admin_ws$data_id)
   }
-  items_ws <<- get_item_data(lang, type)
+  items_ws <<- get_item_data(lang, type) %>% convert_item_id
   
   # reduce datasets
   items_ws <<- subset(items_ws, item_kind=="word")
@@ -424,7 +430,7 @@ for (i in 1:(length(items@ParObjects$pars) - 1)){
 rownames(irtparam) <- 1:nrow(irtparam)
 
 IRT_Parameters <- irtparam %>% data.frame() %>% 
-  mutate(word_id = gsub(pattern = "item_", replacement = "", x = names(data_irt))) %>% 
+  mutate(word_id = as.integer(names(data_irt))) %>% 
   select(word_id, colnames(.[,1:(ncol(.)-1)]))
 
 if (type == "WG") {
