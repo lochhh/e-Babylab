@@ -11,42 +11,79 @@ e-Babylab [(Lo et al., 2023)](https://link.springer.com/article/10.3758/s13428-0
 5. [Useful Links](#5-useful-links)
 
 ## 1. Installation
-> [!TIP]
-> 
-> We recommend forking the e-Babylab repository. 
-> This will allow you to pull the latest changes from the main repository, whilst keeping your settings and customisations intact.
+### Get e-Babylab Code
+To get started, you will need a copy of the e-Babylab code. You can either:
 
-### Requirements
-e-Babylab runs in a containerised environment using Docker and Docker Compose. No other software is required.
+- **clone** the repository if you just want to try e-Babylab locally, without any modifications, or 
+- **fork** the repository if you plan to run your own production instance or make custom changes---this lets you keep track of your own customisations and changes to the code, while still being able to pull in updates from the original repository.
 
-To install Docker, please follow the instructions below:
-* **Linux:** [Docker](https://docs.docker.com/engine/installation/), [Docker Compose](https://docs.docker.com/compose/install/)
-* **Windows:** [Docker for Windows](https://docs.docker.com/docker-for-windows/install/) (includes Docker Compose)
-* **Mac:** [Docker for Mac](https://docs.docker.com/docker-for-mac/install/) (includes Docker Compose)
+To clone the repository, run the following command in the terminal:
+```bash
+git clone https://github.com/lochhh/e-Babylab.git
+```
+To fork the repository, go to the [e-Babylab repository](https://github.com/lochhh/e-Babylab) and click "Fork".
+This will create a copy of the repository under your own GitHub account, which you can then clone using:
+```bash
+git clone https://github.com/YOUR_GITHUB_USERNAME/e-Babylab.git
+```
 
-For development, we recommend you to study the [Docker](https://docs.docker.com/get-started/) and [Docker Compose](https://docs.docker.com/compose/gettingstarted/) documentation.
+### Install Docker Desktop
+e-Babylab runs in a containerised environment using Docker and Docker Compose, which are both included in [Docker Desktop](https://docs.docker.com/get-started/get-docker/). No other software is required.
 
-### Define User-Specific Variables
-To set up e-Babylab, there are 3 variables (i.e., the Django SECRET KEY, the reCAPTCHA SITE KEY, and the reCAPTCHA SECRET KEY) specific to your own instance of e-Babylab, which you will have to define in a *.env* file:
+### Define Instance-Specific Values
+To set up e-Babylab, you will need to define three values that are specific to your own instance of e-Babylab in a `.env` file:
+- the Django SECRET KEY, 
+- the reCAPTCHA SITE KEY, and 
+- the reCAPTCHA SECRET KEY
 
-1. Create your `.env` file by copying `.env.template`. Make sure that this file is in the same directory as `.env.template`.
-2. Create your own Django SECRET KEY using `python -c 'import secrets; print(secrets.token_urlsafe())'` or use [Djecrety](https://djecrety.ir/). 
-3. Go to [Google reCAPTCHA](https://www.google.com/recaptcha/about/) and click on "[v3 Admin Console](https://www.google.com/recaptcha/admin)". Sign in with a Google account and fill out the site registration form.
-4. Provide a **label** (e.g., e-Babylab).
-5. Select `reCAPTCHA v3` as **reCAPTCHA type**.
-6. If you are running e-Babylab in a local development environment, add `localhost` to **Domains**, otherwise (i.e., running in production) add your own domain, e.g., *your_domain.com*. You can update and add new domains as needed later on.
-7. When you are done, click on "Submit" and you will have your **site key** and **secret key**.
-8. Copy the **site key** to `GOOGLE_RECAPTCHA_SITE_KEY` and the **secret key** to `GOOGLE_RECAPTCHA_SECRET_KEY` in your `.env` file.
+1. In the terminal, navigate to the directory where you cloned or forked the e-Babylab repository:
+    ```bash
+    cd e-Babylab
+    ```
+2. Create your `.env` file by copying the template:
+    ```bash
+    cp .env.template .env
+    ```
+3. Generate a Django SECRET KEY:
+    ```bash
+    python -c 'import secrets; print(secrets.token_urlsafe())'
+    ```
+    Or use an online generator such as [Djecrety](https://djecrety.ir/).
+4. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
+5. Register for Google reCAPTCHA v3 to obtain the SITE KEY and SECRET KEY:
+    - Go to the [reCAPTCHA admin console](https://www.google.com/recaptcha/admin/create)
+    - Login and register a new site with:
+        - **Label**: e.g. `e-Babylab`
+        - **reCAPTCHA type**: `Score based (v3)`
+        - **Domains**: `localhost` for local development, or your own domain, e.g. `your-domain.com` for production
+        - **Project name**: e.g. `e-Babylab`
+    - Click on "Submit" to create the reCAPTCHA keys.
+6. Copy the SITE KEY to the `GOOGLE_RECAPTCHA_SITE_KEY` field and the SECRET KEY to the `GOOGLE_RECAPTCHA_SECRET_KEY` field in your `.env` file.
 
 ### Run Local Development Environment
 > [!IMPORTANT] 
-> If you are running e-Babylab for the first time, you will need to:
+> If you are running e-Babylab for the first time, you will need to execute the following commands in the terminal:
 >
-> 1. Allow permissions to execute the `ipl/wait-for-it.sh` script using `chmod +x ipl/wait-for-it.sh`.
-> 2. Run the development version of e-Babylab using `docker-compose -f docker-compose.dev.yml up -d`
-> 3. Set up the database using `docker-compose -f docker-compose.dev.yml exec web python manage.py migrate`. 
-> 4. Expose new static files (e.g., JavaScript files) using `docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic`.
-> 5. Create a superuser (for logging into the admin interface) using `docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser`.
+> 1. Make the `ipl/wait-for-it.sh` script executable:
+> ```bash
+> chmod +x ipl/wait-for-it.sh
+> ```
+> 2. Start e-Babylab in development mode:
+> ```bash
+> docker-compose -f docker-compose.dev.yml up -d
+> ```
+> 3. Set up the database:
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
+> ``` 
+> 4. Expose new static files (e.g., JavaScript files):
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic
+> ```
+> 5. Create a superuser for logging into the admin interface:
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
+> ```
 
 Once everything is set up, e-Babylab can be accessed at `http://localhost:8080/admin/`.
 
@@ -55,9 +92,9 @@ For subsequent runs, you can start e-Babylab using:
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
-The development environment additionally installs pgadmin for easy access to the database. It will be accessible via a random
-port on your system. You can use `docker ps -a` to find out about the port. pgadmin is then at `http://localhost:PORT/login`.
-You can find the credentials for pgadmin in the `docker-compose.dev.yml` file.
+The development environment additionally installs [pgadmin](https://www.pgadmin.org/) for easy access to the database. 
+It will be accessible via a random port on your system. You can use `docker ps -a` to find the port and visit pgadmin at `http://localhost:PORT/login`.
+The credentials for pgadmin are in `docker-compose.dev.yml`.
 
 If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose -f docker-compose.dev.yml exec web python manage.py makemigrations` and applied using `docker-compose -f docker-compose.dev.yml exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
 
@@ -79,13 +116,28 @@ By default, the TLS certificates are expected to be at the following locations:
 The locations can be customised in the nginx config `nginx.conf`.
 
 > [!IMPORTANT] 
-> As mentioned in the previous section, if you are running e-Babylab for the first time, you will need to:
+> As mentioned in the previous section, if you are running e-Babylab for the first time, you will need to execute the following commands in the terminal:
 >
-> 1. Allow permissions to execute the `ipl/wait-for-it.sh` script using `chmod +x ipl/wait-for-it.sh`.
-> 2. Run e-Babylab using `docker-compose up -d`
-> 3. Set up the database using `docker-compose exec web python manage.py migrate`. 
-> 4. Expose new static files (e.g., JavaScript files) using `docker-compose exec web python manage.py collectstatic`.
-> 5. Create a superuser (for logging into the admin interface) using `docker-compose exec web python manage.py createsuperuser`.
+> 1. Make the `ipl/wait-for-it.sh` script executable:
+> ```bash
+> chmod +x ipl/wait-for-it.sh
+> ```
+> 2. Start e-Babylab in development mode:
+> ```bash
+> docker-compose -f docker-compose.dev.yml up -d
+> ```
+> 3. Set up the database:
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
+> ``` 
+> 4. Expose new static files (e.g., JavaScript files):
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic
+> ```
+> 5. Create a superuser for logging into the admin interface:
+> ```bash
+> docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
+> ```
 
 After starting, e-Babylab will be available at `https://<your_domain.com>:8443/admin`. 
 
@@ -119,7 +171,9 @@ To upgrade an existing environment to the latest version of e-Babylab, please ru
 
 ### Web Container starts with `"exec: \"./wait-for-it.sh\": permission denied"`
 Allow the execution of the *wait-for-it.sh* script by executing the following command:
-`chmod +x ipl/wait-for-it.sh`
+```bash
+chmod +x ipl/wait-for-it.sh
+```
 
 ### `"Server error (500)"` when attempting to download results
 Make sure that there is a "webcam" directory in the "ipl" directory (where manage.py and the Dockerfile are located). If it does not exist, create one. 
