@@ -68,23 +68,19 @@ To set up e-Babylab, you will need to define three values that are specific to y
 > [!IMPORTANT] 
 > If you are running e-Babylab for the first time, you will need to execute the following commands in the terminal:
 >
-> 1. Make the `ipl/wait-for-it.sh` script executable:
-> ```bash
-> chmod +x ipl/wait-for-it.sh
-> ```
-> 2. Start e-Babylab in development mode:
+> 1. Start e-Babylab in development mode:
 > ```bash
 > docker-compose -f docker-compose.dev.yml up -d
 > ```
-> 3. Set up the database:
+> 2. Set up the database:
 > ```bash
 > docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
 > ``` 
-> 4. Expose new static files (e.g., JavaScript files):
+> 3. Expose new static files (e.g., JavaScript files):
 > ```bash
 > docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic
 > ```
-> 5. Create a superuser for logging into the admin interface:
+> 4. Create a superuser for logging into the admin interface:
 > ```bash
 > docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
 > ```
@@ -122,25 +118,21 @@ The locations can be customised in the nginx config `nginx.conf`.
 > [!IMPORTANT] 
 > As mentioned in the previous section, if you are running e-Babylab for the first time, you will need to execute the following commands in the terminal:
 >
-> 1. Make the `ipl/wait-for-it.sh` script executable:
+> 1. Start e-Babylab in development mode:
 > ```bash
-> chmod +x ipl/wait-for-it.sh
+> docker-compose -f docker-compose.yml up -d
 > ```
-> 2. Start e-Babylab in development mode:
+> 2. Set up the database:
 > ```bash
-> docker-compose -f docker-compose.dev.yml up -d
-> ```
-> 3. Set up the database:
-> ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
+> docker-compose -f docker-compose.yml exec web python manage.py migrate
 > ``` 
-> 4. Expose new static files (e.g., JavaScript files):
+> 3. Expose new static files (e.g., JavaScript files):
 > ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic
+> docker-compose -f docker-compose.yml exec web python manage.py collectstatic
 > ```
-> 5. Create a superuser for logging into the admin interface:
+> 4. Create a superuser for logging into the admin interface:
 > ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
+> docker-compose -f docker-compose.yml exec web python manage.py createsuperuser
 > ```
 
 After starting, e-Babylab will be available at `https://<your_domain.com>:8443/admin`. 
