@@ -66,37 +66,37 @@ To set up e-Babylab, you will need to define three values that are specific to y
 >
 > 1. Start e-Babylab in development mode:
 > ```bash
-> docker-compose -f docker-compose.dev.yml up -d --build
+> docker compose -f docker-compose.dev.yml up -d --build
 > ```
 > 2. Set up the database:
 > ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
+> docker compose -f docker-compose.dev.yml exec web python manage.py migrate
 > ``` 
 > 3. Expose new static files (e.g., JavaScript files):
 > ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py collectstatic
+> docker compose -f docker-compose.dev.yml exec web python manage.py collectstatic
 > ```
 > 4. Create a superuser for logging into the admin interface:
 > ```bash
-> docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
+> docker compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
 > ```
 
 Once everything is set up, e-Babylab can be accessed at `http://localhost:8080/admin/`.
 
 For subsequent runs, you can start e-Babylab using:
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 The development environment additionally installs [pgadmin](https://www.pgadmin.org/) for easy access to the database. 
 It will be accessible via a random port on your system. You can use `docker ps -a` to find the port and visit pgadmin at `http://localhost:PORT/login`.
 The credentials for pgadmin are in `docker-compose.dev.yml`.
 
-If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker-compose -f docker-compose.dev.yml exec web python manage.py makemigrations` and applied using `docker-compose -f docker-compose.dev.yml exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
+If you have made any changes to the data models during development, you will need to create migration files and apply these afterwards. Migration files can be created using `docker compose -f docker-compose.dev.yml exec web python manage.py makemigrations` and applied using `docker compose -f docker-compose.dev.yml exec web python manage.py migrate`. For more information about migrations, please refer to the [Django documentation](https://docs.djangoproject.com/en/3.1/topics/migrations/).
 
-e-Babylab can be stopped using `Ctrl + C` or `docker-compose -f docker-compose.dev.yml down`. 
-To stop e-Babylab without destroying the containers, use `docker-compose -f docker-compose.dev.yml stop`.
-For more information about their differences, please refer to the documentation for [docker-compose down](https://docs.docker.com/compose/reference/down/) and [docker-compose stop](https://docs.docker.com/compose/reference/stop/).
+e-Babylab can be stopped using `Ctrl + C` or `docker compose -f docker-compose.dev.yml down`. 
+To stop e-Babylab without destroying the containers, use `docker compose -f docker-compose.dev.yml stop`.
+For more information about their differences, please refer to the documentation for [docker compose down](https://docs.docker.com/compose/reference/down/) and [docker compose stop](https://docs.docker.com/compose/reference/stop/).
 
 ### Run in Production
 The production environment of e-Babylab additionally uses nginx for HTTPS/TLS support. You will need to:
@@ -116,34 +116,34 @@ The locations can be customised in the nginx config `nginx.conf`.
 >
 > 1. Start e-Babylab in production mode:
 > ```bash
-> docker-compose -f docker-compose.yml up -d --build
+> docker compose -f docker-compose.yml up -d --build
 > ```
 > 2. Set up the database:
 > ```bash
-> docker-compose -f docker-compose.yml exec web python manage.py migrate
+> docker compose -f docker-compose.yml exec web python manage.py migrate
 > ``` 
 > 3. Expose new static files (e.g., JavaScript files):
 > ```bash
-> docker-compose -f docker-compose.yml exec web python manage.py collectstatic
+> docker compose -f docker-compose.yml exec web python manage.py collectstatic
 > ```
 > 4. Create a superuser for logging into the admin interface:
 > ```bash
-> docker-compose -f docker-compose.yml exec web python manage.py createsuperuser
+> docker compose -f docker-compose.yml exec web python manage.py createsuperuser
 > ```
 
 After starting, e-Babylab will be available at `https://<your_domain.com>:8443/admin`. 
 
 For subsequent runs, you can start e-Babylab using:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ## 2. Executing Django Commands
 You can use the following commands to execute commands inside the Django container:
 
 ```bash
-docker-compose exec web django-admin <command> [options]
-docker-compose exec web python manage.py <command> [options]
+docker compose exec web django-admin <command> [options]
+docker compose exec web python manage.py <command> [options]
 ```
 
 These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/3.1/ref/django-admin/).
@@ -152,25 +152,25 @@ These can be used, for example, to perform upgrades or to create superusers. All
 To upgrade an existing environment to the latest version of e-Babylab, please follow the steps below:
 1. To pull the latest changes from the repository, run `git pull`.
 2. To upgrade, we first need to recreate all containers, so that they are using the latest version of e-Babylab. Follow these steps:
-    - Shut down the environment using `docker-compose down`. This will remove all containers, but retain the volumes which contain all of your data.
-    - Run `docker-compose build` to force a rebuild of the e-Babylab container.
-    - Restart the environment using `docker-compose up -d`.
-3. Next you need to perform the database migration. You can apply all migrations using `docker-compose exec web python manage.py migrate`.
-4. To expose new static files (e.g., JavaScript files), run `docker-compose exec web python manage.py collectstatic`.
+    - Shut down the environment using `docker compose down`. This will remove all containers, but retain the volumes which contain all of your data.
+    - Run `docker compose build` to force a rebuild of the e-Babylab container.
+    - Restart the environment using `docker compose up -d`.
+3. Next you need to perform the database migration. You can apply all migrations using `docker compose exec web python manage.py migrate`.
+4. To expose new static files (e.g., JavaScript files), run `docker compose exec web python manage.py collectstatic`.
 
 To upgrade the database to a newer version, please follow the steps below:
-1. Backup your database to a `.sql` file named `all_db.sql` using `docker-compose exec db pg_dumpall -U postgres > /path/to/all_db.sql`.
-2. Stop the running containers using `docker-compose down`.
+1. Backup your database to a `.sql` file named `all_db.sql` using `docker compose exec db pg_dumpall -U postgres > /path/to/all_db.sql`.
+2. Stop the running containers using `docker compose down`.
 3. Rename the old database directory to `postgres-data.old` using `mv postgres-data postgres-data.old`.
-4. Restart the containers using `docker-compose up -d`.
+4. Restart the containers using `docker compose up -d`.
 5. Copy the backup file into the running database container (e.g. `e-babylab-db-1`) using `docker cp /path/to/all_db.sql e-babylab-db-1:./all_db.sql`
-6. Restore the database using `docker-compose exec db psql -U postgres -f ./all_db.sql`
+6. Restore the database using `docker compose exec db psql -U postgres -f ./all_db.sql`
 7. Update the password for the `postgres` user: 
-   - `docker-compose exec db psql -U postgres`
+   - `docker compose exec db psql -U postgres`
    - `\password` to change the password.
    - Enter the new password and confirm it. This needs to be the same as `POSTGRES_PASSWORD` in the `docker-compose.yml` file and `DATABASES['PASSWORD']` in the `ipl/ipl/settings.py` file.
    - `\q` to exit. 
-8. Restart the containers using `docker-compose down` and `docker-compose up -d`.
+8. Restart the containers using `docker compose down` and `docker compose up -d`.
 
 ## 4. Troubleshooting
 
@@ -184,7 +184,7 @@ chmod +x ipl/wait-for-it.sh
 Make sure that there is a "webcam" directory in the "ipl" directory (where manage.py and the Dockerfile are located). If it does not exist, create one. 
 
 ### `"Can't find a suitable configuration file in this directory or any parent. Are you in the right directory?"`
-Docker is unable to locate `docker-compose.yml`. Either create this file (by copying `docker-compose.yml.template`) or run `docker-compose` commands with `-f docker-compose.dev.yml` (e.g., `docker-compose -f docker-compose.dev.yml build`). 
+Docker is unable to locate `docker-compose.yml`. Either create this file (by copying `docker-compose.yml.template`) or run `docker-compose` commands with `-f docker-compose.dev.yml` (e.g., `docker compose -f docker-compose.dev.yml build`). 
 
 ### `"invalid reCAPTCHA"` at Demographic Data page
 From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic Data (i.e., Participant Form) page. Experiments created *before 15.05.2021* do not have reCAPTCHA in the Demographic Data page template. To add this, you will need to copy and paste the HTML code of the Demographic Data page template of a new experiment: 
