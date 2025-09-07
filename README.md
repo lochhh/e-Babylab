@@ -70,7 +70,7 @@ To set up e-Babylab, you will need to define three values that are specific to y
 >
 > 1. Start e-Babylab in development mode:
 > ```bash
-> docker-compose -f docker-compose.dev.yml up -d
+> docker-compose -f docker-compose.dev.yml up -d --build
 > ```
 > 2. Set up the database:
 > ```bash
@@ -118,9 +118,9 @@ The locations can be customised in the nginx config `nginx.conf`.
 > [!IMPORTANT] 
 > As mentioned in the previous section, if you are running e-Babylab for the first time, you will need to execute the following commands in the terminal:
 >
-> 1. Start e-Babylab in development mode:
+> 1. Start e-Babylab in production mode:
 > ```bash
-> docker-compose -f docker-compose.yml up -d
+> docker-compose -f docker-compose.yml up -d --build
 > ```
 > 2. Set up the database:
 > ```bash
