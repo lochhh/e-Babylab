@@ -31,6 +31,9 @@ COPY . /usr/src/app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
+# Make wait-for-it.sh executable
+RUN chmod +x /usr/src/app/ipl/wait-for-it.sh
+
 # Place executables in the environment at the front of the path
 ENV PATH="/usr/src/app/.venv/bin:$PATH"
 
