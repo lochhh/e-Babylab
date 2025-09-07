@@ -15,7 +15,7 @@ services:
     build: ./ipl
     image: ipl:latest
     volumes:
-      - ./ipl:/usr/src/app
+      - ./ipl:/usr/src/app # TODO: switch to watch: https://github.com/astral-sh/uv-docker-example/tree/main
     depends_on:
       - db
     ports:
