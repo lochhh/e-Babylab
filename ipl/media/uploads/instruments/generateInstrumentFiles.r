@@ -272,6 +272,20 @@ admin_ws <- admin_ws # %>% filter(!(age < 11 & production > 100)) # extra filter
 
 admin_data_all <- data_in() #  merging admin_ws and data_ws
 
+# In case the column "production" or "comprehension" contains NAs,
+# recompute the column based on item responses
+if (any(is.na(admin_data_all$production)) && resp == "production") {
+  admin_data_all <- admin_data_all %>%
+    group_by(data_id) %>%
+    mutate(production = sum(produces, na.rm = TRUE)) %>%
+    ungroup()
+} else if (any(is.na(admin_data_all$comprehension)) && resp == "comprehension") {
+  admin_data_all <- admin_data_all %>%
+    group_by(data_id) %>%
+    mutate(comprehension = sum(understands, na.rm = TRUE)) %>%
+    ungroup()
+}
+
 word_dist <- perc_word() # percentage for each word in each age
 word_dist$perc <- round(word_dist$perc, digits=2) # rounding
 
