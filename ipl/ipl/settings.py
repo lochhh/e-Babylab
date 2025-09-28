@@ -229,3 +229,6 @@ WEBCAM_TEST_ROOT = os.path.join(WEBCAM_ROOT, 'test')
 
 REPORTS_URL = '/reports/'
 REPORTS_ROOT = os.path.join(BASE_DIR, 'reports')
+
+# Default auto field for models
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
