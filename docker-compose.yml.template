@@ -29,7 +29,10 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
     restart: always
   web:
-    build: ./ipl
+    build:
+      context: .
+      args:
+        BUILD_MODE: "prod"
     image: ipl:latest
     depends_on:
       - db

@@ -12,10 +12,14 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
     restart: always
   web:
-    build: ./ipl
+    build:
+      context: .
+      args:
+        BUILD_MODE: "dev"
     image: ipl:latest
     volumes:
-      - ./ipl:/usr/src/app # TODO: switch to watch: https://github.com/astral-sh/uv-docker-example/tree/main
+      - ./ipl:/usr/src/app # Mount source code to working directory
+      - venv_cache:/usr/src/app/.venv # Preserve virtual environment
     depends_on:
       - db
     ports:
@@ -41,3 +45,6 @@ services:
       driver: "json-file"
       options:
         max-size: "5m"
+
+volumes:
+  venv_cache:
