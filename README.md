@@ -157,7 +157,7 @@ To upgrade an existing environment to the latest version of e-Babylab, please fo
 1. To pull the latest changes from the repository, run `git pull`.
 2. To upgrade, we first need to recreate all containers, so that they are using the latest version of e-Babylab. Follow these steps:
     - Shut down the environment using `docker compose down`. This will remove all containers, but retain the volumes which contain all of your data.
-    - Run `docker compose build` to force a rebuild of the e-Babylab container.
+    - Run `docker compose build --no-cache` to force a rebuild of the e-Babylab container.
     - Restart the environment using `docker compose up -d`.
 3. Next you need to perform the database migration. You can apply all migrations using `docker compose exec web python manage.py migrate`.
 4. To expose new static files (e.g., JavaScript files), run `docker compose exec web python manage.py collectstatic`.
