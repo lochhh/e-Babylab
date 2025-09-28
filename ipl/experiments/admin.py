@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 from django.conf import settings
-from django.conf.urls import re_path, include
+from django.urls import re_path, include
 from django.contrib.auth.models import Group
 from django.core import serializers
 from django.utils.html import format_html
