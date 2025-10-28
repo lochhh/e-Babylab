@@ -251,6 +251,8 @@ class Reporter:
                 ])
             else:
                 curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data))
+            if curr_webgazer_data.empty:
+                continue
             curr_webgazer_data.insert(0, 'Trial Number', trial_number)
             curr_webgazer_data.insert(1, 'Trial Label', result.trialitem.label)
             curr_webgazer_data.insert(2, 'Trial Code', result.trialitem.code)
