@@ -1,7 +1,7 @@
 """Pytest configuration and fixtures for experiments app tests."""
 import pytest
 from django.contrib.auth.models import User
-from ipl.experiments.models import (
+from experiments.models import (
     Experiment,
     Instrument,
     ListItem,

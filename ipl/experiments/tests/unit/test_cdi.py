@@ -10,7 +10,7 @@ class TestSortItems:
     def test_sort_items_returns_sorted_indices(self, monkeypatch):
         """Test sort_items returns indices sorted by maximum item information."""
         try:
-            from ipl.experiments.cdi import sort_items
+            from experiments.cdi import sort_items
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -23,7 +23,7 @@ class TestSortItems:
             # Return mock information values
             return np.array([2.0, 1.0, 3.0])
         
-        import ipl.experiments.cdi as cdi_module
+        import experiments.cdi as cdi_module
         monkeypatch.setattr(cdi_module, 'max_info_hpc', mock_max_info_hpc)
         monkeypatch.setattr(cdi_module, 'inf_hpc', mock_inf_hpc)
         
@@ -42,8 +42,8 @@ class TestEstimateCDI:
                                      instrument_factory, subjectdata_factory):
         """Test estimateCDI basic execution flow with mocked dependencies."""
         try:
-            from ipl.experiments.cdi import estimateCDI
-            from ipl.experiments.models import CdiResult, Question, AnswerText, AnswerRadio
+            from experiments.cdi import estimateCDI
+            from experiments.models import CdiResult, Question, AnswerText, AnswerRadio
         except ImportError:
             pytest.skip("cdi module or models not available")
         
@@ -100,7 +100,7 @@ class TestEstimateCDI:
         mock_question_qs = MagicMock()
         mock_question_qs.first.return_value = mock_question
         
-        import ipl.experiments.cdi as cdi_module
+        import experiments.cdi as cdi_module
         from django.shortcuts import get_object_or_404 as real_get
         import pandas as pd
         import csv
@@ -128,8 +128,8 @@ class TestCdiRun:
                                          instrument_factory, subjectdata_factory):
         """Test cdiRun initializes session variables."""
         try:
-            from ipl.experiments.cdi import cdiRun
-            from ipl.experiments.models import Question
+            from experiments.cdi import cdiRun
+            from experiments.models import Question
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -169,7 +169,7 @@ class TestCdiRun:
         mock_initializer = MagicMock()
         mock_initializer.return_value.initialize.return_value = -5
         
-        import ipl.experiments.cdi as cdi_module
+        import experiments.cdi as cdi_module
         import pandas as pd
         import csv
         
@@ -222,8 +222,8 @@ class TestCdiSubmit:
                                       subjectdata_factory):
         """Test cdiSubmit processes vocabulary checklist form."""
         try:
-            from ipl.experiments.cdi import cdiSubmit
-            from ipl.experiments.models import ListItem, CdiResult
+            from experiments.cdi import cdiSubmit
+            from experiments.models import ListItem, CdiResult
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -274,7 +274,7 @@ class TestCdiSubmit:
         def mock_proceed(request, uuid):
             return MagicMock(status_code=302)
         
-        import ipl.experiments.cdi as cdi_module
+        import experiments.cdi as cdi_module
         
         monkeypatch.setattr(cdi_module, 'VocabularyChecklistForm', mock_vocab_form)
         monkeypatch.setattr(CdiResult, 'objects', mock_cdi_manager)

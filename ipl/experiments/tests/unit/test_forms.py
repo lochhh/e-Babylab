@@ -9,7 +9,7 @@ class TestVocabularyChecklistForm:
     def test_form_exists(self):
         """Test VocabularyChecklistForm can be imported."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
             assert VocabularyChecklistForm is not None
         except ImportError:
             pytest.skip("VocabularyChecklistForm not found")
@@ -17,7 +17,7 @@ class TestVocabularyChecklistForm:
     def test_form_initialization(self, experiment_factory):
         """Test VocabularyChecklistForm initializes with experiment."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
         except ImportError:
             pytest.skip("VocabularyChecklistForm not found")
         
@@ -29,7 +29,7 @@ class TestVocabularyChecklistForm:
     def test_form_with_word_creates_field(self, experiment_factory):
         """Test form creates checkbox field for given word."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
         except ImportError:
             pytest.skip("VocabularyChecklistForm not found")
         
@@ -45,7 +45,7 @@ class TestConsentForm:
     def test_form_exists(self):
         """Test ConsentForm can be imported."""
         try:
-            from ipl.experiments.forms import ConsentForm
+            from experiments.forms import ConsentForm
             assert ConsentForm is not None
         except ImportError:
             pytest.skip("ConsentForm not found")
@@ -53,7 +53,7 @@ class TestConsentForm:
     def test_form_initialization(self, experiment_factory, consent_question_factory):
         """Test ConsentForm initializes with consent questions."""
         try:
-            from ipl.experiments.forms import ConsentForm
+            from experiments.forms import ConsentForm
         except ImportError:
             pytest.skip("ConsentForm not found")
         
@@ -71,7 +71,7 @@ class TestSubjectDataForm:
     def test_form_exists(self):
         """Test SubjectDataForm can be imported."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
             assert SubjectDataForm is not None
         except ImportError:
             pytest.skip("SubjectDataForm not found")
@@ -79,7 +79,7 @@ class TestSubjectDataForm:
     def test_form_initialization(self, experiment_factory, question_factory):
         """Test SubjectDataForm initializes with subject questions."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
         except ImportError:
             pytest.skip("SubjectDataForm not found")
         
@@ -93,7 +93,7 @@ class TestSubjectDataForm:
     def test_form_creates_text_field(self, experiment_factory, question_factory):
         """Test form creates appropriate field for text question type."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
             from django import forms as django_forms
         except ImportError:
             pytest.skip("SubjectDataForm not found")
@@ -108,7 +108,7 @@ class TestSubjectDataForm:
     def test_form_creates_radio_field(self, experiment_factory, question_factory):
         """Test form creates radio field for radio question type."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
             from django import forms as django_forms
         except ImportError:
             pytest.skip("SubjectDataForm not found")
@@ -128,7 +128,7 @@ class TestSubjectDataForm:
     def test_form_respects_required_flag(self, experiment_factory, question_factory):
         """Test form respects required flag on questions."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
         except ImportError:
             pytest.skip("SubjectDataForm not found")
         
@@ -147,7 +147,7 @@ class TestExperimentForm:
     def test_form_exists(self):
         """Test ExperimentForm can be imported."""
         try:
-            from ipl.experiments.forms import ExperimentForm
+            from experiments.forms import ExperimentForm
             assert ExperimentForm is not None
         except ImportError:
             pytest.skip("ExperimentForm not found")
@@ -155,7 +155,7 @@ class TestExperimentForm:
     def test_form_has_sharing_groups_field(self):
         """Test ExperimentForm has sharing_groups field."""
         try:
-            from ipl.experiments.forms import ExperimentForm
+            from experiments.forms import ExperimentForm
         except ImportError:
             pytest.skip("ExperimentForm not found")
         
@@ -165,7 +165,7 @@ class TestExperimentForm:
     def test_clean_sharing_groups_validates_group_required(self, user):
         """Test clean_sharing_groups validates at least one group when sharing with groups."""
         try:
-            from ipl.experiments.forms import ExperimentForm
+            from experiments.forms import ExperimentForm
         except ImportError:
             pytest.skip("ExperimentForm not found")
         

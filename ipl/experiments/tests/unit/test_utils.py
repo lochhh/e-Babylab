@@ -1,6 +1,6 @@
 """Unit tests for utility functions in ipl.experiments.models."""
 import pytest
-from ipl.experiments.models import (
+from experiments.models import (
     experiment_folder,
     visual_folder,
     audio_folder,

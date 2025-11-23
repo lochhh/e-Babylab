@@ -31,7 +31,7 @@ class TestReporterInit:
     def test_reporter_init(self, monkeypatch, experiment_factory):
         """Test Reporter initializes with experiment."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -49,7 +49,7 @@ class TestReporterInit:
         monkeypatch.setattr(os.path, 'exists', mock_exists)
         
         # Mock zipfile
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         
         # Mock settings
         if not hasattr(settings, 'REPORTS_ROOT'):
@@ -67,7 +67,7 @@ class TestCalcTrialDuration:
     def test_calc_trial_duration_with_times(self, monkeypatch, experiment_factory):
         """Test calc_trial_duration returns duration string."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -79,7 +79,7 @@ class TestCalcTrialDuration:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
@@ -91,7 +91,7 @@ class TestCalcTrialDuration:
     def test_calc_trial_duration_missing_times(self, monkeypatch, experiment_factory):
         """Test calc_trial_duration returns empty string when times are None."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -102,7 +102,7 @@ class TestCalcTrialDuration:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
@@ -122,7 +122,7 @@ class TestCalcRoiResponse:
                                           subjectdata_factory, trialresult_factory):
         """Test calc_roi_response calculates correct ROI."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -144,7 +144,7 @@ class TestCalcRoiResponse:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
@@ -164,7 +164,7 @@ class TestCalcRoiResponse:
                                            subjectdata_factory, trialresult_factory):
         """Test calc_roi_response returns empty string for invalid coords."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -186,7 +186,7 @@ class TestCalcRoiResponse:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
@@ -202,7 +202,7 @@ class TestGcd:
     def test_gcd_calculation(self, monkeypatch, experiment_factory):
         """Test gcd calculates greatest common divisor."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -213,7 +213,7 @@ class TestGcd:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
@@ -232,7 +232,7 @@ class TestCreateSubjectWorksheet:
                                      listitem_factory, subjectdata_factory):
         """Test create_subject_worksheet creates DataFrame with subject data."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -247,12 +247,12 @@ class TestCreateSubjectWorksheet:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
         # Mock pandas DataFrame
-        monkeypatch.setattr('ipl.experiments.reporter.pd.DataFrame', DummyDF)
+        monkeypatch.setattr('experiments.reporter.pd.DataFrame', DummyDF)
         
         reporter = Reporter(experiment)
         
@@ -270,7 +270,7 @@ class TestCreateTrialWorksheet:
                                                 subjectdata_factory, trialresult_factory):
         """Test create_trial_worksheet creates DataFrame with trial results."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -287,11 +287,11 @@ class TestCreateTrialWorksheet:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
-        monkeypatch.setattr('ipl.experiments.reporter.pd.DataFrame', DummyDF)
+        monkeypatch.setattr('experiments.reporter.pd.DataFrame', DummyDF)
         
         reporter = Reporter(experiment)
         
@@ -303,7 +303,7 @@ class TestCreateTrialWorksheet:
                                                  listitem_factory, subjectdata_factory):
         """Test create_trial_worksheet handles empty results."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -316,11 +316,11 @@ class TestCreateTrialWorksheet:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
-        monkeypatch.setattr('ipl.experiments.reporter.pd.DataFrame', DummyDF)
+        monkeypatch.setattr('experiments.reporter.pd.DataFrame', DummyDF)
         
         reporter = Reporter(experiment)
         
@@ -336,7 +336,7 @@ class TestCreateWebgazerWorksheet:
                                       listitem_factory, subjectdata_factory):
         """Test create_webgazer_worksheet creates DataFrame."""
         try:
-            from ipl.experiments.reporter import Reporter
+            from experiments.reporter import Reporter
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -349,11 +349,11 @@ class TestCreateWebgazerWorksheet:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         
-        monkeypatch.setattr('ipl.experiments.reporter.pd.DataFrame', DummyDF)
+        monkeypatch.setattr('experiments.reporter.pd.DataFrame', DummyDF)
         
         reporter = Reporter(experiment)
         
@@ -369,8 +369,8 @@ class TestCreateReport:
                                 listitem_factory, subjectdata_factory):
         """Test create_report executes full report generation flow."""
         try:
-            from ipl.experiments.reporter import Reporter
-            from ipl.experiments.models import SubjectData
+            from experiments.reporter import Reporter
+            from experiments.models import SubjectData
             from django.conf import settings
         except ImportError:
             pytest.skip("reporter module not available")
@@ -383,13 +383,13 @@ class TestCreateReport:
         monkeypatch.setattr(os, 'makedirs', MagicMock())
         monkeypatch.setattr(os, 'remove', MagicMock())
         monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
-        monkeypatch.setattr('ipl.experiments.reporter.zipfile.ZipFile', DummyZipFile)
+        monkeypatch.setattr('experiments.reporter.zipfile.ZipFile', DummyZipFile)
         if not hasattr(settings, 'REPORTS_ROOT'):
             monkeypatch.setattr(settings, 'REPORTS_ROOT', '/tmp/reports')
         if not hasattr(settings, 'WEBCAM_ROOT'):
             monkeypatch.setattr(settings, 'WEBCAM_ROOT', '/tmp/webcam')
         
-        monkeypatch.setattr('ipl.experiments.reporter.pd.DataFrame', DummyDF)
+        monkeypatch.setattr('experiments.reporter.pd.DataFrame', DummyDF)
         
         # Mock SubjectData.objects.filter
         mock_queryset = MagicMock()

@@ -2,7 +2,7 @@
 import pytest
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
-from ipl.experiments.models import (
+from experiments.models import (
     Experiment,
     Instrument,
     ListItem,
