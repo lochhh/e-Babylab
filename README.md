@@ -194,7 +194,18 @@ From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic
 3. Open the *source code view* (accessed via the "<>" icon on the toolbar).
 4. Copy the HTML code and paste this to the Demographic Data page template of your experiment and modify the text accordingly.
 
-## 5. Useful Links
+## 5. Running Tests
+To run the test suite locally:
+
+```bash
+python -m pip install -r requirements-test.txt
+python -m pip install -U django
+pytest
+```
+
+The test suite uses pytest and includes unit tests for models, views, and other components, as well as integration tests for the application.
+
+## 6. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
 * [Django Tutorial](https://docs.djangoproject.com/en/3.1/intro/overview/)
