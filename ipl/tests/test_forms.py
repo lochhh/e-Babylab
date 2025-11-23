@@ -338,12 +338,12 @@ class ImportFormTest(TestCase):
     """Test the ImportForm."""
     
     def test_import_form_has_file_field(self):
-        """Test that ImportForm has a file field."""
+        """Test that ImportForm has an import_file field."""
         form = ImportForm()
-        self.assertIn('file', form.fields)
+        self.assertIn('import_file', form.fields)
     
     def test_import_form_file_required(self):
-        """Test that file field is required."""
+        """Test that import_file field is required."""
         form = ImportForm(data={})
         self.assertFalse(form.is_valid())
-        self.assertIn('file', form.errors)
+        self.assertIn('import_file', form.errors)

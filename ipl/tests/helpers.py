@@ -5,6 +5,7 @@ This module provides reusable test data creation helpers using factory_boy
 to ensure consistent and maintainable test data across all test modules.
 """
 import factory
+import uuid
 from factory.django import DjangoModelFactory
 from django.contrib.auth.models import User, Group
 from experiments.models import (
@@ -82,7 +83,7 @@ class OuterBlockItemFactory(DjangoModelFactory):
     
     listitem = factory.SubFactory(ListItemFactory)
     outer_block_name = factory.Sequence(lambda n: f'Outer Block {n}')
-    randomise = False
+    randomise_inner_blocks = False
     position = factory.Sequence(lambda n: n)
 
 
@@ -92,8 +93,8 @@ class BlockItemFactory(DjangoModelFactory):
         model = BlockItem
     
     outerblockitem = factory.SubFactory(OuterBlockItemFactory)
-    block_name = factory.Sequence(lambda n: f'Block {n}')
-    randomise = False
+    label = factory.Sequence(lambda n: f'Block {n}')
+    randomise_trials = False
     position = factory.Sequence(lambda n: n)
 
 
@@ -103,10 +104,13 @@ class TrialItemFactory(DjangoModelFactory):
         model = TrialItem
     
     blockitem = factory.SubFactory(BlockItemFactory)
-    trial_name = factory.Sequence(lambda n: f'Trial {n}')
+    label = factory.Sequence(lambda n: f'Trial {n}')
+    code = factory.Sequence(lambda n: f'T{n}')
     position = factory.Sequence(lambda n: n)
-    onset = 0
-    timeout = 5000
+    visual_onset = 0
+    audio_onset = 0
+    visual_file = 'test_visual.jpg'  # Required field
+    max_duration = 5000
 
 
 class SubjectDataFactory(DjangoModelFactory):
@@ -114,9 +118,10 @@ class SubjectDataFactory(DjangoModelFactory):
     class Meta:
         model = SubjectData
     
+    id = factory.LazyFunction(lambda: uuid.uuid4().hex)
     experiment = factory.SubFactory(ExperimentFactory)
     listitem = factory.SubFactory(ListItemFactory)
-    participant_id = factory.Sequence(lambda n: f'P{n:04d}')
+    participant_id = factory.Sequence(lambda n: n + 1)
     resolution_w = 1920
     resolution_h = 1080
 
