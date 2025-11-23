@@ -200,4 +200,25 @@ From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic
 * [Django Tutorial](https://docs.djangoproject.com/en/3.1/intro/overview/)
 * [Django with Docker](https://docs.docker.com/compose/django/)
 
+## 6. Running Tests Locally
+
+To run the test suite locally:
+
+1. Install test dependencies:
+   ```bash
+   python -m pip install -r requirements-test.txt
+   ```
+
+2. Install the latest Django version:
+   ```bash
+   python -m pip install -U django
+   ```
+
+3. Run tests with pytest:
+   ```bash
+   pytest
+   ```
+
+The test suite includes unit tests for models, views, forms, and utilities, as well as integration tests. Tests use pytest-django and avoid external dependencies through monkeypatching.
+
 This software is licensed under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
