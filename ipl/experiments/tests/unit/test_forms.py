@@ -11,7 +11,7 @@ class TestForms:
     def test_vocabulary_checklist_form_import(self):
         """Test that VocabularyChecklistForm can be imported."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
             assert VocabularyChecklistForm is not None
         except ImportError:
             pytest.skip("VocabularyChecklistForm not available")
@@ -19,7 +19,7 @@ class TestForms:
     def test_vocabulary_checklist_form_basic(self, experiment_factory):
         """Test basic VocabularyChecklistForm construction."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
         except ImportError:
             pytest.skip("VocabularyChecklistForm not available")
         
@@ -33,7 +33,7 @@ class TestForms:
     def test_vocabulary_checklist_form_no_word(self, experiment_factory):
         """Test VocabularyChecklistForm without word parameter."""
         try:
-            from ipl.experiments.forms import VocabularyChecklistForm
+            from experiments.forms import VocabularyChecklistForm
         except ImportError:
             pytest.skip("VocabularyChecklistForm not available")
         
@@ -46,7 +46,7 @@ class TestForms:
     def test_consent_form_import(self):
         """Test that ConsentForm can be imported."""
         try:
-            from ipl.experiments.forms import ConsentForm
+            from experiments.forms import ConsentForm
             assert ConsentForm is not None
         except ImportError:
             pytest.skip("ConsentForm not available")
@@ -54,7 +54,7 @@ class TestForms:
     def test_consent_form_basic(self, experiment_factory, consent_question_factory):
         """Test basic ConsentForm construction."""
         try:
-            from ipl.experiments.forms import ConsentForm
+            from experiments.forms import ConsentForm
         except ImportError:
             pytest.skip("ConsentForm not available")
         
@@ -67,7 +67,7 @@ class TestForms:
     def test_subject_data_form_import(self):
         """Test that SubjectDataForm can be imported."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
             assert SubjectDataForm is not None
         except ImportError:
             pytest.skip("SubjectDataForm not available")
@@ -75,7 +75,7 @@ class TestForms:
     def test_subject_data_form_basic(self, experiment_factory, question_factory):
         """Test basic SubjectDataForm construction."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
         except ImportError:
             pytest.skip("SubjectDataForm not available")
         
@@ -89,7 +89,7 @@ class TestForms:
     def test_subject_data_form_with_age_question(self, experiment_factory, question_factory):
         """Test SubjectDataForm with age question type."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
         except ImportError:
             pytest.skip("SubjectDataForm not available")
         
@@ -107,7 +107,7 @@ class TestForms:
     def test_subject_data_form_with_radio_question(self, experiment_factory, question_factory):
         """Test SubjectDataForm with radio question type."""
         try:
-            from ipl.experiments.forms import SubjectDataForm
+            from experiments.forms import SubjectDataForm
         except ImportError:
             pytest.skip("SubjectDataForm not available")
         
@@ -125,7 +125,7 @@ class TestForms:
     def test_import_form_import(self):
         """Test that ImportForm can be imported."""
         try:
-            from ipl.experiments.forms import ImportForm
+            from experiments.forms import ImportForm
             assert ImportForm is not None
         except ImportError:
             pytest.skip("ImportForm not available")
@@ -133,7 +133,7 @@ class TestForms:
     def test_import_form_basic(self):
         """Test basic ImportForm construction."""
         try:
-            from ipl.experiments.forms import ImportForm
+            from experiments.forms import ImportForm
         except ImportError:
             pytest.skip("ImportForm not available")
         

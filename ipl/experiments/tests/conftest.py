@@ -3,7 +3,7 @@ Pytest fixtures for ipl.experiments tests.
 """
 import pytest
 from django.contrib.auth.models import User
-from ipl.experiments.models import (
+from experiments.models import (
     Experiment,
     Instrument,
     ListItem,

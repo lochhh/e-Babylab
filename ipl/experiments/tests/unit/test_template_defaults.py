@@ -10,7 +10,7 @@ class TestTemplateDefaults:
     def test_template_defaults_import(self):
         """Test that template_defaults module can be imported."""
         try:
-            from ipl.experiments import template_defaults
+            from experiments import template_defaults
             assert template_defaults is not None
         except ImportError:
             pytest.skip("template_defaults module not available")
@@ -18,7 +18,7 @@ class TestTemplateDefaults:
     def test_template_variables_exist(self):
         """Test that expected template variables exist and are strings."""
         try:
-            from ipl.experiments import template_defaults
+            from experiments import template_defaults
         except ImportError:
             pytest.skip("template_defaults module not available")
         
@@ -48,7 +48,7 @@ class TestTemplateDefaults:
     def test_information_page_content(self):
         """Test information_page_content variable."""
         try:
-            from ipl.experiments.template_defaults import information_page_content
+            from experiments.template_defaults import information_page_content
             assert isinstance(information_page_content, str)
             assert 'information' in information_page_content.lower() or 'welcome' in information_page_content.lower()
         except ImportError:
@@ -57,7 +57,7 @@ class TestTemplateDefaults:
     def test_browser_check_page_content(self):
         """Test browser_check_page_content variable."""
         try:
-            from ipl.experiments.template_defaults import browser_check_page_content
+            from experiments.template_defaults import browser_check_page_content
             assert isinstance(browser_check_page_content, str)
         except (ImportError, AttributeError):
             pytest.skip("browser_check_page_content not available")
@@ -65,7 +65,7 @@ class TestTemplateDefaults:
     def test_consent_fail_page_content(self):
         """Test consent_fail_page_content variable."""
         try:
-            from ipl.experiments.template_defaults import consent_fail_page_content
+            from experiments.template_defaults import consent_fail_page_content
             assert isinstance(consent_fail_page_content, str)
         except (ImportError, AttributeError):
             pytest.skip("consent_fail_page_content not available")
@@ -73,7 +73,7 @@ class TestTemplateDefaults:
     def test_thank_you_page_content(self):
         """Test thank_you_page_content variable."""
         try:
-            from ipl.experiments.template_defaults import thank_you_page_content
+            from experiments.template_defaults import thank_you_page_content
             assert isinstance(thank_you_page_content, str)
         except (ImportError, AttributeError):
             pytest.skip("thank_you_page_content not available")

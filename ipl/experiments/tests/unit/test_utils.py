@@ -3,7 +3,7 @@ Unit tests for utility functions in ipl.experiments.models.
 """
 import pytest
 from unittest.mock import Mock
-from ipl.experiments.models import (
+from experiments.models import (
     experiment_folder,
     visual_folder,
     audio_folder,

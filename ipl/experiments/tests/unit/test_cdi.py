@@ -1,5 +1,5 @@
 """
-Unit tests for ipl.experiments.cdi module.
+Unit tests for experiments.cdi module.
 """
 import pytest
 import numpy as np
@@ -11,12 +11,12 @@ from django.http import HttpResponseRedirect
 class TestSortItems:
     """Tests for sort_items function."""
 
-    @patch('ipl.experiments.cdi.max_info_hpc')
-    @patch('ipl.experiments.cdi.inf_hpc')
+    @patch('experiments.cdi.max_info_hpc')
+    @patch('experiments.cdi.inf_hpc')
     def test_sort_items(self, mock_inf_hpc, mock_max_info_hpc):
         """Test sort_items returns sorted indices."""
         try:
-            from ipl.experiments.cdi import sort_items
+            from experiments.cdi import sort_items
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -32,12 +32,12 @@ class TestSortItems:
         mock_max_info_hpc.assert_called_once()
         mock_inf_hpc.assert_called_once()
 
-    @patch('ipl.experiments.cdi.max_info_hpc')
-    @patch('ipl.experiments.cdi.inf_hpc')
+    @patch('experiments.cdi.max_info_hpc')
+    @patch('experiments.cdi.inf_hpc')
     def test_sort_items_ordering(self, mock_inf_hpc, mock_max_info_hpc):
         """Test sort_items produces correct ordering."""
         try:
-            from ipl.experiments.cdi import sort_items
+            from experiments.cdi import sort_items
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -57,21 +57,21 @@ class TestSortItems:
 class TestEstimateCDI:
     """Tests for estimateCDI function."""
 
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.csv.DictReader')
-    @patch('ipl.experiments.cdi.pd.read_csv')
-    @patch('ipl.experiments.cdi.norm.pdf')
-    @patch('ipl.experiments.cdi.CdiResult.objects.filter')
-    @patch('ipl.experiments.cdi.AnswerText.objects.filter')
-    @patch('ipl.experiments.cdi.AnswerRadio.objects.filter')
-    @patch('ipl.experiments.cdi.Question.objects.filter')
-    @patch('ipl.experiments.cdi.settings')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.csv.DictReader')
+    @patch('experiments.cdi.pd.read_csv')
+    @patch('experiments.cdi.norm.pdf')
+    @patch('experiments.cdi.CdiResult.objects.filter')
+    @patch('experiments.cdi.AnswerText.objects.filter')
+    @patch('experiments.cdi.AnswerRadio.objects.filter')
+    @patch('experiments.cdi.Question.objects.filter')
+    @patch('experiments.cdi.settings')
     def test_estimate_cdi_basic(self, mock_settings, mock_question_filter, mock_radio_filter, 
                                 mock_text_filter, mock_cdi_filter, mock_norm, mock_read_csv, 
                                 mock_dict_reader, mock_get_object):
         """Test estimateCDI with basic mocked data."""
         try:
-            from ipl.experiments.cdi import estimateCDI
+            from experiments.cdi import estimateCDI
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -129,11 +129,11 @@ class TestEstimateCDI:
             # Some mocking issues are expected, skip
             pytest.skip("Complex mocking scenario")
 
-    @patch('ipl.experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.get_object_or_404')
     def test_estimate_cdi_handles_key_error(self, mock_get_object):
         """Test estimateCDI handles KeyError gracefully."""
         try:
-            from ipl.experiments.cdi import estimateCDI
+            from experiments.cdi import estimateCDI
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -152,19 +152,19 @@ class TestEstimateCDI:
 class TestCdiRun:
     """Tests for cdiRun function."""
 
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.csv.DictReader')
-    @patch('ipl.experiments.cdi.pd.read_csv')
-    @patch('ipl.experiments.cdi.sort_items')
-    @patch('ipl.experiments.cdi.FixedPointInitializer')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
-    @patch('ipl.experiments.cdi.Template')
-    @patch('ipl.experiments.cdi.settings')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.csv.DictReader')
+    @patch('experiments.cdi.pd.read_csv')
+    @patch('experiments.cdi.sort_items')
+    @patch('experiments.cdi.FixedPointInitializer')
+    @patch('experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.Template')
+    @patch('experiments.cdi.settings')
     def test_cdi_run_basic(self, mock_settings, mock_template, mock_form, mock_initializer,
                           mock_sort_items, mock_read_csv, mock_dict_reader, mock_get_object):
         """Test cdiRun basic functionality."""
         try:
-            from ipl.experiments.cdi import cdiRun
+            from experiments.cdi import cdiRun
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -219,17 +219,17 @@ class TestCdiRun:
 class TestCdiSubmit:
     """Tests for cdiSubmit function."""
 
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
-    @patch('ipl.experiments.cdi.CdiResult')
-    @patch('ipl.experiments.cdi.estimateCDI')
-    @patch('ipl.experiments.cdi.ListItem.objects.filter')
-    @patch('ipl.experiments.cdi.proceedToExperiment')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.CdiResult')
+    @patch('experiments.cdi.estimateCDI')
+    @patch('experiments.cdi.ListItem.objects.filter')
+    @patch('experiments.cdi.proceedToExperiment')
     def test_cdi_submit_valid_form(self, mock_proceed, mock_listitem_filter, mock_estimate,
                                    mock_cdi_result, mock_form, mock_get_object):
         """Test cdiSubmit with valid form data."""
         try:
-            from ipl.experiments.cdi import cdiSubmit
+            from experiments.cdi import cdiSubmit
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -274,12 +274,12 @@ class TestCdiSubmit:
         except Exception:
             pytest.skip("Complex mocking scenario")
 
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.VocabularyChecklistForm')
     def test_cdi_submit_invalid_form(self, mock_form, mock_get_object):
         """Test cdiSubmit with invalid form data."""
         try:
-            from ipl.experiments.cdi import cdiSubmit
+            from experiments.cdi import cdiSubmit
         except ImportError:
             pytest.skip("cdi module not available")
         
@@ -301,8 +301,8 @@ class TestCdiSubmit:
         request.session = {}
         
         try:
-            with patch('ipl.experiments.cdi.Template'):
-                with patch('ipl.experiments.cdi.RequestContext'):
+            with patch('experiments.cdi.Template'):
+                with patch('experiments.cdi.RequestContext'):
                     result = cdiSubmit(request, 'test-uuid')
                     assert result is not None
         except Exception:
