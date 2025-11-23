@@ -128,16 +128,26 @@ LOGGING = {
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'db',
-        'PORT': 5432,
+# Use SQLite for tests
+import sys
+if 'pytest' in sys.modules or os.getenv('DJANGO_TEST_DATABASE') == 'sqlite':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgres',
+            'USER': 'postgres',
+            'PASSWORD': 'postgres',
+            'HOST': 'db',
+            'PORT': 5432,
+        }
+    }
 
 
 # Password validation

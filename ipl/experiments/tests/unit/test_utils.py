@@ -26,27 +26,47 @@ class TestFilePathHelpers:
         expected_path = "uploads/experiments/Test Experiment/test_file.jpg"
         assert path == expected_path
 
-    def test_visual_folder(self, trial_item):
-        """Test visual_folder returns correct path structure."""
+    def test_visual_folder_structure(self):
+        """Test visual_folder path structure."""
         from experiments.models import visual_folder
         
-        path = visual_folder(trial_item, "test_visual.png")
+        # Create a mock instance with the expected attribute chain
+        class MockBlockItem:
+            class MockListItem:
+                class MockExperiment:
+                    exp_name = "Test Exp"
+                experiment = MockExperiment()
+                list_name = "List 1"
+            listitem = MockListItem()
         
-        # Path should include experiment name, list name, and visual folder
-        assert "uploads" in path
-        assert "visual" in path
-        assert "test_visual.png" in path
+        class MockInstance:
+            blockitem = MockBlockItem()
+        
+        instance = MockInstance()
+        path = visual_folder(instance, "test.png")
+        
+        assert path == "uploads/Test Exp/List 1/visual/test.png"
 
-    def test_audio_folder(self, trial_item):
-        """Test audio_folder returns correct path structure."""
+    def test_audio_folder_structure(self):
+        """Test audio_folder path structure."""
         from experiments.models import audio_folder
         
-        path = audio_folder(trial_item, "test_audio.mp3")
+        # Create a mock instance with the expected attribute chain
+        class MockBlockItem:
+            class MockListItem:
+                class MockExperiment:
+                    exp_name = "Test Exp"
+                experiment = MockExperiment()
+                list_name = "List 1"
+            listitem = MockListItem()
         
-        # Path should include experiment name, list name, and audio folder
-        assert "uploads" in path
-        assert "audio" in path
-        assert "test_audio.mp3" in path
+        class MockInstance:
+            blockitem = MockBlockItem()
+        
+        instance = MockInstance()
+        path = audio_folder(instance, "test.mp3")
+        
+        assert path == "uploads/Test Exp/List 1/audio/test.mp3"
 
 
 class TestDefaultCalibrationPoints:
