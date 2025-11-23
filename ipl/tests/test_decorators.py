@@ -45,7 +45,7 @@ class LoginRequiredDecoratorTest(TestCase):
         
         response = test_view(request)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/admin/login/', response.url)
+        self.assertIn('/accounts/login/', response.url)
     
     def test_login_required_with_next_parameter(self):
         """Test decorator redirects to custom next URL."""

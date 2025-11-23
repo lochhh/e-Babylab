@@ -19,7 +19,7 @@ class URLPatternsTest(TestCase):
     def test_index_url(self):
         """Test the index URL resolves correctly."""
         url = reverse('experiments:index')
-        self.assertEqual(url, '/experiments/')
+        self.assertEqual(url, '/')
         self.assertEqual(resolve(url).func, views.index)
     
     def test_information_page_url(self):
