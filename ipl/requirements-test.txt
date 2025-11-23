@@ -1,0 +1,15 @@
+# Test dependencies for e-Babylab
+-r requirements.txt
+
+# Testing frameworks
+pytest>=7.0.0
+pytest-django>=4.5.0
+pytest-cov>=4.0.0
+
+# Test fixtures and mocking
+factory-boy>=3.2.0
+freezegun>=1.2.0
+responses>=0.20.0
+
+# Coverage reporting
+coverage>=6.0

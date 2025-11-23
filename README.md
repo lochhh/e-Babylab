@@ -189,7 +189,41 @@ From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic
 3. Open the *source code view* (accessed via the "<>" icon on the toolbar).
 4. Copy the HTML code and paste this to the Demographic Data page template of your experiment and modify the text accordingly.
 
-## 5. Useful Links
+## 5. Running Tests
+
+### Local Testing
+To run the test suite locally:
+
+1. Install test dependencies:
+    ```bash
+    cd ipl
+    pip install -r requirements-test.txt
+    ```
+
+2. Run tests with Django's test runner:
+    ```bash
+    python manage.py test tests
+    ```
+
+3. Or run tests with pytest (with coverage):
+    ```bash
+    pytest --cov=experiments --cov-report=html --cov-report=term-missing
+    ```
+
+4. View coverage report:
+    ```bash
+    open htmlcov/index.html  # On macOS
+    # or
+    xdg-open htmlcov/index.html  # On Linux
+    ```
+
+### Continuous Integration
+Tests are automatically run on all pull requests via GitHub Actions. The CI workflow:
+- Tests against Python 3.8, 3.9, 3.10, and 3.11
+- Runs all tests with coverage reporting
+- Uploads coverage to Codecov (if configured)
+
+## 6. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
 * [Django Tutorial](https://docs.djangoproject.com/en/3.1/intro/overview/)
