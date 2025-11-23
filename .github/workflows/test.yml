@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - overhaul
+      - tests/**
+  pull_request:
+    branches:
+      - overhaul
+      - tests/**
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13", "3.14", "3.15"]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-test.txt
+          pip install -U django
+      
+      - name: Run tests with coverage
+        run: |
+          pytest --maxfail=1 --disable-warnings -q --cov=.
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
