@@ -9,7 +9,7 @@ class TestURLPatterns:
     def test_index_url_resolves(self):
         """Test that index URL resolves correctly."""
         url = reverse('experiments:index')
-        assert url == '/experiments/'
+        assert url == '/'
         assert resolve(url).view_name == 'experiments:index'
     
     def test_information_page_url_resolves(self):

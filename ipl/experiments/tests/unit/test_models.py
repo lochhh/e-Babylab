@@ -2,7 +2,7 @@
 import pytest
 from django.contrib.auth.models import User
 
-from ipl.experiments.models import Experiment, Question
+from experiments.models import Experiment, Question
 
 
 @pytest.mark.django_db

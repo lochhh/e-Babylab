@@ -3,7 +3,7 @@ import pytest
 from django.urls import reverse
 from django.contrib.auth.models import User
 
-from ipl.experiments.models import Experiment
+from experiments.models import Experiment
 
 
 @pytest.mark.django_db
