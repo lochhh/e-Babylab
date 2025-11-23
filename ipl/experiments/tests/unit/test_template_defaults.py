@@ -1,5 +1,5 @@
 """Unit tests for ipl/experiments/template_defaults.py"""
-import ipl.experiments.template_defaults as template_defaults
+import experiments.template_defaults as template_defaults
 
 
 class TestTemplateDefaults:

@@ -5,7 +5,7 @@ This module provides pytest-django fixtures using Django ORM directly.
 """
 import pytest
 from django.contrib.auth.models import User, Group
-from ipl.experiments.models import (
+from experiments.models import (
     Instrument,
     Experiment,
     ListItem,

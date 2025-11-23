@@ -1,6 +1,6 @@
 """Unit tests for ipl/experiments/forms.py"""
 import pytest
-from ipl.experiments.forms import VocabularyChecklistForm
+from experiments.forms import VocabularyChecklistForm
 
 
 class TestVocabularyChecklistForm:

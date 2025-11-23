@@ -201,6 +201,7 @@ To run the test suite locally:
 ```bash
 python -m pip install -r requirements-test.txt
 python -m pip install -U django
+cd ipl
 pytest
 ```
 

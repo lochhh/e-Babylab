@@ -3,14 +3,14 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory
-from ipl.experiments import cdi
+from experiments import cdi
 
 
 class TestSortItems:
     """Test sort_items function."""
     
-    @patch('ipl.experiments.cdi.max_info_hpc')
-    @patch('ipl.experiments.cdi.inf_hpc')
+    @patch('experiments.cdi.max_info_hpc')
+    @patch('experiments.cdi.inf_hpc')
     def test_sort_items_returns_sorted_indices(self, mock_inf_hpc, mock_max_info_hpc):
         """Test sort_items returns sorted item indices."""
         import numpy as np
@@ -33,10 +33,10 @@ class TestSortItems:
 class TestEstimateCDI:
     """Test estimateCDI function."""
     
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.pd.read_csv')
-    @patch('ipl.experiments.cdi.csv.DictReader')
-    @patch('ipl.experiments.cdi.norm.pdf')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.pd.read_csv')
+    @patch('experiments.cdi.csv.DictReader')
+    @patch('experiments.cdi.norm.pdf')
     @patch('builtins.open', new_callable=mock_open)
     def test_estimate_cdi_returns_numeric_estimate(self, mock_file, mock_norm_pdf, 
                                                     mock_dict_reader, mock_read_csv, 
@@ -79,13 +79,13 @@ class TestEstimateCDI:
         mock_cdi_result.given_label = 'apple'
         mock_cdi_result.response = True
         
-        with patch('ipl.experiments.cdi.CdiResult') as MockCdiResult:
+        with patch('experiments.cdi.CdiResult') as MockCdiResult:
             MockCdiResult.objects.filter.return_value.order_by.return_value.distinct.return_value = [mock_cdi_result]
             
             # Mock AnswerText and AnswerRadio
-            with patch('ipl.experiments.cdi.AnswerText') as MockAnswerText:
-                with patch('ipl.experiments.cdi.AnswerRadio') as MockAnswerRadio:
-                    with patch('ipl.experiments.cdi.Question') as MockQuestion:
+            with patch('experiments.cdi.AnswerText') as MockAnswerText:
+                with patch('experiments.cdi.AnswerRadio') as MockAnswerRadio:
+                    with patch('experiments.cdi.Question') as MockQuestion:
                         # Mock age answer
                         mock_age_answer = Mock()
                         mock_age_answer.body = '2020-01-01'
@@ -112,7 +112,7 @@ class TestEstimateCDI:
                         mock_norm_pdf.return_value = np.array([0.1, 0.2, 0.3])
                         
                         # Mock settings.MEDIA_ROOT
-                        with patch('ipl.experiments.cdi.settings.MEDIA_ROOT', '/media'):
+                        with patch('experiments.cdi.settings.MEDIA_ROOT', '/media'):
                             result = cdi.estimateCDI('test-uuid')
                             
                             # Should return numeric estimate
@@ -124,13 +124,13 @@ class TestEstimateCDI:
 class TestCdiRun:
     """Test cdiRun function."""
     
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.pd.read_csv')
-    @patch('ipl.experiments.cdi.csv.DictReader')
-    @patch('ipl.experiments.cdi.sort_items')
-    @patch('ipl.experiments.cdi.FixedPointInitializer')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
-    @patch('ipl.experiments.cdi.Template')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.pd.read_csv')
+    @patch('experiments.cdi.csv.DictReader')
+    @patch('experiments.cdi.sort_items')
+    @patch('experiments.cdi.FixedPointInitializer')
+    @patch('experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.Template')
     @patch('builtins.open', new_callable=mock_open)
     def test_cdi_run_returns_response(self, mock_file, mock_template, mock_form_class,
                                       mock_initializer, mock_sort_items, mock_read_csv,
@@ -162,7 +162,7 @@ class TestCdiRun:
         mock_get_object.side_effect = [mock_subject, mock_experiment, mock_instrument]
         
         # Mock DictReader
-        with patch('ipl.experiments.cdi.csv.DictReader') as mock_dict_reader:
+        with patch('experiments.cdi.csv.DictReader') as mock_dict_reader:
             mock_dict_reader.return_value = [
                 {'word': 'apple'},
                 {'word': 'banana'}
@@ -195,7 +195,7 @@ class TestCdiRun:
             mock_template.return_value = mock_template_instance
             
             # Mock settings.MEDIA_ROOT
-            with patch('ipl.experiments.cdi.settings.MEDIA_ROOT', '/media'):
+            with patch('experiments.cdi.settings.MEDIA_ROOT', '/media'):
                 result = cdi.cdiRun(request, 'test-uuid')
                 
                 # Should set session keys
@@ -214,10 +214,10 @@ class TestCdiRun:
 class TestCdiSubmit:
     """Test cdiSubmit function."""
     
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
-    @patch('ipl.experiments.cdi.estimateCDI')
-    @patch('ipl.experiments.cdi.proceedToExperiment')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.estimateCDI')
+    @patch('experiments.cdi.proceedToExperiment')
     def test_cdi_submit_valid_form_below_threshold(self, mock_proceed, mock_estimate,
                                                     mock_form_class, mock_get_object):
         """Test cdiSubmit with valid form and count below threshold."""
@@ -242,13 +242,13 @@ class TestCdiSubmit:
         mock_form_class.return_value = mock_form
         
         # Mock CdiResult count
-        with patch('ipl.experiments.cdi.CdiResult') as MockCdiResult:
+        with patch('experiments.cdi.CdiResult') as MockCdiResult:
             mock_queryset = Mock()
             mock_queryset.order_by.return_value.distinct.return_value.count.return_value = 5
             MockCdiResult.objects.filter.return_value = mock_queryset
             
             # Mock cdiGenerateNextItem
-            with patch('ipl.experiments.cdi.cdiGenerateNextItem') as mock_gen_next:
+            with patch('experiments.cdi.cdiGenerateNextItem') as mock_gen_next:
                 mock_gen_next.return_value = HttpResponse('Next Item')
                 
                 result = cdi.cdiSubmit(request, 'test-uuid')
@@ -257,11 +257,11 @@ class TestCdiSubmit:
                 assert mock_gen_next.called
                 assert not mock_estimate.called
     
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
-    @patch('ipl.experiments.cdi.estimateCDI')
-    @patch('ipl.experiments.cdi.proceedToExperiment')
-    @patch('ipl.experiments.cdi.ListItem')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.estimateCDI')
+    @patch('experiments.cdi.proceedToExperiment')
+    @patch('experiments.cdi.ListItem')
     def test_cdi_submit_valid_form_at_threshold_with_listitem(self, mock_listitem_class,
                                                                mock_proceed, mock_estimate,
                                                                mock_form_class, mock_get_object):
@@ -287,7 +287,7 @@ class TestCdiSubmit:
         mock_form_class.return_value = mock_form
         
         # Mock CdiResult count
-        with patch('ipl.experiments.cdi.CdiResult') as MockCdiResult:
+        with patch('experiments.cdi.CdiResult') as MockCdiResult:
             mock_queryset = Mock()
             mock_queryset.order_by.return_value.distinct.return_value.count.return_value = 5
             MockCdiResult.objects.filter.return_value = mock_queryset
@@ -306,8 +306,8 @@ class TestCdiSubmit:
             assert mock_proceed.called
             assert isinstance(result, HttpResponseRedirect)
     
-    @patch('ipl.experiments.cdi.get_object_or_404')
-    @patch('ipl.experiments.cdi.VocabularyChecklistForm')
+    @patch('experiments.cdi.get_object_or_404')
+    @patch('experiments.cdi.VocabularyChecklistForm')
     def test_cdi_submit_invalid_form(self, mock_form_class, mock_get_object):
         """Test cdiSubmit with invalid form."""
         # Create request
@@ -331,7 +331,7 @@ class TestCdiSubmit:
         mock_form_class.return_value = mock_form
         
         # Mock Template
-        with patch('ipl.experiments.cdi.Template') as mock_template:
+        with patch('experiments.cdi.Template') as mock_template:
             mock_template_instance = Mock()
             mock_template_instance.render.return_value = '<html>Rendered</html>'
             mock_template.return_value = mock_template_instance

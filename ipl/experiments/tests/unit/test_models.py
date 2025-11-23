@@ -3,7 +3,7 @@ import os
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from django.core.exceptions import ValidationError
-from ipl.experiments.models import (
+from experiments.models import (
     Instrument,
     Experiment,
     ListItem,
@@ -220,7 +220,7 @@ class TestExperimentMethods:
         result = experiment.get_list_item()
         assert result == list2
     
-    @patch('ipl.experiments.models.random.choice')
+    @patch('experiments.models.random.choice')
     def test_get_list_item_random(self, mock_choice, experiment_factory, listitem_factory):
         """Test Experiment.get_list_item with random strategy."""
         experiment = experiment_factory(list_selection_strategy='RAN')
@@ -267,8 +267,8 @@ class TestTrialResult:
 class TestDeleteFileFunctions:
     """Test file deletion functions."""
     
-    @patch('ipl.experiments.models.os.path.isfile')
-    @patch('ipl.experiments.models.os.remove')
+    @patch('experiments.models.os.path.isfile')
+    @patch('experiments.models.os.remove')
     def test_delete_file_removes_existing_file(self, mock_remove, mock_isfile):
         """Test _delete_file removes file when it exists."""
         mock_isfile.return_value = True
@@ -278,8 +278,8 @@ class TestDeleteFileFunctions:
         mock_isfile.assert_called_once_with('/path/to/file.mp4')
         mock_remove.assert_called_once_with('/path/to/file.mp4')
     
-    @patch('ipl.experiments.models.os.path.isfile')
-    @patch('ipl.experiments.models.os.remove')
+    @patch('experiments.models.os.path.isfile')
+    @patch('experiments.models.os.remove')
     def test_delete_file_does_not_remove_nonexistent_file(self, mock_remove, mock_isfile):
         """Test _delete_file does not remove file when it doesn't exist."""
         mock_isfile.return_value = False
@@ -289,7 +289,7 @@ class TestDeleteFileFunctions:
         mock_isfile.assert_called_once_with('/path/to/nonexistent.mp4')
         mock_remove.assert_not_called()
     
-    @patch('ipl.experiments.models._delete_file')
+    @patch('experiments.models._delete_file')
     def test_delete_file_signal_handler(self, mock_delete, experiment_factory, listitem_factory,
                                         outerblock_factory, blockitem_factory, trialitem_factory,
                                         subjectdata_factory, trialresult_factory, settings):
@@ -305,7 +305,7 @@ class TestDeleteFileFunctions:
         trial_result.webcam_file.name = 'test_video.mp4'
         
         # Mock settings.WEBCAM_ROOT
-        with patch('ipl.experiments.models.settings.WEBCAM_ROOT', '/webcam'):
+        with patch('experiments.models.settings.WEBCAM_ROOT', '/webcam'):
             # Call signal handler directly
             delete_file(TrialResult, trial_result)
             

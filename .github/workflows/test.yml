@@ -27,6 +27,7 @@ jobs:
       
       - name: Run tests with coverage
         run: |
+          cd ipl
           pytest --cov=.
       
       - name: Upload coverage to Codecov
