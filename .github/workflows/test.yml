@@ -14,21 +14,6 @@ jobs:
       matrix:
         python-version: ["3.11", "3.10", "3.9"]
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v4
       
@@ -36,11 +21,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpq-dev
       
       - name: Install Python dependencies
         run: |
@@ -54,12 +34,11 @@ jobs:
           echo "SECRET_KEY=test-secret-key-for-ci-only" > ipl/.env
           echo "GOOGLE_RECAPTCHA_SITE_KEY=test-site-key" >> ipl/.env
           echo "GOOGLE_RECAPTCHA_SECRET_KEY=test-secret-key" >> ipl/.env
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> ipl/.env
       
       - name: Run tests with coverage
         working-directory: ipl
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          DJANGO_TEST_DATABASE: sqlite
           SECRET_KEY: test-secret-key-for-ci-only
           GOOGLE_RECAPTCHA_SITE_KEY: test-site-key
           GOOGLE_RECAPTCHA_SECRET_KEY: test-secret-key
