@@ -6,9 +6,10 @@ e-Babylab [(Lo et al., 2023)](https://link.springer.com/article/10.3758/s13428-0
 ## Contents
 1. [Installation](#1-installation)
 2. [Executing Django Commands](#2-executing-django-commands)
-3. [Upgrade](#3-upgrade)
-4. [Troubleshooting](#4-troubleshooting)
-5. [Useful Links](#5-useful-links)
+3. [Running Tests](#running-tests)
+4. [Upgrade](#3-upgrade)
+5. [Troubleshooting](#4-troubleshooting)
+6. [Useful Links](#5-useful-links)
 
 ## 1. Installation
 ### Get e-Babylab Code
@@ -147,6 +148,37 @@ docker compose exec web python manage.py <command> [options]
 ```
 
 These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/3.1/ref/django-admin/).
+
+## Running Tests
+e-Babylab includes a comprehensive test suite using pytest. To run tests locally:
+
+1. Install test dependencies:
+   ```bash
+   pip install -r requirements-test.txt
+   ```
+
+2. Run the full test suite:
+   ```bash
+   pytest
+   ```
+
+3. Run tests with coverage report:
+   ```bash
+   pytest --cov=.
+   ```
+
+4. Run specific test files or modules:
+   ```bash
+   pytest ipl/experiments/tests/unit/test_models.py
+   pytest ipl/experiments/tests/integration/
+   ```
+
+The test suite uses SQLite in-memory database for fast test execution and includes:
+- **Unit tests** for models and utilities
+- **Integration tests** for views and URL routing
+- **Fixtures** for common test data setup
+
+Tests are automatically run in CI using GitHub Actions on Python 3.13, 3.14, and 3.15.
 
 ## 3. Upgrade
 To upgrade an existing environment to the latest version of e-Babylab, please follow the steps below:
