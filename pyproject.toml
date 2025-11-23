@@ -52,6 +52,7 @@ line-ending = "auto"
 [tool.uv]
 dev-dependencies = [
 	"pytest",
+	"pytest-django",
 	"pytest-cov",
 	"pytest-mock",
 	"coverage",
@@ -64,4 +65,9 @@ dev-dependencies = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=ipl --cov-report=term-missing"
+DJANGO_SETTINGS_MODULE = "ipl.settings"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=ipl --cov-report=term-missing --reuse-db"
+testpaths = ["ipl"]

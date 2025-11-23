@@ -6,9 +6,10 @@ e-Babylab [(Lo et al., 2023)](https://link.springer.com/article/10.3758/s13428-0
 ## Contents
 1. [Installation](#1-installation)
 2. [Executing Django Commands](#2-executing-django-commands)
-3. [Upgrade](#3-upgrade)
-4. [Troubleshooting](#4-troubleshooting)
-5. [Useful Links](#5-useful-links)
+3. [Testing](#3-testing)
+4. [Upgrade](#4-upgrade)
+5. [Troubleshooting](#5-troubleshooting)
+6. [Useful Links](#6-useful-links)
 
 ## 1. Installation
 ### Get e-Babylab Code
@@ -148,7 +149,43 @@ docker compose exec web python manage.py <command> [options]
 
 These can be used, for example, to perform upgrades or to create superusers. All available commands can be found [here](https://docs.djangoproject.com/en/3.1/ref/django-admin/).
 
-## 3. Upgrade
+## 3. Testing
+
+e-Babylab includes a comprehensive test suite using pytest and pytest-django. Tests cover models, views, forms, URLs, and utility functions.
+
+### Running Tests Locally
+
+To run tests locally without Docker:
+
+1. Install test dependencies:
+   ```bash
+   pip install -r requirements-test.txt
+   ```
+
+2. Set up environment variables (create a `.env` file in the `ipl` directory):
+   ```bash
+   SECRET_KEY=test-secret-key
+   GOOGLE_RECAPTCHA_SITE_KEY=test-site-key
+   GOOGLE_RECAPTCHA_SECRET_KEY=test-secret-key
+   ```
+
+3. Run the test suite:
+   ```bash
+   cd ipl
+   pytest
+   ```
+
+4. Run tests with coverage:
+   ```bash
+   cd ipl
+   pytest --cov=. --cov-report=term-missing
+   ```
+
+### Continuous Integration
+
+The test suite runs automatically on GitHub Actions for every push and pull request. Tests are executed on Python 3.9, 3.10, and 3.11 with PostgreSQL.
+
+## 4. Upgrade
 To upgrade an existing environment to the latest version of e-Babylab, please follow the steps below:
 1. To pull the latest changes from the repository, run `git pull`.
 2. To upgrade, we first need to recreate all containers, so that they are using the latest version of e-Babylab. Follow these steps:
@@ -172,7 +209,7 @@ To upgrade the database to a newer version, please follow the steps below:
    - `\q` to exit. 
 8. Restart the containers using `docker compose down` and `docker compose up -d`.
 
-## 4. Troubleshooting
+## 5. Troubleshooting
 
 ### Web Container starts with `"exec: \"./wait-for-it.sh\": permission denied"`
 Allow the execution of the *wait-for-it.sh* script by executing the following command:
@@ -194,7 +231,7 @@ From *15.05.2021* onwards, reCAPTCHA verification is required in the Demographic
 3. Open the *source code view* (accessed via the "<>" icon on the toolbar).
 4. Copy the HTML code and paste this to the Demographic Data page template of your experiment and modify the text accordingly.
 
-## 5. Useful Links
+## 6. Useful Links
 * [e-Babylab User Manual](https://github.com/lochhh/e-Babylab/wiki)
 * [HandBrake](https://handbrake.fr/) (for resizing video files and converting .webm to other formats) 
 * [Django Tutorial](https://docs.djangoproject.com/en/3.1/intro/overview/)

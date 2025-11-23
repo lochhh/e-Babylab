@@ -1,0 +1,6 @@
+# Testing dependencies for e-Babylab
+# Install with: pip install -r requirements-test.txt
+
+pytest>=8.0.0
+pytest-django>=4.7.0
+pytest-cov>=4.1.0
