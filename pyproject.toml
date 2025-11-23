@@ -49,10 +49,11 @@ quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
 	"pytest",
 	"pytest-cov",
+	"pytest-django",
 	"pytest-mock",
 	"coverage",
 	"mypy",
@@ -65,3 +66,4 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 addopts = "--cov=ipl --cov-report=term-missing"
+django_find_project = true
