@@ -5,7 +5,10 @@ services:
       - "8080:80"
       - "8443:443"
     volumes:
-      - ./ipl:/ipl:ro
+      - static_volume:/ipl/static:ro
+      - ./media:/ipl/media:ro
+      - ./webcam:/ipl/webcam:ro
+      - ./reports:/ipl/reports:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/ssl/certs/<your_ssl_cert.pem>:/etc/ssl/certs/cert.pem
       - /etc/ssl/private/<your_ssl_private_key.key>:/etc/ssl/private/server.key
@@ -26,7 +29,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     restart: always
   web:
     build:
@@ -36,7 +39,12 @@ services:
     image: ipl:latest
     depends_on:
       - db
-    command: "./wait-for-it.sh db:5432 -- uwsgi --ini /usr/src/app/uwsgi.ini"
+    volumes:
+      - static_volume:/usr/src/app/static
+      - ./media:/usr/src/app/media
+      - ./webcam:/usr/src/app/webcam
+      - ./reports:/usr/src/app/reports
+    command: "./wait-for-it.sh db:5432 -- sh -c 'python manage.py collectstatic --noinput && uwsgi --ini /usr/src/app/uwsgi.ini'"
     environment:
       - DJANGO_ENV=prod
     logging:
@@ -55,3 +63,7 @@ services:
       driver: "json-file"
       options:
         max-size: "5m"
+
+volumes:
+  postgres_data:
+  static_volume:
