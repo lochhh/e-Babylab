@@ -116,5 +116,5 @@ ipl/media/uploads/instruments/**
 ipl/static/**
 
 ipl/webcam/**
-postgres-data
+postgres[-_]data
 ipl/reports/**
