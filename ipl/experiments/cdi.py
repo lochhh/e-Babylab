@@ -16,7 +16,7 @@ from .views import proceedToExperiment
 import csv
 import datetime
 import logging
-import simplejson as json
+import json
 import numpy as np
 import os.path
 import pandas as pd
@@ -27,7 +27,6 @@ import catsim
 from catsim.initialization import FixedPointInitializer
 from catsim.selection import MaxInfoSelector
 from catsim.estimation import NumericalSearchEstimator
-from catsim.stopping import MaxItemStopper
 from catsim.irt import max_info_hpc, inf_hpc
 
 
