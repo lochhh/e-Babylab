@@ -1,5 +1,5 @@
 """
-Smoke tests for forms in ipl.experiments.forms (VocabularyChecklistForm).
+Smoke tests for forms in experiments.forms (VocabularyChecklistForm).
 If the form or module does not exist, tests will skip.
 """
 import importlib
@@ -8,7 +8,7 @@ import pytest
 
 def test_vocabulary_checklist_form_constructs_and_validates():
     try:
-        forms = importlib.import_module("ipl.experiments.forms")
+        forms = importlib.import_module("experiments.forms")
     except Exception:
         pytest.skip("forms module not present")
     if not hasattr(forms, "VocabularyChecklistForm"):

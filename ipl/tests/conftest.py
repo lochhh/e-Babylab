@@ -3,7 +3,7 @@ import pytest
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 
-from ipl.experiments import models as exp_models
+from experiments import models as exp_models
 
 
 @pytest.fixture

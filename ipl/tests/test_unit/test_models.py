@@ -13,7 +13,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
-from ipl.experiments import models as exp_models
+from experiments import models as exp_models
 
 
 def test_instrument_str(instrument_factory):

@@ -7,7 +7,7 @@ def test_index_url_resolves():
     assert url.endswith("/")
 
 
-def test_detail_url_pattern():
-    # the detail url requires an id; ensure reverse builds a path for a sample UUID
-    path = reverse("experiments:detail", args=("00000000-0000-0000-0000-000000000000",))
-    assert "detail" in path or path.endswith("/")
+def test_experiment_information_page_url_pattern():
+    # the information page url requires an id; ensure reverse builds a path for a sample UUID
+    path = reverse("experiments:informationPage", args=("00000000-0000-0000-0000-000000000000",))
+    assert "information" in path or path.endswith("/")

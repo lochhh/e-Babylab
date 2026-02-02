@@ -8,7 +8,7 @@ from django.test import RequestFactory
 from django.http import HttpResponseRedirect, HttpResponse
 
 # import the module under test
-cdi = importlib.import_module("ipl.experiments.cdi")
+cdi = importlib.import_module("experiments.cdi")
 
 
 def test_sort_items_monkeypatched(monkeypatch):
