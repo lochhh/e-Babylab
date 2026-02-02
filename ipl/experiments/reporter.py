@@ -13,7 +13,7 @@ import shutil
 import re
 import logging
 import pandas as pd
-import simplejson as json
+import json
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)

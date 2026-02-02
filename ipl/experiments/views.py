@@ -15,7 +15,7 @@ from .admin import ExperimentAdmin
 from .decorators import login_required
 
 import dateutil.parser
-import simplejson as json
+import json
 import os.path
 import logging
 import requests
