@@ -5,7 +5,7 @@ import uuid
 import pytest
 
 # module under test
-rpt = importlib.import_module("ipl.experiments.reporter")
+rpt = importlib.import_module("experiments.reporter")
 
 
 class DummyZipFile:
@@ -42,10 +42,10 @@ def make_reporter(monkeypatch, tmp_path, experiment):
     monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
 
     # monkeypatch zipfile.ZipFile used in Reporter.__init__
-    monkeypatch.setattr("ipl.experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
 
     # monkeypatch pandas DataFrame used by reporter functions
-    monkeypatch.setattr("ipl.experiments.reporter.pd.DataFrame", DummyDF, raising=True)
+    monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
 
     # create and return reporter
     return rpt.Reporter(experiment)
@@ -94,11 +94,11 @@ def test_create_subject_worksheet(monkeypatch, tmp_path, subjectdata_factory, co
     # create an age question and corresponding AnswerText with ISO date (so code computes months)
     age_q = question_factory(text="DOB", question_type=rpt.Question.AGE, experiment=subject.experiment, position=0)
     # create an AnswerText instance for the subject; use model to persist
-    from ipl.experiments.models import AnswerText
+    from experiments.models import AnswerText
     AnswerText.objects.create(question=age_q, subject_data=subject, body="2020-01-01")
     # Prepare reporter with monkeypatched environment
-    monkeypatch.setattr("ipl.experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
-    monkeypatch.setattr("ipl.experiments.reporter.pd.DataFrame", DummyDF, raising=True)
+    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
     monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
     rep = rpt.Reporter(subject.experiment)
     df = rep.create_subject_worksheet(subject)
@@ -118,8 +118,8 @@ def test_create_trial_and_webgazer_worksheets_empty(monkeypatch, tmp_path, subje
     that create_trial_worksheet handles empty TrialResult sets gracefully.
     """
     subject = subjectdata_factory()
-    monkeypatch.setattr("ipl.experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
-    monkeypatch.setattr("ipl.experiments.reporter.pd.DataFrame", DummyDF, raising=True)
+    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
     monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
     rep = rpt.Reporter(subject.experiment)
 
@@ -140,7 +140,7 @@ def test_create_report_minimal(monkeypatch, tmp_path, subjectdata_factory):
     subject = subjectdata_factory()
     monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
     # prevent actual zipfile usage
-    monkeypatch.setattr("ipl.experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
 
     # Create a Reporter but replace its worksheet builders with simple callables that return DummyDF
     rep = rpt.Reporter(subject.experiment)
@@ -150,7 +150,7 @@ def test_create_report_minimal(monkeypatch, tmp_path, subjectdata_factory):
 
     # monkeypatch SubjectData.objects.filter to return our single subject
     fake_subject_model = SimpleNamespace(objects=SimpleNamespace(filter=lambda **kw: [subject]))
-    monkeypatch.setattr("ipl.experiments.reporter.SubjectData", fake_subject_model, raising=False)
+    monkeypatch.setattr("experiments.reporter.SubjectData", fake_subject_model, raising=False)
 
     out = rep.create_report()
     assert isinstance(out, str)

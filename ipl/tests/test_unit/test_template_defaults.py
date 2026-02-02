@@ -3,7 +3,7 @@ Smoke tests for template_defaults.py content availability.
 """
 import importlib
 
-mod = importlib.import_module("ipl.experiments.template_defaults")
+mod = importlib.import_module("experiments.template_defaults")
 
 
 def test_template_defaults_contains_strings():
