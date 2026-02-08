@@ -149,7 +149,7 @@ def cdiRun(request, run_uuid):
         request.session['words'] = words
         request.session['responses'] = []
         
-        form = VocabularyChecklistForm(cdi_form=experiment, word=words[irt_run])
+        form = VocabularyChecklistForm(word=words[irt_run])
     except KeyError as e:
         logger.exception('Failed to generate CDI item: ' + str(e))
         return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))
@@ -164,31 +164,29 @@ def cdiSubmit(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    form = VocabularyChecklistForm(request.POST, cdi_form=experiment)
+    irt_run = request.session.get('irt_run')
+    words = request.session.get('words')
+    current_word = words[irt_run]
+    form = VocabularyChecklistForm(request.POST, word=current_word)
    
     # store current response as CdiResult and add to request.responses
     if form.is_valid():
         responses = request.session.get('responses')
-        for key, value in request.POST.items():
+        logger.debug(f"form.cleaned_data: {form.cleaned_data}")
+        for key, value in form.cleaned_data.items():
             if key.startswith('word_'):
                 cdiresult = CdiResult()
                 cdiresult.subject = subject_data
                 cdiresult.given_label = key[5:]
-                if value.lower() == 'on':
-                    cdiresult.response = True
-                    responses.append(bool(1))
-                else:
-                    cdiresult.response = False
-                    responses.append(bool(0))
+                cdiresult.response = value
+                responses.append(int(value))
                 cdiresult.save()
-
         request.session['responses'] = responses     
-
+        request.session.modified = True
         irt_run = request.session.get('irt_run')
-        
         # count unique items
         count_unique = CdiResult.objects.filter(subject=run_uuid).order_by('given_label').distinct('given_label').count()
-        logger.info('unique count: ' + str(count_unique))
+        logger.info(f"unique count: {count_unique}")
         if count_unique < experiment.num_words: 
             request.session['irt_run'] = irt_run + 1
             # generate subsequent item
@@ -218,12 +216,16 @@ def cdiGenerateNextItem(request, run_uuid):
         administered_items = request.session.get('administered_items')
         responses = request.session.get('responses')
         est_theta = request.session.get('est_theta')
-        est_theta = NumericalSearchEstimator(method='bounded').estimate(items=item_params, administered_items=administered_items, response_vector=responses, est_theta=est_theta)
+        est_theta = NumericalSearchEstimator(method='bounded').estimate(
+            items=item_params, 
+            administered_items=administered_items, 
+            response_vector=np.array(responses, dtype=bool), 
+            est_theta=est_theta
+        )
         request.session['est_theta'] = est_theta  
         words = request.session.get('words')
         all_words = json.loads(request.session.get('all_words'))
-
-        logger.info('est theta: ' + str(est_theta))
+        logger.info(f"est theta: {est_theta}")
         
         if np.isinf(est_theta):
             # generate IRT subsequent 'initial' items
@@ -236,7 +238,7 @@ def cdiGenerateNextItem(request, run_uuid):
             request.session['administered_items'] = administered_items
         words.append(all_words[administered_items[irt_run]]) 
         request.session['words'] = words
-        form = VocabularyChecklistForm(cdi_form=experiment, word=words[irt_run])
+        form = VocabularyChecklistForm(word=words[irt_run])
     except KeyError as e:
         logger.exception('Failed to generate cdi item: ' + str(e))
         return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))

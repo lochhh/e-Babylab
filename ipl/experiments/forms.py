@@ -192,13 +192,12 @@ class VocabularyChecklistForm(forms.Form):
 	Generates the vocabulary checklist form.
 	"""
 	def __init__(self, *args, **kwargs):
-		experiment = kwargs.pop('cdi_form')
 		word = kwargs.pop('word', None)
 		super(VocabularyChecklistForm, self).__init__(*args, **kwargs)
 
 		data = kwargs.get('data')
 		if word:
-			self.fields["word_%s" % word] = forms.BooleanField(label=word, widget=forms.CheckboxInput)
+			self.fields["word_%s" % word] = forms.BooleanField(label=word, widget=forms.CheckboxInput, required=False)
 			self.fields["word_%s" % word].widget.attrs["class"] = "list-unstyled"
 
 class ImportForm(forms.Form):
