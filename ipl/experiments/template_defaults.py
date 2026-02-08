@@ -676,15 +676,4 @@ cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Voc
         </div>
     </div>
 </div>
-<script>
-    $(document).ready(function() {
-        $("#cdiForm").on('submit', function() {
-            // to each unchecked checkbox
-            $('input:checkbox:not(:checked)').each(function () {
-                // add hidden checkbox to be posted
-                $("#cdiForm").append("<input type='hidden' name='" + this.name + "' value='0' />");
-            });
-        })
-    })
-</script>
 {% endblock %}'''
