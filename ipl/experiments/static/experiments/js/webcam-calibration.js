@@ -1,32 +1,32 @@
 'use strict';
 
-$(function() {
+$(function () {
 
     // Webcam constraints
     var constraints = {
-		audio: true,
-		video: {
-			facingMode: "user",
-			width: { min: 640, max: 640 },
-			height: { min: 480, max: 480 }
-		}
+        audio: true,
+        video: {
+            facingMode: "user",
+            width: { min: 640, max: 640 },
+            height: { min: 480, max: 480 }
+        }
     };
-    
+
     // Audio constraints
     var constraintsAudio = {
-		audio: true,
+        audio: true,
     };
 
     // Get Django CSRF token
     var csrftoken = Cookies.get('csrftoken');
 
-    var csrfSafeMethod = function(method) {
+    var csrfSafeMethod = function (method) {
         return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
     };
 
     // Add CSRF to AJAX
     $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
+        beforeSend: function (xhr, settings) {
             if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
                 xhr.setRequestHeader("X-CSRFToken", csrftoken);
             }
@@ -39,14 +39,18 @@ $(function() {
     // Recorder reference
     var mediaRecorder;
 
-    // Get subject UUID
-    var subjectUuid = $("#webcam-calibration").data("subjectUuid");
+    // Get configuration from data attributes
+    var config = $("#webcam-calibration").data();
+    var subjectUuid = config.subjectUuid;
+    var include_pause_page = config.includePausePage;
+    var recording_option = config.recordingOption;
+    var webcam_not_found = config.webcamNotFound || `Unfortunately your device could not be detected.<br /><br />Please make sure a device is connected and click "Repeat test recording" to return to the test.<br /><br />If you do not agree to allow access to your device and have therefore selected "do not allow", please close the browser window.`;
 
     // Check MediaRecorder support
     var mediaRecorderSupported = !(window.MediaRecorder == undefined);
 
-    let startStream = function() {
-        return new Promise(function(resolve, reject) {
+    let startStream = function () {
+        return new Promise(function (resolve, reject) {
             var recordingConstraints = constraints;
             if (recording_option == 'AUD') {
                 recordingConstraints = constraintsAudio;
@@ -56,18 +60,18 @@ $(function() {
 
                 if (recording_option != 'AUD') {
                     // Check video stream
-                    if(mediaStream.getVideoTracks().length == 0) {
+                    if (mediaStream.getVideoTracks().length == 0) {
                         reject(new Error("No webcam access."));
                     }
                 }
 
                 // Check audio stream
-                if(mediaStream.getAudioTracks().length == 0) {
+                if (mediaStream.getAudioTracks().length == 0) {
                     reject(new Error("No microphone access."));
                 }
 
                 resolve();
-            }).catch(function(e) {
+            }).catch(function (e) {
                 console.error(e);
                 reject(e);
             });
@@ -77,7 +81,7 @@ $(function() {
     /*
      * Step 2
      */
-    var checkStepTwo = function() {
+    var checkStepTwo = function () {
         var button = $("#webcam_step_2 button");
 
         $("#webcam_step_1").removeClass("active");
@@ -93,7 +97,7 @@ $(function() {
     /*
      * Step 3
      */
-    var checkStepThree = function() {
+    var checkStepThree = function () {
         $("#webcam_step_2").removeClass("active");
         $("#webcam_step_3").addClass("active");
 
@@ -102,7 +106,7 @@ $(function() {
 
         // Get webcam stream
         startStream()
-            .then(function() {
+            .then(function () {
                 // Display video stream in video tag
                 $("#webcam_step_3 .embed-responsive").show();
                 var video = $("#webcam_step_3 video").get(0);
@@ -112,7 +116,7 @@ $(function() {
                     video.play();
 
                     // Enable button to continue
-                    button.click(function() {
+                    button.click(function () {
                         video.muted = false;
                         stopStream();
                         checkStepFour();
@@ -120,12 +124,12 @@ $(function() {
                     button.removeAttr("disabled");
                 };
             })
-            .catch(function(e) {
+            .catch(function (e) {
                 alertWindow.show();
                 alertWindow.append(webcam_not_found + "<br><strong>" + e.name + ":</strong> " + e.message);
                 let repeatButton = $("#repeat-check-button");
                 repeatButton.show();
-                repeatButton.on('click', function() {
+                repeatButton.on('click', function () {
                     location.reload();
                 });
             });
@@ -135,7 +139,7 @@ $(function() {
      * Step four
      */
     let firstChunk = true;
-    var checkStepFour = function() {
+    var checkStepFour = function () {
         if (recording_option != 'AUD') {
             $("#webcam_step_3 video").get(0).pause();
             $("#webcam_step_3").removeClass("active");
@@ -162,10 +166,10 @@ $(function() {
 
         // Start recording
         startStream()
-            .then(function() {
+            .then(function () {
                 recordStream();
             })
-            .catch(function(e) {
+            .catch(function (e) {
                 uploadProgress.hide();
                 var alertWindow = $("#webcam_step_4 .alert-danger");
                 alertWindow.show();
@@ -175,30 +179,30 @@ $(function() {
             });
     };
 
-    var enableRepeat = function() {
+    var enableRepeat = function () {
         var repeatButton = $("#webcam_step_4 button.btn-warning");
         repeatButton.removeAttr("disabled");
 
         var modelRepeatButton = $("#repeatRutton");
-        modelRepeatButton.one('click', function() {
+        modelRepeatButton.one('click', function () {
             checkStepFour();
         });
     };
 
-    var enableFinalContinue = function() {
+    var enableFinalContinue = function () {
         var button = $("#webcam_step_4 button.btn-primary");
         button.removeAttr("disabled");
-        button.click(function() {
+        button.click(function () {
             window.location = $(this).data("target");
         });
         enableRepeat();
     };
 
-    var recordStream = function() {
+    var recordStream = function () {
         var codec = 'video/webm';
         if (recording_option == 'AUD') {
-           codec = 'audio/webm';
-        } 
+            codec = 'audio/webm';
+        }
         mediaRecorder = new MediaRecorder(mediaStream, { mimeType: codec });
         mediaRecorder.ondataavailable = handleStreamData;
 
@@ -206,15 +210,15 @@ $(function() {
         mediaRecorder.start(5000);
 
         // stop after 3 seconds
-        setTimeout(function() {
+        setTimeout(function () {
             stopStream();
         }, 3000);
     };
 
-    var handleStreamData = function(event) {
-        if(!firstChunk) {
+    var handleStreamData = function (event) {
+        if (!firstChunk) {
             return;
-        }else{
+        } else {
             firstChunk = false;
         }
         var uploadProgress = $("#upload-progress");
@@ -224,8 +228,8 @@ $(function() {
         // Prepare post request data
         var codec = 'video/webm';
         if (recording_option == 'AUD') {
-           codec = 'audio/webm';
-        } 
+            codec = 'audio/webm';
+        }
         var file = new File([event.data], 'webcam-test.webm', { type: codec });
         var formData = new FormData();
         formData.append('file', file);
@@ -238,10 +242,10 @@ $(function() {
             data: formData,
             processData: false,
             contentType: false
-        }).done(function(data, status, xhr) {
+        }).done(function (data, status, xhr) {
             uploadProgress.hide();
 
-            if(data.videoUrl) {
+            if (data.videoUrl) {
                 // Add video/audio source
                 $("#webcam_step_4 .embed-responsive").empty();
                 var source = document.createElement('source');
@@ -265,7 +269,7 @@ $(function() {
                 // Enable continue
                 enableFinalContinue();
             }
-        }).fail(function(xhr, status, error) {
+        }).fail(function (xhr, status, error) {
             uploadProgress.hide();
             alertWindow.show();
             alertWindow.append(error);
@@ -274,26 +278,26 @@ $(function() {
         });
     };
 
-    var stopStream = function() {
-        if(mediaRecorder && mediaRecorder.state == "recording") {
+    var stopStream = function () {
+        if (mediaRecorder && mediaRecorder.state == "recording") {
             mediaRecorder.stop();
         }
-        mediaStream.getAudioTracks().forEach(function(track) {
+        mediaStream.getAudioTracks().forEach(function (track) {
             track.stop();
         });
-        mediaStream.getVideoTracks().forEach(function(track) {
+        mediaStream.getVideoTracks().forEach(function (track) {
             track.stop();
         });
     };
 
-    $("#exit-button").click(function() {
-        if (include_pause_page.toLowerCase() == 'true') {
+    $("#exit-button").click(function () {
+        if (include_pause_page) {
             window.location.replace('/' + subjectUuid + '/run/pause');
         } else {
             window.location.replace('/' + subjectUuid + '/run/thankyou');
         }
     });
-    
+
     // Start webcam calibration
     checkStepTwo();
 });

@@ -168,7 +168,7 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
                         {{ error_message }}
                     </div>{% endif %}
 
-                    <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate>
+                    <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate data-recaptcha-site-key="{{recaptcha_site_key}}">
                         {% csrf_token %}
                         <p class="card-text">
                             Please fill out the fields below. You must fill out at least all fields marked with * in order to participate in the study.
@@ -207,23 +207,11 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
 </div>
 <!-- reCAPTCHA API -->
 <script src='https://www.google.com/recaptcha/api.js?render={{recaptcha_site_key}}'></script>
-<script>
-    // global grecaptcha
-    grecaptcha.ready(function() {
-        $('#subjectForm').submit(function(e){
-            var form = this;
-            e.preventDefault();
-            grecaptcha.execute('{{recaptcha_site_key}}', {action: 'submit'}).then(function(token) {
-                $('#g-recaptcha-response').val(token);
-                form.submit();
-            });
-        });
-    });
-</script>
+<script src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
 {% endblock %}'''
 
 webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Webcam and microphone setup{% endblock %} {% block content%}
-<div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}">
+<div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}" data-include-pause-page="{{ experiment.include_pause_page|lower }}" data-recording-option="{{ experiment.recording_option }}" data-webcam-not-found='Unfortunately your webcam could not be detected.<br /><br />Please make sure a webcam is connected and click "Repeat test recording" to return to the webcam test.<br /><br />If you do not agree to allow access to your webcam and have therefore selected "do not allow", please close the browser window.'>
     <div class="row">
         <div class="col text-center">
             <h1>Webcam and microphone setup</h1>
@@ -305,16 +293,11 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
 </div>
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
-<script>
-    var webcam_not_found = `Unfortunately your webcam could not be detected.<br /><br />Please make sure a webcam is connected and click "Repeat test recording" to return to the webcam test.<br /><br />If you do not agree to allow access to your webcam and have therefore selected "do not allow", please close the browser window.`;
-    var include_pause_page = "{{ experiment.include_pause_page }}";
-    var recording_option = "{{ experiment.recording_option }}";
-</script>
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
 microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Microphone setup{% endblock %} {% block content%}
-<div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}">
+<div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}" data-include-pause-page="{{ experiment.include_pause_page|lower }}" data-recording-option="{{ experiment.recording_option }}" data-webcam-not-found='Unfortunately your microphone could not be detected.<br /><br />Please make sure a microphone is connected and click "Repeat test recording" to return to the microphone test.<br /><br />If you do not agree to allow access to your microphone and have therefore selected "do not allow", please close the browser window.'>
     <div class="row">
         <div class="col text-center">
             <h1>Mirophone setup</h1>
@@ -381,11 +364,6 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load
 </div>
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
-<script>
-    var webcam_not_found = `Unfortunately your microphone could not be detected.<br /><br />Please make sure a microphone is connected and click "Repeat test recording" to return to the microphone test.<br /><br />If you do not agree to allow access to your microphone and have therefore selected "do not allow", please close the browser window.`;
-    var include_pause_page = "{{ experiment.include_pause_page }}";
-    var recording_option = "{{ experiment.recording_option }}";
-</script>
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
@@ -428,7 +406,7 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}"></div>
+<div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}" data-trials="{{ trials|safe }}" data-loading-image="{{ loading_image.url }}" data-global-timeout="{{ global_timeout }}" data-include-pause-page="{{ include_pause_page|lower }}" data-recording-option="{{ recording_option }}" data-general-onset="{{ general_onset }}" data-show-gaze-estimations="{{ show_gaze_estimations|lower }}"></div>
 
 <div id="exitStudyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exitStudyModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -447,16 +425,6 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-<script>
-    var trials = {{ trials|safe }}
-    var loading_image = "{{ loading_image.url }}";
-    var global_timeout = "{{ global_timeout }}";
-    var include_pause_page = "{{ include_pause_page }}";
-    var recording_option = "{{ recording_option }}";
-    var general_onset = "{{ general_onset }}";
-    var show_gaze_estimations = "{{ show_gaze_estimations }}";
-</script>
- 
 <script src="{% static 'experiments/js/experiment.js' %}"></script>
 <script src="{% static 'experiments/js/webgazer.min.js' %}"></script>
 <script src="{% static 'experiments/js/webgazer-calibration.js' %}"></script>
