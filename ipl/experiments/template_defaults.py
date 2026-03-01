@@ -1,7 +1,6 @@
-information_page_content = '''{% extends "experiments/base.html" %} 
+information_page_content = '''{% extends "experiments/base.html" %}
 {% load static %}
-{% block title %}Online Study{% endblock %} 
-
+{% block title %}Online Study{% endblock %}
 {% block content %}
 <div class="container" id="information">
     <div class="row">
@@ -45,7 +44,9 @@ information_page_content = '''{% extends "experiments/base.html" %}
 </div>
 {% endblock %}'''
 
-browser_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Browser compatibility check{% endblock %}
+browser_check_page_content = '''{% extends "experiments/base.html" %}
+{% load static %}
+{% block title %}Browser compatibility check{% endblock %}
 {% block content %}
 <div class="container" id="information">
     <div class="row">
@@ -152,7 +153,10 @@ consent_fail_page_content = '''{% extends "experiments/base.html" %}
 </div>
 {% endblock %}'''
 
-demographic_data_page_content = '''{% extends "experiments/base.html" %} {% block title %}Participant form{% endblock %} {% block content %}
+demographic_data_page_content = '''{% extends "experiments/base.html" %}
+{% load static %}
+{% block title %}Participant form{% endblock %}
+{% block content %}
 <div class="container">
     <div class="row">
         <div class="col text-center">
@@ -210,7 +214,10 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %} {% bloc
 <script src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
 {% endblock %}'''
 
-webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Webcam and microphone setup{% endblock %} {% block content%}
+webcam_check_page_content = '''{% extends "experiments/base.html" %}
+{% load static %}
+{% block title %}Webcam and microphone setup{% endblock %}
+{% block content%}
 <div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}" data-include-pause-page="{{ experiment.include_pause_page|lower }}" data-recording-option="{{ experiment.recording_option }}" data-webcam-not-found='Unfortunately your webcam could not be detected.<br /><br />Please make sure a webcam is connected and click "Repeat test recording" to return to the webcam test.<br /><br />If you do not agree to allow access to your webcam and have therefore selected "do not allow", please close the browser window.'>
     <div class="row">
         <div class="col text-center">
@@ -237,8 +244,8 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
                         We are about to make a short test recording (about 3 seconds) to test whether the video recording works. As soon as you click on "Start test recording", the test recording starts. Please say something out loud (e.g. "hello") after clicking so that you can check the audio recording.
                     </p>
                     <div class="alert alert-danger" role="alert" style="display: none;"></div>
-                    <div class="embed-responsive" style="display: none;">
-                        <video controls class="embed-responsive-item"></video>
+                    <div class="media-container ratio ratio-4x3" style="display: none;">
+                        <video controls></video>
                     </div>
                     <button type="button" class="btn btn-primary" disabled>Start test recording</button>
                     <button type="button" class="btn btn-warning" id="repeat-check-button" style="display: none;">Repeat test recording</button>
@@ -257,7 +264,7 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
                     <div class="alert alert-danger" role="alert" style="display: none;">
                         The video upload failed.<br />
                     </div>
-                    <div class="embed-responsive" style="display: none;">
+                    <div class="media-container ratio ratio-4x3" style="display: none;">
                     </div>
                     <div class="alert alert-success" role="alert" style="display: none;">
                         The video upload was successful. Please proceed with the study.
@@ -296,7 +303,10 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %} {% load sta
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
-microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load static %} {% block title %}Microphone setup{% endblock %} {% block content%}
+microphone_check_page_content = '''{% extends "experiments/base.html" %}
+{% load static %}
+{% block title %}Microphone setup{% endblock %}
+{% block content%}
 <div class="container" id="webcam-calibration" data-subject-uuid="{{ subject_data.id }}" data-include-pause-page="{{ experiment.include_pause_page|lower }}" data-recording-option="{{ experiment.recording_option }}" data-webcam-not-found='Unfortunately your microphone could not be detected.<br /><br />Please make sure a microphone is connected and click "Repeat test recording" to return to the microphone test.<br /><br />If you do not agree to allow access to your microphone and have therefore selected "do not allow", please close the browser window.'>
     <div class="row">
         <div class="col text-center">
@@ -328,7 +338,7 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load
                     <div class="alert alert-danger" role="alert" style="display: none;">
                         The audio upload failed.<br />
                     </div>
-                    <div class="embed-responsive" style="display: none;">
+                    <div class="media-container" style="display: none;">
                     </div>
                     <div class="alert alert-success" role="alert" style="display: none;">
                         The audio upload was successful, please continue.
@@ -367,11 +377,9 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %} {% load
 <script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
-experiment_page_content = '''{% extends "experiments/base.html" %} 
+experiment_page_content = '''{% extends "experiments/base.html" %}
 {% load static %}
-
-{% block title %}Experiment{% endblock %} 
-
+{% block title %}Experiment{% endblock %}
 {% block content %}
 <div class="container h-100 text-center" id="fullscreen-message">
     <div class="row h-100 justify-content-center align-items-center">
@@ -406,21 +414,22 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}" data-trials="{{ trials|safe }}" data-loading-image="{{ loading_image.url }}" data-global-timeout="{{ global_timeout }}" data-include-pause-page="{{ include_pause_page|lower }}" data-recording-option="{{ recording_option }}" data-general-onset="{{ general_onset }}" data-show-gaze-estimations="{{ show_gaze_estimations|lower }}"></div>
+<div id="trials-data" style="display: none;">{{ trials }}</div>
+<div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}" data-loading-image="{{ loading_image.url }}" data-global-timeout="{{ global_timeout }}" data-include-pause-page="{{ include_pause_page|lower }}" data-recording-option="{{ recording_option }}" data-general-onset="{{ general_onset }}" data-show-gaze-estimations="{{ show_gaze_estimations|lower }}"></div>
 
-<div id="exitStudyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exitStudyModalLabel" aria-hidden="true">
+<div id="exitStudyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exitStudyModalLabel">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 id="exitStudyModalLabel" class="modal-title">Terminate the study</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"> <span aria-hidden="true">&times;</span> </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 Media recordings are still being uploaded. If you quit the study now, these recordings will be lost. Are you sure you want to quit?
             </div>
             <div class="modal-footer">
                 <button id="confirmExitButton" class="btn btn-danger" type="button">Quit</button> 
-                <button class="btn btn-primary" type="button" data-dismiss="modal">Return to study</button>
+                <button class="btn btn-primary" type="button" data-bs-dismiss="modal">Return to study</button>
             </div>
         </div>
     </div>
@@ -470,10 +479,9 @@ pause_page_content = '''{% extends "experiments/base.html" %}
 </div>
 {% endblock %}'''
 
-thank_you_page_content = '''{% extends "experiments/base.html" %} 
+thank_you_page_content = '''{% extends "experiments/base.html" %}
 {% load static %}
-{% block title %}Thank you{% endblock %} 
-
+{% block title %}Thank you{% endblock %}
 {% block content %}
 <div class="container" id="thank-you">
     <div class="row">
@@ -522,10 +530,9 @@ thank_you_page_content = '''{% extends "experiments/base.html" %}
 <script src="{% static 'experiments/js/endpage.js' %}"></script>
 {% endblock %}'''
 
-thank_you_abort_page_content = '''{% extends "experiments/base.html" %} 
+thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
 {% load static %}
-{% block title %}Study incomplete{% endblock %} 
-
+{% block title %}Study incomplete{% endblock %}
 {% block content %}
 <div class="container" id="thank-you">
     <div class="row">

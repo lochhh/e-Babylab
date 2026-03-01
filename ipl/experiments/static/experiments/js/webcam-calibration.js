@@ -108,7 +108,7 @@ $(function () {
         startStream()
             .then(function () {
                 // Display video stream in video tag
-                $("#webcam_step_3 .embed-responsive").show();
+                $("#webcam_step_3 .media-container").show();
                 var video = $("#webcam_step_3 video").get(0);
                 video.srcObject = mediaStream;
                 video.onloadedmetadata = function (e) {
@@ -149,11 +149,11 @@ $(function () {
         $("#webcam_step_4").addClass("active");
         $("#webcam_step_4 .alert-danger").hide();
         $("#webcam_step_4 .alert-success").hide();
-        $("#webcam_step_4 .embed-responsive").hide();
+        $("#webcam_step_4 .media-container").hide();
         if (recording_option == 'AUD') {
-            $("#webcam_step_4 .embed-responsive audio").eq(0).empty();
+            $("#webcam_step_4 .media-container audio").eq(0).empty();
         } else {
-            $("#webcam_step_4 .embed-responsive video").eq(0).empty();
+            $("#webcam_step_4 .media-container video").eq(0).empty();
         }
         var button = $("#webcam_step_4 button.btn-primary");
         button.attr('disabled', true);
@@ -247,7 +247,7 @@ $(function () {
 
             if (data.videoUrl) {
                 // Add video/audio source
-                $("#webcam_step_4 .embed-responsive").empty();
+                $("#webcam_step_4 .media-container").empty();
                 var source = document.createElement('source');
                 source.src = data.videoUrl;
                 source.type = data.type;
@@ -258,13 +258,12 @@ $(function () {
                     videoElem = document.createElement("video");
                 }
                 videoElem.controls = true;
-                videoElem.className = "embed-responsive-item";
                 videoElem.appendChild(source);
-                $("#webcam_step_4 .embed-responsive").get(0).appendChild(videoElem);
+                $("#webcam_step_4 .media-container").get(0).appendChild(videoElem);
 
                 // Show recorded video
                 successWindow.show();
-                $("#webcam_step_4 .embed-responsive").show();
+                $("#webcam_step_4 .media-container").show();
 
                 // Enable continue
                 enableFinalContinue();

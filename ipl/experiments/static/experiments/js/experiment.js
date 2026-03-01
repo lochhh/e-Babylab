@@ -2,7 +2,7 @@
 
 (function () {
     const config = $('#trials').data();
-    const trials = config.trials;
+    const trials = JSON.parse($('#trials-data').text());
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
     const include_pause_page = config.includePausePage;
@@ -74,10 +74,9 @@
     let createAudioContainer = function () {
         return new Promise(function (resolve) {
             let div = document.createElement('div');
-            div.className = 'embed-responsive trial-audio';
+            div.className = 'trial-audio';
 
             let audio = document.createElement('audio');
-            audio.className = 'embed-responsive-item';
             audio.hidden = 'hidden';
 
             let source = document.createElement('source');
@@ -305,12 +304,11 @@
 
         console.log("Preload video of trial " + (trialObj.trial_id).toString());
         let div = document.createElement('div');
-        div.className = 'embed-responsive trial-video';
+        div.className = 'trial-video';
         div.style.display = 'none';
         div.id = 'video-container-' + trialObj.trial_id;
 
         let video = document.createElement('video');
-        video.className = 'embed-responsive-item';
         video.preload = 'auto';
 
         let source1 = document.createElement('source');
@@ -656,9 +654,22 @@
         terminateStudy();
     });
 
+    var exitModalElement = document.getElementById('exitStudyModal');
+    var exitModal = null;
+    if (exitModalElement) {
+        exitModal = new bootstrap.Modal(exitModalElement);
+        // Resolve "aria-hidden on focused element" warning by using 'inert' on background
+        exitModalElement.addEventListener('show.bs.modal', function () {
+            $('.container').not('#exitStudyModal').attr('inert', '');
+        });
+        exitModalElement.addEventListener('hidden.bs.modal', function () {
+            $('.container').removeAttr('inert');
+        });
+    }
+
     $("#exit-button").click(function () {
         if (webcam.getLength()) { // Upload queue is not empty, show confirmation dialog
-            $('#exitStudyModal').modal('show');
+            if (exitModal) exitModal.show();
         } else {
             terminateStudy();
         }
