@@ -28,7 +28,7 @@ from catsim.initialization import FixedPointInitializer
 from catsim.selection import MaxInfoSelector
 from catsim.estimation import NumericalSearchEstimator
 from catsim.irt import max_info_hpc, inf_hpc
-
+from catsim import ItemBank
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
@@ -217,7 +217,7 @@ def cdiGenerateNextItem(request, run_uuid):
         responses = request.session.get('responses')
         est_theta = request.session.get('est_theta')
         est_theta = NumericalSearchEstimator(method='bounded').estimate(
-            items=item_params, 
+            item_bank=ItemBank(item_params), 
             administered_items=administered_items, 
             response_vector=np.array(responses, dtype=bool), 
             est_theta=est_theta
