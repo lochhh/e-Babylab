@@ -351,7 +351,7 @@ requires-dist = [
     { name = "gunicorn", marker = "sys_platform != 'win32'" },
     { name = "numexpr", specifier = ">=2.8.3" },
     { name = "numpy" },
-    { name = "pandas" },
+    { name = "pandas", specifier = ">=3.0" },
     { name = "pillow" },
     { name = "psycopg2-binary" },
     { name = "python-dateutil" },
