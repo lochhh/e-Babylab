@@ -44,7 +44,7 @@ services:
       - ./media:/usr/src/app/media
       - ./webcam:/usr/src/app/webcam
       - ./reports:/usr/src/app/reports
-    command: "./wait-for-it.sh db:5432 -- sh -c 'python manage.py collectstatic --noinput && gunicorn ipl.ipl.wsgi:application --bind 0.0.0.0:8000'"
+    command: "./wait-for-it.sh db:5432 -- sh -c 'python manage.py collectstatic --noinput && gunicorn ipl.wsgi:application --bind 0.0.0.0:8000'"
     environment:
       - DJANGO_ENV=prod
     logging:

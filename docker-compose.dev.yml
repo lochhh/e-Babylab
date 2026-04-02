@@ -25,6 +25,7 @@ services:
     ports:
       - "8080:8080"
     command: "sh -c 'chmod +x ./wait-for-it.sh && ./wait-for-it.sh db:5432 -- python manage.py runserver 0:8080'"
+    env_file: ./ipl/.env
     environment:
       - DJANGO_ENV=dev
     logging:

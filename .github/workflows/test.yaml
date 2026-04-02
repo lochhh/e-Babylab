@@ -13,6 +13,27 @@ jobs:
       matrix:
         python-version: [3.13, 3.14]
 
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      SECRET_KEY: "ci-test-secret-key-not-for-production"
+      GOOGLE_RECAPTCHA_SITE_KEY: "ci-test-site-key"
+      GOOGLE_RECAPTCHA_SECRET_KEY: "ci-test-secret-key"
+      DB_HOST: localhost
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,12 +41,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Install the project
-        run: uv sync --all-extras --dev
+        run: uv sync --dev
 
       - name: Run tests with coverage
-        run: uv run pytest --cov=ipl
+        run: uv run pytest
 
       # - name: Upload coverage to Codecov (disabled until codecov is set up)
       #   uses: codecov/codecov-action@v5
