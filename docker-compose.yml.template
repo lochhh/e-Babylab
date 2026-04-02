@@ -37,8 +37,7 @@ services:
   web:
     build:
       context: .
-      args:
-        BUILD_MODE: "prod"
+      target: prod
     image: ipl:latest
     depends_on:
       - db
