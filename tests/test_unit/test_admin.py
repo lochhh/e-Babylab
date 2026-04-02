@@ -129,7 +129,7 @@ class TestExperimentAdmin:
         assert 'innerblocks' in data
         assert 'trials' in data
         
-        assert data['experiment'][0]['pk'] == ex.id
+        assert data['experiment'][0]['pk'] == str(ex.id)
         assert data['trials'][0]['pk'] == ti.id
 
 @pytest.mark.django_db
@@ -191,12 +191,15 @@ class TestOtherAdmins:
         assert bi in qs
 
 @pytest.mark.django_db
-def test_question_inline_get_formset(admin_site, experiment_factory, question_factory, rf):
+def test_question_inline_get_formset(admin_site, experiment_factory, question_factory, rf, user):
     ex = experiment_factory()
     inline = QuestionInline(Experiment, admin_site)
-    
+
+    request = rf.get('/')
+    request.user = user
+
     # Case 1: No questions exist, should have extra=2
-    formset_class = inline.get_formset(rf.get('/'), obj=ex)
+    formset_class = inline.get_formset(request, obj=ex)
     # The 'extra' is handled in get_formset logic of Django, but we check if it was modified
     # In QuestionInline.get_formset: extra is set in kwargs
     # We can't easily check the class attribute 'extra' as it's passed via kwargs to super
@@ -207,5 +210,5 @@ def test_question_inline_get_formset(admin_site, experiment_factory, question_fa
 
     # Case 2: Questions exist, should have extra=0
     question_factory(experiment=ex)
-    formset_class_with_q = inline.get_formset(rf.get('/'), obj=ex)
+    formset_class_with_q = inline.get_formset(request, obj=ex)
     assert formset_class_with_q is not None

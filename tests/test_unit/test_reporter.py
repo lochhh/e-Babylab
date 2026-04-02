@@ -1,8 +1,5 @@
-from types import SimpleNamespace
 import importlib
-import os
-import uuid
-import pytest
+from types import SimpleNamespace
 
 # module under test
 rpt = importlib.import_module("experiments.reporter")
@@ -26,7 +23,9 @@ class DummyDF:
         self.columns = columns
         self.saved = {"to_excel": False}
 
-    def to_excel(self, writer, sheet_name=None, header=True, index=True, index_label=None):
+    def to_excel(
+        self, writer, sheet_name=None, header=True, index=True, index_label=None
+    ):
         self.saved["to_excel"] = True
 
     @staticmethod
@@ -35,14 +34,16 @@ class DummyDF:
 
 
 def make_reporter(monkeypatch, tmp_path, experiment):
-    """
-    Helper to construct a Reporter instance with heavy IO monkeypatched away.
-    """
+    """Helper to construct a Reporter instance with heavy IO monkeypatched away."""
     # Patch settings.REPORTS_ROOT used by the module
-    monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
+    monkeypatch.setattr(
+        rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
+    )
 
     # monkeypatch zipfile.ZipFile used in Reporter.__init__
-    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr(
+        "experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True
+    )
 
     # monkeypatch pandas DataFrame used by reporter functions
     monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
@@ -65,13 +66,15 @@ def test_calc_roi_response_basic():
     result = SimpleNamespace(
         resolution_w=100,
         resolution_h=100,
-        trialitem=SimpleNamespace(grid_row=2, grid_col=2)
+        trialitem=SimpleNamespace(grid_row=2, grid_col=2),
     )
-    rep = rpt.Reporter(SimpleNamespace(exp_name="unused"))  # minimal experiment used only for instantiation
-    # coords in top-left quadrant -> (0,0)
-    assert rep.calc_roi_response(result, [10, 10]) == "(0,0)"
+    rep = rpt.Reporter(
+        SimpleNamespace(exp_name="unused")
+    )  # minimal experiment used only for instantiation
+    # coords in top-left quadrant -> (1,1)
+    assert rep.calc_roi_response(result, [10, 10]) == "(1,1)"
     # coords near bottom-right -> expect last cell (row,col) indices
-    assert rep.calc_roi_response(result, [99, 99]) in ("(2,2)", "(1,1)")
+    assert rep.calc_roi_response(result, [99, 99]) == "(2,2)"
 
 
 def test_gcd_recursive():
@@ -82,24 +85,41 @@ def test_gcd_recursive():
     assert rep.gcd(5, 0) == 5
 
 
-def test_create_subject_worksheet(monkeypatch, tmp_path, subjectdata_factory, consent_question_factory, question_factory):
-    """
-    Build a minimal SubjectData with related consent question and an answer,
+def test_create_subject_worksheet(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    consent_question_factory,
+    question_factory,
+):
+    """Build a minimal SubjectData with related consent question and an answer,
     then ensure create_subject_worksheet returns a DummyDF with expected data keys.
     """
     # create subject  related experiment
     subject = subjectdata_factory()
     # create a consent question for this experiment
-    cq = consent_question_factory(text="Agree?", experiment=subject.experiment, position=0)
+    cq = consent_question_factory(
+        text="Agree?", experiment=subject.experiment, position=0
+    )
     # create an age question and corresponding AnswerText with ISO date (so code computes months)
-    age_q = question_factory(text="DOB", question_type=rpt.Question.AGE, experiment=subject.experiment, position=0)
+    age_q = question_factory(
+        text="DOB",
+        question_type=rpt.Question.AGE,
+        experiment=subject.experiment,
+        position=0,
+    )
     # create an AnswerText instance for the subject; use model to persist
     from experiments.models import AnswerText
+
     AnswerText.objects.create(question=age_q, subject_data=subject, body="2020-01-01")
     # Prepare reporter with monkeypatched environment
-    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr(
+        "experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True
+    )
     monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
-    monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
+    monkeypatch.setattr(
+        rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
+    )
     rep = rpt.Reporter(subject.experiment)
     df = rep.create_subject_worksheet(subject)
     # DummyDF stores original dict; ensure keys include some expected fields
@@ -112,15 +132,20 @@ def test_create_subject_worksheet(monkeypatch, tmp_path, subjectdata_factory, co
     assert "CDI estimate" in df.data
 
 
-def test_create_trial_and_webgazer_worksheets_empty(monkeypatch, tmp_path, subjectdata_factory):
-    """
-    Ensure trial/webgazer worksheet creation returns DummyDF objects and
+def test_create_trial_and_webgazer_worksheets_empty(
+    monkeypatch, tmp_path, subjectdata_factory
+):
+    """Ensure trial/webgazer worksheet creation returns DummyDF objects and
     that create_trial_worksheet handles empty TrialResult sets gracefully.
     """
     subject = subjectdata_factory()
-    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr(
+        "experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True
+    )
     monkeypatch.setattr("experiments.reporter.pd.DataFrame", DummyDF, raising=True)
-    monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
+    monkeypatch.setattr(
+        rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
+    )
     rep = rpt.Reporter(subject.experiment)
 
     # When there are no TrialResult rows the method should return a DummyDF for trials
@@ -133,24 +158,35 @@ def test_create_trial_and_webgazer_worksheets_empty(monkeypatch, tmp_path, subje
 
 
 def test_create_report_minimal(monkeypatch, tmp_path, subjectdata_factory):
-    """
-    Test create_report path where there is one subject and worksheet creation methods
+    """Test create_report path where there is one subject and worksheet creation methods
     are monkeypatched to avoid heavy pandas/xlsxwriter operations.
     """
     subject = subjectdata_factory()
-    monkeypatch.setattr(rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False)
+    monkeypatch.setattr(
+        rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
+    )
     # prevent actual zipfile usage
-    monkeypatch.setattr("experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True)
+    monkeypatch.setattr(
+        "experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True
+    )
 
     # Create a Reporter but replace its worksheet builders with simple callables that return DummyDF
     rep = rpt.Reporter(subject.experiment)
     monkeypatch.setattr(rep, "create_subject_worksheet", lambda s: DummyDF({"k": "v"}))
-    monkeypatch.setattr(rep, "create_trial_worksheet", lambda s: DummyDF([], columns=rep.trial_columns))
-    monkeypatch.setattr(rep, "create_webgazer_worksheet", lambda s: [DummyDF([]), DummyDF([])])
+    monkeypatch.setattr(
+        rep, "create_trial_worksheet", lambda s: DummyDF([], columns=rep.trial_columns)
+    )
+    monkeypatch.setattr(
+        rep, "create_webgazer_worksheet", lambda s: [DummyDF([]), DummyDF([])]
+    )
 
     # monkeypatch SubjectData.objects.filter to return our single subject
-    fake_subject_model = SimpleNamespace(objects=SimpleNamespace(filter=lambda **kw: [subject]))
-    monkeypatch.setattr("experiments.reporter.SubjectData", fake_subject_model, raising=False)
+    fake_subject_model = SimpleNamespace(
+        objects=SimpleNamespace(filter=lambda **kw: [subject])
+    )
+    monkeypatch.setattr(
+        "experiments.reporter.SubjectData", fake_subject_model, raising=False
+    )
 
     out = rep.create_report()
     assert isinstance(out, str)

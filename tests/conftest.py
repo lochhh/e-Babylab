@@ -2,6 +2,7 @@ import uuid
 import pytest
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
+from filebrowser.base import FileObject
 
 from experiments import models as exp_models
 
@@ -19,24 +20,24 @@ def group(db):
 
 @pytest.fixture
 def instrument_factory(db):
-    """Create simple Instrument instances; FileBrowseField stores path strings."""
+    """Create simple Instrument instances; FileBrowseField requires FileObject values."""
     def _create(instr_name="instr1"):
         return exp_models.Instrument.objects.create(
             instr_name=instr_name,
-            words_list="words.csv",
-            irt_params="irt.csv",
-            f_lm_np_mean="f_np_mean.csv",
-            f_lm_np_sd="f_np_sd.csv",
-            f_lm_p_mean="f_p_mean.csv",
-            f_lm_p_sd="f_p_sd.csv",
-            f_bmin="f_bmin.csv",
-            f_slope="f_slope.csv",
-            m_lm_np_mean="m_np_mean.csv",
-            m_lm_np_sd="m_np_sd.csv",
-            m_lm_p_mean="m_p_mean.csv",
-            m_lm_p_sd="m_p_sd.csv",
-            m_bmin="m_bmin.csv",
-            m_slope="m_slope.csv",
+            words_list=FileObject("words.csv"),
+            irt_params=FileObject("irt.csv"),
+            f_lm_np_mean=FileObject("f_np_mean.csv"),
+            f_lm_np_sd=FileObject("f_np_sd.csv"),
+            f_lm_p_mean=FileObject("f_p_mean.csv"),
+            f_lm_p_sd=FileObject("f_p_sd.csv"),
+            f_bmin=FileObject("f_bmin.csv"),
+            f_slope=FileObject("f_slope.csv"),
+            m_lm_np_mean=FileObject("m_np_mean.csv"),
+            m_lm_np_sd=FileObject("m_np_sd.csv"),
+            m_lm_p_mean=FileObject("m_p_mean.csv"),
+            m_lm_p_sd=FileObject("m_p_sd.csv"),
+            m_bmin=FileObject("m_bmin.csv"),
+            m_slope=FileObject("m_slope.csv"),
         )
     return _create
 

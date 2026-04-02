@@ -1,5 +1,6 @@
 import importlib
 import datetime
+from io import StringIO
 from types import SimpleNamespace
 
 import pytest
@@ -45,20 +46,23 @@ def test_estimateCDI_basic_branch(monkeypatch):
 
     experiment = SimpleNamespace(pk="exp-1", instrument=SimpleNamespace(pk="instr-1"), cdi_page_tpl="<p>tpl</p>")
     # instrument needs file attributes with .path used by code, but we'll monkeypatch csv.DictReader and pd.read_csv
-    instrument = SimpleNamespace(words_list=SimpleNamespace(path="words.csv"),
-                                 f_lm_np_mean="f_lm_np_mean.csv",
-                                 f_lm_np_sd="f_lm_np_sd.csv",
-                                 f_lm_p_mean="f_lm_p_mean.csv",
-                                 f_lm_p_sd="f_lm_p_sd.csv",
-                                 f_bmin="f_bmin.csv",
-                                 f_slope="f_slope.csv",
-                                 m_lm_np_mean="m_lm_np_mean.csv",
-                                 m_lm_np_sd="m_lm_np_sd.csv",
-                                 m_lm_p_mean="m_lm_p_mean.csv",
-                                 m_lm_p_sd="m_lm_p_sd.csv",
-                                 m_bmin="m_bmin.csv",
-                                 m_slope="m_slope.csv",
-                                 )
+    def _fp(name):
+        return SimpleNamespace(path=name)
+    instrument = SimpleNamespace(
+        words_list=_fp("words.csv"),
+        f_lm_np_mean=_fp("f_lm_np_mean.csv"),
+        f_lm_np_sd=_fp("f_lm_np_sd.csv"),
+        f_lm_p_mean=_fp("f_lm_p_mean.csv"),
+        f_lm_p_sd=_fp("f_lm_p_sd.csv"),
+        f_bmin=_fp("f_bmin.csv"),
+        f_slope=_fp("f_slope.csv"),
+        m_lm_np_mean=_fp("m_lm_np_mean.csv"),
+        m_lm_np_sd=_fp("m_lm_np_sd.csv"),
+        m_lm_p_mean=_fp("m_lm_p_mean.csv"),
+        m_lm_p_sd=_fp("m_lm_p_sd.csv"),
+        m_bmin=_fp("m_bmin.csv"),
+        m_slope=_fp("m_slope.csv"),
+    )
 
     # monkeypatch get_object_or_404 to return the right object based on model argument
     def fake_get_object_or_404(model, pk=None):
@@ -71,16 +75,22 @@ def test_estimateCDI_basic_branch(monkeypatch):
         raise AssertionError("Unexpected model in get_object_or_404: %r" % (model,))
     monkeypatch.setattr(cdi, "get_object_or_404", fake_get_object_or_404)
 
-    # make CdiResult.objects.filter(...) return an empty list so main loop is skipped
+    # make CdiResult.objects.filter(...) return an empty chainable queryset-like so main loop is skipped
     class FakeCdiResultManager:
         @staticmethod
         def filter(*args, **kwargs):
-            return []
+            class _Chain:
+                def order_by(self, *a, **k):
+                    return self
+                def distinct(self, *a, **k):
+                    return iter([])
+            return _Chain()
     class FakeCdiResult:
         objects = FakeCdiResultManager()
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
 
-    # patch csv.DictReader to avoid file IO; return empty iterator
+    # patch open and csv.DictReader to avoid file IO
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: StringIO(""))
     monkeypatch.setattr(cdi.csv, "DictReader", lambda f, delimiter=',', encoding=None, mode=None: [])
 
     # create a very small fake DataFrame-like object for pd.read_csv outputs
@@ -139,6 +149,34 @@ def test_estimateCDI_basic_branch(monkeypatch):
     # monkeypatch norm.pdf so code that computes logs will run without numerical troubles
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x) * 1.0)
 
+    # monkeypatch DB queries for age (AnswerText), sex (AnswerRadio), and choices (Question)
+    class _FakeQS:
+        def __init__(self, result):
+            self._result = result
+        def first(self):
+            return self._result
+
+    class FakeAnswerText:
+        class objects:
+            @staticmethod
+            def filter(*args, **kwargs):
+                return _FakeQS(SimpleNamespace(body="2020-01-01"))
+    monkeypatch.setattr(cdi, "AnswerText", FakeAnswerText)
+
+    class FakeAnswerRadio:
+        class objects:
+            @staticmethod
+            def filter(*args, **kwargs):
+                return _FakeQS(SimpleNamespace(body="female"))
+    monkeypatch.setattr(cdi, "AnswerRadio", FakeAnswerRadio)
+
+    class FakeQuestion:
+        class objects:
+            @staticmethod
+            def filter(*args, **kwargs):
+                return _FakeQS(SimpleNamespace(choices="female, male"))
+    monkeypatch.setattr(cdi, "Question", FakeQuestion)
+
     # call estimateCDI and assert return value and that subject_data.save() was called
     result = cdi.estimateCDI(subject_data.pk)
     assert result == pytest.approx(0.0) or result == 0 or isinstance(result, (int, float))
@@ -165,7 +203,7 @@ def test_cdiRun_sets_session_and_renders(monkeypatch, question_factory):
     # fake domain objects
     created_dt = datetime.datetime.now()
     subject_data = SimpleNamespace(pk="run-uuid", created=created_dt, experiment=SimpleNamespace(pk="exp-1"))
-    experiment = SimpleNamespace(pk="exp-1", cdi_page_tpl="<p>CDI</p>", num_words=1)
+    experiment = SimpleNamespace(pk="exp-1", cdi_page_tpl="<p>CDI</p>", num_words=1, instrument=SimpleNamespace(pk="instr-1"))
     instrument = SimpleNamespace(words_list=SimpleNamespace(path="words.csv"), irt_params=SimpleNamespace(path="irt.csv"))
 
     # stub get_object_or_404 to return our objects in sequence by model
@@ -179,7 +217,8 @@ def test_cdiRun_sets_session_and_renders(monkeypatch, question_factory):
         raise AssertionError("Unexpected model: %r" % (model,))
     monkeypatch.setattr(cdi, "get_object_or_404", fake_get_object_or_404)
 
-    # csv.DictReader should return list of rows with 'word' keys
+    # patch open and csv.DictReader to avoid file IO
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: StringIO(""))
     monkeypatch.setattr(cdi.csv, "DictReader", lambda f, delimiter=',', encoding=None, mode=None: [{"word": "w1"}])
 
     # Fake DataFrame used for pd.read_csv in cdiRun
@@ -196,11 +235,13 @@ def test_cdiRun_sets_session_and_renders(monkeypatch, question_factory):
             return self
         def to_json(self, orient='records'):
             return "[]"
+        def to_numpy(self):
+            return np.array([[1.0, 0.0, 1.0, 0.0]])
 
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *args, **kwargs: FakeDF2())
 
-    # stub sort_items to return a numpy array compatible with indexing [0:1,]
-    monkeypatch.setattr(cdi, "sort_items", lambda arr: np.array([[0]]))
+    # stub sort_items to return a 1D numpy array compatible with indexing [0:1,]
+    monkeypatch.setattr(cdi, "sort_items", lambda arr: np.array([0]))
 
     # stub FixedPointInitializer to return object with initialize()
     class FakeInit:
@@ -212,9 +253,8 @@ def test_cdiRun_sets_session_and_renders(monkeypatch, question_factory):
 
     # replace VocabularyChecklistForm so it only constructs without side effects
     class FakeVocabForm:
-        def __init__(self, cdi_form, word):
-            self._c = cdi_form
-            self._w = word
+        def __init__(self, *args, **kwargs):
+            pass
     monkeypatch.setattr(cdi, "VocabularyChecklistForm", FakeVocabForm)
 
     # call cdiRun
@@ -240,7 +280,9 @@ def test_cdiSubmit_branches_to_end(monkeypatch, question_factory):
     """
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={"word_w1": "on"})
-    request.session = {"responses": []}
+    class FakeSession(dict):
+        pass
+    request.session = FakeSession({"responses": [], "irt_run": 0, "words": ["word1"]})
 
     # fake domain objects
     created_dt = datetime.datetime.now()
@@ -260,14 +302,19 @@ def test_cdiSubmit_branches_to_end(monkeypatch, question_factory):
 
     # fake form that is always valid
     class FakeForm:
-        def __init__(self, post, cdi_form=None):
+        def __init__(self, post, **kwargs):
             self._post = post
         def is_valid(self):
             return True
+        @property
+        def cleaned_data(self):
+            return {}
     monkeypatch.setattr(cdi, "VocabularyChecklistForm", FakeForm)
 
     # fake CdiResult manager chain to return a count >= num_words
     class _Q:
+        def filter(self, *args, **kwargs):
+            return self
         def order_by(self, *args, **kwargs):
             return self
         def distinct(self, *args, **kwargs):
@@ -283,9 +330,10 @@ def test_cdiSubmit_branches_to_end(monkeypatch, question_factory):
 
     # monkeypatch ListItem.objects.filter to return non-empty iterable to take proceedToExperiment branch
     class _LI:
-        @staticmethod
-        def filter(*args, **kwargs):
-            return [1]
+        class objects:
+            @staticmethod
+            def filter(*args, **kwargs):
+                return [1]
     monkeypatch.setattr(cdi, "ListItem", _LI)
 
     # monkeypatch proceedToExperiment to return a HttpResponse
