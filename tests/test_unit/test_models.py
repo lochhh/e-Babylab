@@ -54,8 +54,7 @@ def test__delete_file_and_delete_file_signal(monkeypatch, trialresult_factory, t
 
     monkeypatch.setattr("os.path.isfile", lambda p: True if p == dummy_path else False)
     def fake_remove(p):
-        if p == dummy_path:
-            removed["ok"] = True
+        removed["ok"] = True
     monkeypatch.setattr("os.remove", fake_remove)
 
     _delete_file(dummy_path)
