@@ -1,4 +1,4 @@
-"""Django settings for ipl project."""
+"""Django settings for the project."""
 
 import os
 
@@ -49,7 +49,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "ipl.urls"
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
@@ -67,7 +67,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "ipl.wsgi.application"
+WSGI_APPLICATION = "config.wsgi.application"
 
 # Logging
 
@@ -181,7 +181,7 @@ FILEBROWSER_EXTENSIONS = {
 
 # Admin page customisations
 
-GRAPPELLI_INDEX_DASHBOARD = "ipl.dashboard.CustomIndexDashboard"
+GRAPPELLI_INDEX_DASHBOARD = "config.dashboard.CustomIndexDashboard"
 GRAPPELLI_ADMIN_TITLE = "e-Babylab"
 
 # Tinymce editor config

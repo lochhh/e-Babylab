@@ -61,9 +61,10 @@ dev = [
 	"types-requests"
 ]
 
-[tool.setuptools]
-packages = ["ipl"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=ipl --cov-report=term-missing --ds=ipl.settings"
-pythonpath = ["ipl"]
+addopts = "--cov=experiments --cov=config --cov-report=term-missing --ds=config.settings"
+pythonpath = ["src"]
+testpaths = ["tests"]

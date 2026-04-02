@@ -48,7 +48,7 @@ def test_trialitem_and_trialresult_and_filename(trialitem_factory, trialresult_f
 
 
 def test__delete_file_and_delete_file_signal(monkeypatch, trialresult_factory, tmp_path):
-    from ipl.experiments.models import _delete_file, delete_file
+    from experiments.models import _delete_file, delete_file
     dummy_path = "/tmp/somefile.to.delete"
     removed = {"ok": False}
 

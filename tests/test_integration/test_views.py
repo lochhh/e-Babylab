@@ -1,5 +1,5 @@
 """
-Integration tests for ipl.experiments views (index and detail).
+Integration tests for experiments views (index and detail).
 """
 from django.urls import reverse
 import pytest

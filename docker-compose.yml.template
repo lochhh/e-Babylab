@@ -25,11 +25,14 @@ services:
       driver: "json-file"
       options:
         max-size: "5m"
+    env_file: ./.env
     environment:
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
       - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     restart: always
   web:
     build:
@@ -44,7 +47,8 @@ services:
       - ./media:/usr/src/app/media
       - ./webcam:/usr/src/app/webcam
       - ./reports:/usr/src/app/reports
-    command: "./wait-for-it.sh db:5432 -- sh -c 'python manage.py collectstatic --noinput && gunicorn ipl.wsgi:application --bind 0.0.0.0:8000'"
+    command: "./wait-for-it.sh db:5432 -- sh -c 'python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000'"
+    env_file: ./.env
     environment:
       - DJANGO_ENV=prod
     logging:
@@ -54,9 +58,10 @@ services:
     restart: always
   pgadmin:
     image: dpage/pgadmin4
+    env_file: ./.env
     environment:
-      PGADMIN_DEFAULT_EMAIL: "user@domain.com"
-      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     depends_on:
       - db
     logging:

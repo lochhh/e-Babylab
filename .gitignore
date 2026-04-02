@@ -106,15 +106,15 @@ venv.bak/
 .DS_Store
 
 # Django media folder
-ipl/media/_versions/**
-ipl/media/uploads/experiments/**
-!ipl/media/uploads/.keep
-ipl/media/uploads/instruments/**
-!ipl/media/uploads/instruments/*.r
+src/media/_versions/**
+src/media/uploads/experiments/**
+!src/media/uploads/.keep
+src/media/uploads/instruments/**
+!src/media/uploads/instruments/*.r
 
 # Django static folder
-ipl/static/**
+src/static/**
 
-ipl/webcam/**
+src/webcam/**
 postgres[-_]data
-ipl/reports/**
+src/reports/**
