@@ -6,9 +6,9 @@ from django.urls import reverse
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
 
-from ipl.experiments.admin import ExperimentAdmin, SubjectDataAdmin, QuestionInline, ListItemAdmin, OuterBlockItemAdmin, BlockItemAdmin
-from ipl.experiments.models import Experiment, SubjectData, ListItem, OuterBlockItem, BlockItem, TrialItem, Question, ConsentQuestion
-from ipl.experiments.forms import ExperimentForm
+from experiments.admin import ExperimentAdmin, SubjectDataAdmin, QuestionInline, ListItemAdmin, OuterBlockItemAdmin, BlockItemAdmin
+from experiments.models import Experiment, SubjectData, ListItem, OuterBlockItem, BlockItem, TrialItem, Question, ConsentQuestion
+from experiments.forms import ExperimentForm
 
 class MockRequest:
     def __init__(self, user=None):

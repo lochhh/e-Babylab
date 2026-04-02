@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Then copy project source code (changes here won't invalidate dependency layer)
 COPY README.md LICENSE ./
-COPY ./ipl ./
+COPY ./src ./
 
 # Install the project itself (production only since dev uses volume mounts)
 RUN --mount=type=cache,target=/root/.cache/uv \
