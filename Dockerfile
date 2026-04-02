@@ -19,23 +19,13 @@ ENV UV_COMPILE_BYTECODE=1
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
 
-# Ensure installed tools can be executed out of the box
-ENV UV_TOOL_BIN_DIR=/usr/local/bin
-
 # Install the project's dependencies
-COPY pyproject.toml ./
-# Copy uv.lock if it exists (for production builds)
-COPY uv.loc[k] ./
+COPY pyproject.toml uv.lock ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    if [ "$BUILD_MODE" = "prod" ] && [ -f "uv.lock" ]; then \
-        echo "Installing dependencies with lock file (production mode)" && \
+    if [ "$BUILD_MODE" = "prod" ]; then \
         uv sync --locked --no-install-project --no-dev; \
-    elif [ "$BUILD_MODE" = "prod" ]; then \
-        echo "Installing dependencies without lock file (production mode)" && \
-        uv sync --no-install-project --no-dev; \
     else \
-        echo "Installing dependencies with dev tools (development mode)" && \
         uv sync --no-install-project; \
     fi
 
@@ -45,12 +35,8 @@ COPY ./ipl ./
 
 # Install the project itself (production only since dev uses volume mounts)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    if [ "$BUILD_MODE" = "prod" ] && [ -f "uv.lock" ]; then \
-        echo "Installing project with lock file (production mode)" && \
+    if [ "$BUILD_MODE" = "prod" ]; then \
         uv sync --locked --no-dev; \
-    elif [ "$BUILD_MODE" = "prod" ]; then \
-        echo "Installing project without lock file (production mode)" && \
-        uv sync --no-dev; \
     fi
 
 # Make wait-for-it.sh executable
@@ -61,5 +47,3 @@ ENV PATH="/usr/src/app/.venv/bin:$PATH"
 
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
-
-EXPOSE 8000
