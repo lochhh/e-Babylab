@@ -64,7 +64,7 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.pytest.ini_options]
+[tool.pytest]
 addopts = "--cov=experiments --cov=config --cov-report=term-missing --ds=config.settings"
 pythonpath = ["src"]
 testpaths = ["tests"]
