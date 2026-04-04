@@ -65,6 +65,11 @@ dev = [
 where = ["src"]
 
 [tool.pytest]
-addopts = "--cov=experiments --cov=config --cov-report=term-missing --ds=config.settings"
+addopts = [
+    "--cov=experiments",
+    "--cov=config",
+    "--cov-report=term-missing",
+    "--ds=config.settings",
+]
 pythonpath = ["src"]
 testpaths = ["tests"]
