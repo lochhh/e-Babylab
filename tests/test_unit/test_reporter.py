@@ -13,12 +13,71 @@ These tests exercise the Reporter class and its methods
 """
 
 import importlib
+import pathlib
 from types import SimpleNamespace
+from zipfile import ZipFile as _RealZipFile
 
 import pytest
 
 # module under test
 rpt = importlib.import_module("experiments.reporter")
+
+# ---------------------------------------------------------------------------
+# Sample data derived from the reference participant xlsx
+# ---------------------------------------------------------------------------
+
+_SAMPLE_XLSX = (
+    pathlib.Path(__file__).parent.parent
+    / "data"
+    / "13_eye-tracking_test_20231006_4806daaa62534cab8d58fc441e442471.xlsx"
+)
+
+# Minimal calibration webgazer_data matching the sample xlsx:
+#   [0]  - validation summary dict (includes "trial_type" dropped by the reporter)
+#   [1:] - individual gaze samples {t, x, y}
+_CALIBRATION_WEBGAZER_DATA = [
+    # webgazer_data[0]: validation summary in dict-of-arrays format (one entry per
+    # gaze sample collected at the calibration target).  The reporter reads this with
+    # pd.read_json and then drops "trial_type".
+    {
+        "trial_type": ["webgazer_calibrate", "webgazer_calibrate", "webgazer_calibrate"],
+        "x": [995.0225736782604, 991.6243043637024, 993.645883309357],
+        "y": [601.6824880372583, 573.7935240063534, 576.4765554663201],
+        "accuracy": [123.8960048500634, 123.8960048500634, 123.8960048500634],
+        "target_x": [864, 864, 864],
+        "target_y": [540, 540, 540],
+        "precision_rms": [46.32411013388716, 46.32411013388716, 46.32411013388716],
+        "precision_perc": [77, 77, 77],
+        "precision_sd_x": [52.7248043692667, 52.7248043692667, 52.7248043692667],
+        "precision_sd_y": [57.78888731895658, 57.78888731895658, 57.78888731895658],
+    },
+    # webgazer_data[1:]: individual gaze samples
+    {"t": 32.6, "x": 511, "y": 504},
+    {"t": 74.3, "x": 739, "y": 586},
+    {"t": 107.9, "x": 872, "y": 630},
+]
+
+
+def _xlsx_sheet_columns(sheet_index):
+    """Return the header row column names from the given 1-based sheet of the sample xlsx.
+
+    Reads the xlsx as a zip of XML to avoid an openpyxl dependency.
+    """
+    import xml.etree.ElementTree as ET
+
+    ns = {"ss": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with _RealZipFile(_SAMPLE_XLSX) as zf:
+        shared = []
+        with zf.open("xl/sharedStrings.xml") as f:
+            for si in ET.parse(f).getroot().findall("ss:si", ns):
+                t = si.find(".//ss:t", ns)
+                shared.append(t.text if t is not None else "")
+        with zf.open(f"xl/worksheets/sheet{sheet_index}.xml") as f:
+            first_row = ET.parse(f).getroot().findall(".//ss:row", ns)[0]
+            return [
+                shared[int(c.find("ss:v", ns).text)]
+                for c in first_row.findall("ss:c", ns)
+            ]
 
 
 class DummyZipFile:
@@ -199,6 +258,39 @@ def test_create_subject_worksheet(
     assert "1. Agree?" in df.data
     # age answer key uses 1-based position prefix
     assert "1. DOB" in df.data
+
+
+def test_create_subject_worksheet_propagates_missing_answer(
+    monkeypatch,
+    tmp_path,
+    experiment_factory,
+    subjectdata_factory,
+    question_factory,
+):
+    """ObjectDoesNotExist from a missing answer subclass row is logged and re-raised."""
+    from django.core.exceptions import ObjectDoesNotExist
+
+    from experiments.models import AnswerText
+
+    exp = experiment_factory(exp_name="err-test")
+    subject = subjectdata_factory(experiment=exp)
+    question_factory(
+        text="Q", question_type=rpt.Question.TEXT, experiment=exp, position=0
+    )
+    AnswerText.objects.create(
+        question=rpt.Question.objects.get(experiment=exp),
+        subject_data=subject,
+        body="x",
+    )
+    monkeypatch.setattr(
+        rpt.AnswerText.objects,
+        "get",
+        lambda **_: (_ for _ in ()).throw(ObjectDoesNotExist()),
+    )
+
+    rep = make_reporter(monkeypatch, tmp_path, exp)
+    with pytest.raises(ObjectDoesNotExist):
+        rep.create_subject_worksheet(subject)
 
 
 # ---------------------------------------------------------------------------
@@ -524,9 +616,8 @@ def test_create_webgazer_worksheet_non_calibration_trial(
     blockitem_factory,
     trialitem_factory,
 ):
-    """create_webgazer_worksheet populates the webgazer DataFrame for a non-calibration
-    trial with gaze data (exercises lines 313-350, else branch).
-    Uses real pandas since the method mixes pd.read_json / pd.concat internally.
+    """create_webgazer_worksheet populates webgazer_data for a non-calibration trial.
+    Expected columns are verified against the EyeTrackingData sheet of the sample xlsx.
     """
     import pandas as pd
     from experiments.models import TrialResult
@@ -545,7 +636,6 @@ def test_create_webgazer_worksheet_non_calibration_trial(
         webgazer_data=[{"x": 10, "y": 20, "t": 100}],
     )
 
-    # Do not patch pd.DataFrame so that real pandas concat/read_json work
     monkeypatch.setattr(
         rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
     )
@@ -556,6 +646,53 @@ def test_create_webgazer_worksheet_non_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert "Trial Number" in webgazer.columns
-    assert "Gaze Area (row,col)" in webgazer.columns
+    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
+
+
+def test_create_webgazer_worksheet_calibration_trial(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    outerblock_factory,
+    blockitem_factory,
+    trialitem_factory,
+):
+    """create_webgazer_worksheet splits calibration webgazer_data into a validation
+    summary and gaze samples, and computes Gaze Area for a multi-cell grid.
+    Output columns are verified against the sample xlsx.
+    """
+    import pandas as pd
+    from experiments.models import TrialResult
+
+    subject = subjectdata_factory()
+    outerblock = outerblock_factory(listitem=subject.listitem)
+    blockitem = blockitem_factory(outerblock=outerblock)
+    trialitem = trialitem_factory(blockitem=blockitem)
+    trialitem.record_gaze = True
+    trialitem.is_calibration = True
+    trialitem.grid_row = 3
+    trialitem.grid_col = 3
+    trialitem.save()
+    TrialResult.objects.create(
+        subject=subject,
+        trialitem=trialitem,
+        key_pressed="",
+        webgazer_data=_CALIBRATION_WEBGAZER_DATA,
+        resolution_w=1728,
+        resolution_h=1117,
+    )
+
+    monkeypatch.setattr(
+        rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
+    )
+    monkeypatch.setattr(
+        "experiments.reporter.zipfile.ZipFile", DummyZipFile, raising=True
+    )
+    rep = rpt.Reporter(subject.experiment)
+
+    webgazer, validation = rep.create_webgazer_worksheet(subject)
+    assert isinstance(webgazer, pd.DataFrame)
+    assert list(webgazer.columns) == _xlsx_sheet_columns(3)   # EyeTrackingData
+    assert isinstance(validation, pd.DataFrame)
+    assert list(validation.columns) == _xlsx_sheet_columns(4)  # EyeTrackingValidation
