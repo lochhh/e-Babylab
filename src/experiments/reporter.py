@@ -205,6 +205,7 @@ class Reporter:
                 subject_data[cdi_result.given_label] = cdi_result.response
         except ObjectDoesNotExist as e:
             logger.exception("Object does not exist: " + str(e))
+            raise
         return pd.DataFrame.from_dict(subject_data, orient="index")
 
     def create_trial_worksheet(self, subject):
