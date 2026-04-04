@@ -7,6 +7,7 @@ import re
 import shutil
 import uuid
 import zipfile
+from io import StringIO
 
 import pandas as pd
 from django.conf import settings
@@ -114,12 +115,13 @@ class Reporter:
         return ""
 
     def gcd(self, a, b):
+        """Calculate greatest common divisor of a and b using Euclidean algorithm."""
         if b == 0:
             return a
         return self.gcd(b, a % b)
 
     def create_subject_worksheet(self, subject):
-        """Creates a dataframe for each participant containing the data
+        """Create a dataframe for each participant containing the data
         obtained from the consent form and the demographic/participant data form.
         """
         gcd = self.gcd(subject.resolution_w, subject.resolution_h)
@@ -317,9 +319,11 @@ class Reporter:
                 else (trial_results.filter(pk__lt=result.pk).count() + 1)
             )
             if result.trialitem.is_calibration:
-                curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data[1:]))
+                curr_webgazer_data = pd.read_json(
+                    StringIO(json.dumps(result.webgazer_data[1:]))
+                )
                 curr_validation_data = pd.read_json(
-                    json.dumps(result.webgazer_data[0])
+                    StringIO(json.dumps(result.webgazer_data[0]))
                 ).drop(columns=["trial_type"])
                 curr_validation_data.insert(0, "Trial Number", trial_number)
                 curr_validation_data.insert(1, "Trial Label", result.trialitem.label)
@@ -331,7 +335,9 @@ class Reporter:
                     ]
                 )
             else:
-                curr_webgazer_data = pd.read_json(json.dumps(result.webgazer_data))
+                curr_webgazer_data = pd.read_json(
+                    StringIO(json.dumps(result.webgazer_data))
+                )
             curr_webgazer_data.insert(0, "Trial Number", trial_number)
             curr_webgazer_data.insert(1, "Trial Label", result.trialitem.label)
             curr_webgazer_data.insert(2, "Trial Code", result.trialitem.code)
@@ -356,7 +362,12 @@ class Reporter:
         return [webgazer_data, validation_data]
 
     def create_report(self):
-        """Creates a zip file containing all participants' results and webcam/audio files for an experiment."""
+        """Create a zip file containing all participants' results and recordings.
+
+        The .zip file contains an .xlsx report for each participant with their trial results
+        and responses to consent and demographic questions, as well as their corresponding
+        webcam/audio files for an experiment.
+        """
         # For each subject
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
         for subject in subjects:
