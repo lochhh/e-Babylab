@@ -1,233 +1,249 @@
-from django.shortcuts import get_object_or_404, render, redirect
-from django.http import HttpResponseRedirect, Http404, JsonResponse, HttpResponse
-from django.urls import reverse
-from django.conf import settings
-from django.core.files.storage import FileSystemStorage
-from django.template import Template, RequestContext
-from django.db.utils import DEFAULT_DB_ALIAS
-
+import json
+import logging
+import os.path
 from random import shuffle
 
-from .models import Question, Experiment, SubjectData, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, ConsentQuestion
-from .forms import SubjectDataForm, ConsentForm, ImportForm
-from .reporter import Reporter
+import requests
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template import RequestContext, Template
+from django.urls import reverse
+
 from .admin import ExperimentAdmin
 from .decorators import login_required
-
-import dateutil.parser
-import json
-import os.path
-import logging
-import requests
+from .forms import ConsentForm, ImportForm, SubjectDataForm
+from .models import (
+    BlockItem,
+    Experiment,
+    ListItem,
+    OuterBlockItem,
+    SubjectData,
+    TrialItem,
+    TrialResult,
+)
+from .reporter import Reporter
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
 
+
 def proceedToExperiment(experiment, run_uuid):
     # skip webcam/microphone test if experiment not configured to record video/audio.
-    if experiment.recording_option == 'NON' or experiment.recording_option == 'EYE': 
-        return HttpResponseRedirect(reverse('experiments:experimentRun', args = (run_uuid,)))
-    else: # capture audio/video
-        return HttpResponseRedirect(reverse('experiments:webcamTest', args = (run_uuid,)))
+    if experiment.recording_option == "NON" or experiment.recording_option == "EYE":
+        return HttpResponseRedirect(
+            reverse("experiments:experimentRun", args=(run_uuid,))
+        )
+    else:  # capture audio/video
+        return HttpResponseRedirect(reverse("experiments:webcamTest", args=(run_uuid,)))
 
 
-@login_required(next='/admin/experiments/experiment')
+@login_required(next_url="/admin/experiments/experiment")
 def experimentReport(request, experiment_id):
-    """ 
-    Generates the zip file containing the participants' results and webcam/audio data for an experiment. 
-    """
+    """Generate the zip file containing the participants' results and webcam/audio data for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
 
     r = Reporter(experiment)
     filename = r.create_report()
-    logger.info('Successfully created report with name %s.' % filename)
+    logger.info("Successfully created report with name %s." % filename)
 
-    fs = FileSystemStorage(location=settings.REPORTS_ROOT, base_url=settings.REPORTS_URL)
+    fs = FileSystemStorage(
+        location=settings.REPORTS_ROOT, base_url=settings.REPORTS_URL
+    )
 
     return redirect(fs.url(os.path.basename(filename)))
 
 
 def experimentExport(request, experiment_id):
-    """
-    Exports an experiment to a JSON file
-    """
+    """Export an experiment to a JSON file"""
     json_data = ExperimentAdmin.exportToJSON(experiment_id)
-    response = HttpResponse(json.dumps(json_data), content_type='application/json')
-    response['Content-Disposition'] = 'attachment; filename=\"' + Experiment.objects.get(id=experiment_id).exp_name + '.json\"'
+    response = HttpResponse(json.dumps(json_data), content_type="application/json")
+    response["Content-Disposition"] = (
+        'attachment; filename="'
+        + Experiment.objects.get(id=experiment_id).exp_name
+        + '.json"'
+    )
     return response
 
 
 def experimentImport(request):
-    """
-    Renders the import page or the experiments list after import.
-    """
-    if request.method == 'POST':
+    """Render the import page or the experiments list after import."""
+    if request.method == "POST":
         form = ImportForm(request.POST, request.FILES)
         if form.is_valid():
-            json_data = request.FILES['import_file'].read()
+            json_data = request.FILES["import_file"].read()
             ExperimentAdmin.importFromJSON(request, json_data)
-            return redirect('/admin/experiments/experiment')
+            return redirect("/admin/experiments/experiment")
     form = ImportForm()
-    return render(request, 'admin/experiments/import_form.html', {'form': form})
+    return render(request, "admin/experiments/import_form.html", {"form": form})
 
 
 def informationPage(request, experiment_id):
-    """ 
-    Generates the first page, the welcome page of an experiment.
-    """
+    """Generates the first page, the welcome page of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     t = Template(experiment.information_page_tpl)
-    c = RequestContext(request, {'experiment':experiment})
+    c = RequestContext(request, {"experiment": experiment})
     return HttpResponse(t.render(c))
 
 
 def browserCheck(request, experiment_id):
-    """ 
-    Generates the second page, the browser check page of an experiment.
-    Only Firefox and Chrome are supported. 
+    """Generate the second page, the browser check page of an experiment.
+    Only Firefox and Chrome are supported.
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     t = Template(experiment.browser_check_page_tpl)
-    c = RequestContext(request, {'experiment':experiment})
+    c = RequestContext(request, {"experiment": experiment})
     return HttpResponse(t.render(c))
 
 
 def consentForm(request, experiment_id):
-    """ 
-    Generates the third page, the consent form of an experiment. 
-    """
+    """Generate the third page, the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(experiment=experiment)
     t = Template(experiment.introduction_page_tpl)
-    c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
+    c = RequestContext(request, {"consent_form": form, "experiment": experiment})
     return HttpResponse(t.render(c))
 
 
 def consentFormSubmit(request, experiment_id):
-    """ 
-    Validates the consent form of an experiment. 
-    """
+    """Validate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(request.POST, experiment=experiment)
     # on submit, require all answers to be yeses to proceed, else render consent fail page
     if form.is_valid():
         for key, value in request.POST.items():
-            if key.startswith('question_'):
-                if value.lower() == 'no':
+            if key.startswith("question_"):
+                if value.lower() == "no":
                     t = Template(experiment.consent_fail_page_tpl)
-                    c = RequestContext(request, {'experiment': experiment})
+                    c = RequestContext(request, {"experiment": experiment})
                     return HttpResponse(t.render(c))
-        return HttpResponseRedirect(reverse('experiments:subjectForm', args=(experiment_id,)))
+        return HttpResponseRedirect(
+            reverse("experiments:subjectForm", args=(experiment_id,))
+        )
     t = Template(experiment.introduction_page_tpl)
-    c = RequestContext(request, {'consent_form': form, 'experiment': experiment})
+    c = RequestContext(request, {"consent_form": form, "experiment": experiment})
     return HttpResponse(t.render(c))
 
 
 def subjectForm(request, experiment_id):
-    """ 
-    Generates the fourth page, the demographic/participant data form of an experiment. 
-    """
+    """Generate the fourth page, the demographic/participant data form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
     t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
+    c = RequestContext(
+        request,
+        {
+            "subject_data_form": form,
+            "experiment": experiment,
+            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+        },
+    )
     return HttpResponse(t.render(c))
 
 
 def subjectFormSubmit(request, experiment_id):
-    """ 
-    Validates the demographic/participant data form. 
-    """
+    """Validate the demographic/participant data form."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(request.POST, experiment=experiment)
     t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
-    
+    c = RequestContext(
+        request,
+        {
+            "subject_data_form": form,
+            "experiment": experiment,
+            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+        },
+    )
+
     if form.is_valid():
         # validate reCAPTCHA
-        recaptcha_response = request.POST.get('g-recaptcha-response')
+        recaptcha_response = request.POST.get("g-recaptcha-response")
         data = {
-            'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
-			'response': recaptcha_response
-		}
-        r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+            "secret": settings.GOOGLE_RECAPTCHA_SECRET_KEY,
+            "response": recaptcha_response,
+        }
+        r = requests.post("https://www.google.com/recaptcha/api/siteverify", data=data)
         result = r.json()
 
-        if not result['success']:
-            c = RequestContext(request, {'subject_data_form': form, 'experiment': experiment, 
-                                            'error_message': 'Invalid reCAPTCHA. Please try again.',
-                                            'recaptcha_site_key': settings.GOOGLE_RECAPTCHA_SITE_KEY})
-            logger.info('Invalid reCAPTCHA: ' + str(result))
+        if not result["success"]:
+            c = RequestContext(
+                request,
+                {
+                    "subject_data_form": form,
+                    "experiment": experiment,
+                    "error_message": "Invalid reCAPTCHA. Please try again.",
+                    "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+                },
+            )
+            logger.info("Invalid reCAPTCHA: " + str(result))
             return HttpResponse(t.render(c))
         response = form.save()
-        
-        if experiment.instrument: # administer CDI if instrument is defined
-            return HttpResponseRedirect(reverse('experiments:vocabChecklist', args = (str(response.id),)))
+
+        if experiment.instrument:  # administer CDI if instrument is defined
+            return HttpResponseRedirect(
+                reverse("experiments:vocabChecklist", args=(str(response.id),))
+            )
         else:
             return proceedToExperiment(experiment, str(response.id))
-    
+
     return HttpResponse(t.render(c))
 
 
 def createTrialDict(trial, block, trial_number):
-    """ 
-    Returns a dictionary containing the details of a trial. 
-    """
-    trial_type = ''
+    """Return a dictionary containing the details of a trial."""
+    trial_type = ""
 
     if trial.visual_file:
         visual_file = trial.visual_file.url
         vftype = trial.visual_file.filetype
-        if 'video' in vftype.lower():
-            trial_type = 'video'
+        if "video" in vftype.lower():
+            trial_type = "video"
         else:
-            trial_type = 'image'
+            trial_type = "image"
     else:
-        visual_file = ''
+        visual_file = ""
 
     if trial.audio_file:
         audio_file = trial.audio_file.url
     else:
-        audio_file = ''
+        audio_file = ""
 
     if not trial.response_keys:
-        trial.response_keys = ''
+        trial.response_keys = ""
 
     trial_dict = {
-        'trial_id': trial.id,
-        'trial_number': trial_number,
-        'background_colour': block.background_colour,
-        'label': trial.label,
-        'visual_onset': trial.visual_onset,
-        'audio_onset': trial.audio_onset,
-        'audio_file': audio_file,
-        'visual_file': visual_file,
-        'max_duration': trial.max_duration,
-        'response_keys': trial.response_keys.lower().replace(' ', '').split(','),
-        'require_user_input': trial.user_input, #'NO', 'YES'
-        'trial_type': trial_type,
-        'record_media': trial.record_media,
-        'record_gaze': trial.record_gaze,
-        'is_calibration': trial.is_calibration,
-        'calibration_points': trial.calibration_points if trial.is_calibration else []
+        "trial_id": trial.id,
+        "trial_number": trial_number,
+        "background_colour": block.background_colour,
+        "label": trial.label,
+        "visual_onset": trial.visual_onset,
+        "audio_onset": trial.audio_onset,
+        "audio_file": audio_file,
+        "visual_file": visual_file,
+        "max_duration": trial.max_duration,
+        "response_keys": trial.response_keys.lower().replace(" ", "").split(","),
+        "require_user_input": trial.user_input,  #'NO', 'YES'
+        "trial_type": trial_type,
+        "record_media": trial.record_media,
+        "record_gaze": trial.record_gaze,
+        "is_calibration": trial.is_calibration,
+        "calibration_points": trial.calibration_points if trial.is_calibration else [],
     }
     return trial_dict
 
 
 def experimentRun(request, run_uuid):
-    """ 
-    Generates the (main) experimental task of an experiment. 
-    """
+    """Generate the (main) experimental task of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     trials = []
     completed_trials = []
     block_items = []
-    loading_image = experiment.loading_image if experiment.loading_image else ''
+    loading_image = experiment.loading_image if experiment.loading_image else ""
     trial_number = 1
 
     try:
-        
         # retrieve a certain list
         if subject_data.listitem is None:
             list_item = experiment.get_list_item()
@@ -236,31 +252,33 @@ def experimentRun(request, run_uuid):
         list_item = subject_data.listitem
 
         # QuerySet of all outer block items of the list
-        outer_block_items = list_item.outerblockitem_set.all().order_by('position')
+        outer_block_items = list_item.outerblockitem_set.all().order_by("position")
 
         # search for existing trial results
         all_trial_results = TrialResult.objects.filter(subject__id=run_uuid)
         trial_number += all_trial_results.count()
-        
+
         # exclude pause trials
-        trial_results = all_trial_results.exclude(key_pressed='PAUSE')
+        trial_results = all_trial_results.exclude(key_pressed="PAUSE")
         if trial_results.exists():
             # construct list of completed trials
             for tr in list(trial_results):
-                completed_trials.append(get_object_or_404(TrialItem, pk=tr.trialitem.id))
+                completed_trials.append(
+                    get_object_or_404(TrialItem, pk=tr.trialitem.id)
+                )
 
         # retrieve all block items from all outer blocks
         for ob in outer_block_items:
-            inner_blocks = list(ob.blockitem_set.all().order_by('position'))
+            inner_blocks = list(ob.blockitem_set.all().order_by("position"))
 
             if ob.randomise_inner_blocks:
                 shuffle(inner_blocks)
-            
+
             block_items += inner_blocks
 
         # retrieve all trial items from all block items
         for b in block_items:
-            trial_items = list(b.trialitem_set.all().order_by('position'))
+            trial_items = list(b.trialitem_set.all().order_by("position"))
 
             if b.randomise_trials:
                 shuffle(trial_items)
@@ -272,80 +290,96 @@ def experimentRun(request, run_uuid):
                 trials.append(createTrialDict(t, b, trial_number))
                 trial_number += 1
 
-    except (KeyError, AttributeError, OuterBlockItem.DoesNotExist, BlockItem.DoesNotExist, TrialItem.DoesNotExist) as e:
-        logger.exception('Failed to run experiment: ' + str(e))
-        return HttpResponseRedirect(reverse('experiments:experimentError', args=(run_uuid,)))
+    except (
+        KeyError,
+        AttributeError,
+        OuterBlockItem.DoesNotExist,
+        BlockItem.DoesNotExist,
+        TrialItem.DoesNotExist,
+    ) as e:
+        logger.exception("Failed to run experiment: " + str(e))
+        return HttpResponseRedirect(
+            reverse("experiments:experimentError", args=(run_uuid,))
+        )
     else:
         t = Template(experiment.experiment_page_tpl)
-        c = RequestContext(request, {
-            'subject_data': subject_data,
-            'loading_image': loading_image,
-            'general_onset': experiment.general_onset,
-            'global_timeout': list_item.global_timeout,
-            'include_pause_page': experiment.include_pause_page,
-            'recording_option': experiment.recording_option,
-            'show_gaze_estimations': experiment.show_gaze_estimations,
-            'trials': json.dumps(trials),
-            })
+        c = RequestContext(
+            request,
+            {
+                "subject_data": subject_data,
+                "loading_image": loading_image,
+                "general_onset": experiment.general_onset,
+                "global_timeout": list_item.global_timeout,
+                "include_pause_page": experiment.include_pause_page,
+                "recording_option": experiment.recording_option,
+                "show_gaze_estimations": experiment.show_gaze_estimations,
+                "trials": json.dumps(trials),
+            },
+        )
         return HttpResponse(t.render(c))
 
 
 def storeResult(request, run_uuid):
-    """ 
-    Stores the results of a trial to a TrialResult object. 
-    """
-    if request.method == 'POST':
+    """Store the results of a trial to a TrialResult object."""
+    if request.method == "POST":
         trialresult = TrialResult()
         trialresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
-        trialresult.trialitem = get_object_or_404(TrialItem, pk=int(request.POST.get('trialitem')))
-        trialresult.start_time = request.POST.get('start_time')
-        trialresult.end_time = request.POST.get('end_time')
-        trialresult.key_pressed = request.POST.get('key_pressed')
-        #trialresult.webcam_file = request.POST.get('webcam_file')
-        trialresult.trial_number = int(request.POST.get('trial_number'))
-        trialresult.resolution_w = int(request.POST.get('resolution_w'))
-        trialresult.resolution_h = int(request.POST.get('resolution_h'))
-        trialresult.webgazer_data = json.loads(request.POST.get('webgazer_data'))
+        trialresult.trialitem = get_object_or_404(
+            TrialItem, pk=int(request.POST.get("trialitem"))
+        )
+        trialresult.start_time = request.POST.get("start_time")
+        trialresult.end_time = request.POST.get("end_time")
+        trialresult.key_pressed = request.POST.get("key_pressed")
+        # trialresult.webcam_file = request.POST.get('webcam_file')
+        trialresult.trial_number = int(request.POST.get("trial_number"))
+        trialresult.resolution_w = int(request.POST.get("resolution_w"))
+        trialresult.resolution_h = int(request.POST.get("resolution_h"))
+        trialresult.webgazer_data = json.loads(request.POST.get("webgazer_data"))
         trialresult.save()
-        return JsonResponse({'resultId': trialresult.pk})
+        return JsonResponse({"resultId": trialresult.pk})
     else:
-        logger.error('Failed to store result.')
-        raise Http404('Page not found.')
+        logger.error("Failed to store result.")
+        raise Http404("Page not found.")
 
 
 def experimentPause(request, run_uuid):
-    """ 
-    Generates the pause page of an experiment.
-    """
+    """Generates the pause page of an experiment."""
     trial_id = None
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
 
-    if request.method == 'POST':
-        trial_id = int(request.POST.get('trialitem'))
+    if request.method == "POST":
+        trial_id = int(request.POST.get("trialitem"))
 
     # retrieve completed trials
     all_trial_results = TrialResult.objects.filter(subject=subject_data)
     # retrieve the last trial result as a TrialItem is required for the creation of a TrialResult.
-    last_trial_result = all_trial_results.exclude(key_pressed='PAUSE').order_by('-id').first()
-        
-    if last_trial_result: # only store pause as trial result when not the first trial
+    last_trial_result = (
+        all_trial_results.exclude(key_pressed="PAUSE").order_by("-id").first()
+    )
+
+    if last_trial_result:  # only store pause as trial result when not the first trial
         trialresult = TrialResult()
         trialresult.subject = subject_data
         trialresult.trialitem = last_trial_result.trialitem
-        trialresult.key_pressed = 'PAUSE'
+        trialresult.key_pressed = "PAUSE"
         trialresult.trial_number = all_trial_results.count() + 1
         trialresult.save()
-    
+
     t = Template(experiment.pause_page_tpl)
-    c = RequestContext(request, {'subject_id': run_uuid, 'trial_id': trial_id,'experiment': experiment,})
+    c = RequestContext(
+        request,
+        {
+            "subject_id": run_uuid,
+            "trial_id": trial_id,
+            "experiment": experiment,
+        },
+    )
     return HttpResponse(t.render(c))
 
 
 def experimentError(request, run_uuid):
-    """ 
-    Generates the error page of an experiment. 
-    """
+    """Generate the error page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     t = Template(experiment.error_page_tpl)
@@ -354,19 +388,19 @@ def experimentError(request, run_uuid):
 
 
 def experimentEnd(request, run_uuid):
-    """ 
-    Generates the thank you / end page of an experiment. 
-    """
+    """Generate the thank you / end page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     t = Template(experiment.thank_you_page_tpl)
-    c = RequestContext(request, {'experiment':experiment, 'subject_id': run_uuid})
-    
+    c = RequestContext(request, {"experiment": experiment, "subject_id": run_uuid})
+
     if subject_data.listitem:
         listitem = get_object_or_404(ListItem, pk=subject_data.listitem.pk)
         # count number of trials in the listitem
         # get list of outer block id's
-        outer_blocks_all = OuterBlockItem.objects.filter(listitem=subject_data.listitem.pk).values_list('id', flat=True)
+        outer_blocks_all = OuterBlockItem.objects.filter(
+            listitem=subject_data.listitem.pk
+        ).values_list("id", flat=True)
         # get all inner blocks of the listitem
         blocks_all = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_all)
 
@@ -376,7 +410,11 @@ def experimentEnd(request, run_uuid):
             tr_count += TrialItem.objects.filter(blockitem=bl.pk).count()
 
         # count participant's number of trial results
-        completed_count = TrialResult.objects.filter(subject=run_uuid).exclude(key_pressed='PAUSE').count()
+        completed_count = (
+            TrialResult.objects.filter(subject=run_uuid)
+            .exclude(key_pressed="PAUSE")
+            .count()
+        )
 
         # if experiment incomplete, render end page after discontinuation
         if completed_count < tr_count:
@@ -385,22 +423,18 @@ def experimentEnd(request, run_uuid):
 
 
 def deleteSubject(request, run_uuid):
-    """
-    Deletes a participant's results at the end of the experiment.
-    """
-    if request.method == 'POST':
+    """Delete a participant's results at the end of the experiment."""
+    if request.method == "POST":
         subject_data = get_object_or_404(SubjectData, pk=run_uuid)
         subject_data.delete()
-        logger.info('Successfully deleted participant %s.' % run_uuid)
+        logger.info("Successfully deleted participant %s." % run_uuid)
         # Return success status with no content
         return HttpResponse(status=204)
     else:
-        logger.error('Failed to delete participant data.')
-        raise Http404('Page not found.')
+        logger.error("Failed to delete participant data.")
+        raise Http404("Page not found.")
 
 
 def index(request):
-    """ 
-    Generates the homepage. 
-    """
-    return render(request, settings.MEDIA_ROOT + '/uploads/templates/index.html')
+    """Generate the homepage."""
+    return render(request, settings.MEDIA_ROOT + "/uploads/templates/index.html")
