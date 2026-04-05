@@ -17,7 +17,8 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
 # Place executables in the environment at the front of the path
-ENV PATH="/usr/src/app/.venv/bin:$PATH"
+ENV UV_PROJECT_ENVIRONMENT=/usr/src/.venv
+ENV PATH="/usr/src/.venv/bin:$PATH"
 
 # Install the project's dependencies (no source code yet)
 COPY pyproject.toml uv.lock ./
