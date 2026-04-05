@@ -1,0 +1,65 @@
+## General
+### Is it possible to change the background colour in an e-Babylab experiment? 
+Yes, background colour can be changed for each inner block, using the colour picker tool or by entering the hex code. By default, the background colour is white.
+
+<img src="https://github.com/user-attachments/assets/bee2a524-21e1-4786-87c5-bb4ab387e589" width=400px> 
+
+### What are the supported file types in e-Babylab?
+The supported file types can be found [[here|File-Management]]. 
+
+### What are the recommended file sizes and formats for stimuli?
+In general, we recommend that you keep the file sizes as small as possible to ensure quick loading times (i.e. minimise lag in experiments). See [[here|File-Management]] for more details.
+
+### How do I convert videos into different formats?
+You can use [Handbrake](https://handbrake.fr/) to convert videos into different formats. 
+
+### What can I do with `label` and `code` in trial settings?
+These are fields that you can use to store information about the [[trial|Experiment-Setup#trials]]. For example, in a 2-alternative forced choice task, you can use `label` to store the trial condition, and `code` to store information about the stimuli (e.g. "target-distractor", to indicate the target is on the left, and distractor on the right). Together with ROIs (defined using `rows` and `columns` in trial settings), you can then use these information to infer whether the response (click/touch/gaze) falls on the target or the distractor when post-processing your data.
+
+### What is a (gaze) calibration trial?
+A (gaze) calibration trial is a special type of trial where the participant is asked to look at a series of points on the screen. This data is then used to calibrate the eye tracker. At the end of the calibration trial, the eye tracker is validated by presenting the first point again. Watch the [eye-tracking video tutorial](https://www.youtube.com/watch?v=CXf7JDdxEj0) for more information.
+
+### Can I validate the eye tracker with multiple points?
+Since validation is only performed using a single point at the end of a calibration trial, you will need create multiple calibration trials, each with a single point, to validate the eye tracker at different locations on the screen. Note that calibration will still be carried out for the defined `max duration`, but you can set this to a very short duration (e.g. 100ms) to "skip" the calibration process.
+
+### Does e-Babylab support response-contingent designs?
+At the moment, there is no option for creating response-contingent designs (e.g., conditionally move to/skip certain trials/blocks based on the participant's response in the current trial). For this, you may want to check out [jsPsych](https://www.jspsych.org/latest/overview/timeline/#conditional-timelines) or [Gorilla](https://support.gorilla.sc/support/tools/experiment-builder/tree-nodes#overview).
+
+### What devices/browsers are e-Babylab experiments compatible with?
+e-Babylab experiments are compatible with Google Chrome or Mozilla Firefox on all Android devices as well as desktop and laptop computers running Windows, macOS, or Linux. 
+Currently, media recording features (requiring webcam and/or microphone) are not supported on iOS devices (iPhone, iPad). However, experiments that only require touch or click responses can still run on these devices, as long as a user response (touch or click) is required in each trial. This means that the trials need to be configured to have long `max duration` and users must provide a response within this defined `max_duration`, for the experiments to run. 
+
+### Does e-Babylab store participants' IP addresses?
+Participants' IP addresses are not stored anywhere.
+
+### How do I batch-download experiment stimuli files of an e-Babylab experiment?
+On the e-Babylab admin site, you can only download _individual_ files. To _batch-download_ the stimuli files of an experiment, use this [bash script](https://gist.github.com/lochhh/f5a2cb0b9727756dd8df0ce7fca685c9). You will need to edit the path to the `experiment.json` file (downloadable via "Export Experiment") and the URL of your e-Babylab server. You will also have to [make the script executable](https://www.andrewcbancroft.com/blog/musings/make-bash-script-executable/) before you run it.
+
+### Can I modify the HTML templates to skip the participant page?
+The participant page cannot be skipped as this "creates" the participant on the database by assigning them a unique ID for linking their experiment results. What you can do is to leave the participant page empty (by removing the title of the page in the HTML template, and removing any [[participant form questions|Experiment-Setup#participant-form]]), keeping only the "Next" button. 
+
+### Can video controls (play, pause, seek, etc.) be displayed for video stimuli in an experiment?
+Yes. You can modify the experiment page HTML template to include JavaScript code that detects new video elements as they are added and enables the HTML `video.controls` for each of these. Here is an example:
+```javascript
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.tagName === 'VIDEO') {
+                    node.controls = true;
+                } else if (node.querySelectorAll) {
+                    node.querySelectorAll('video').forEach(video => {
+                        video.controls = true;
+                    });
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+```
+
+## Troubleshooting
+### I am unable to access the file browser, and I get a server 500 error. What could be the issue?
+A server 500 error could be due to a corrupted file uploaded by the user (e.g. renaming file extensions directly). Please contact your system administrator to check the server logs for more information.
+
+### I modified the template pages and now I get an error message. What could be the reason? How do I fix this?
+It could be that you removed or modified some `<script>` or `<form>` elements, which are necessary for the website to function properly (e.g., button functions, form submissions). The best way to fix this is to restore the original template pages. You can do so by creating a new experiment in a new tab/window. From there, you can copy the original template code and replace your modified code with it. Note also that the URLs in the templates are dynamically generated and look something like: `<form action="{% url 'experiments:consentForm' experiment.id %}">`, so you should not hardcode them in `<form action>`. 
