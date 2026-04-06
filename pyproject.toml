@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "e-Babylab"
-version = "2.0.0"
+version = "2.0.0.a1"
 description = "An open-source browser-based tool for unmoderated online developmental studies"
 authors = [
 	{ name = "Chang Huan Lo" }
