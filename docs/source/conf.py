@@ -32,6 +32,7 @@ extensions = [
     "nbsphinx",
     "sphinx_design",
     "sphinxcontrib.mermaid",
+    "sphinxcontrib.youtube",
 ]
 
 # Configure the myst parser to enable cool markdown features

@@ -476,6 +476,7 @@ dev = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-design" },
     { name = "sphinxcontrib-mermaid" },
+    { name = "sphinxcontrib-youtube" },
     { name = "types-requests" },
 ]
 docs = [
@@ -486,6 +487,7 @@ docs = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-design" },
     { name = "sphinxcontrib-mermaid" },
+    { name = "sphinxcontrib-youtube" },
 ]
 
 [package.metadata]
@@ -528,6 +530,7 @@ dev = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-design" },
     { name = "sphinxcontrib-mermaid" },
+    { name = "sphinxcontrib-youtube" },
     { name = "types-requests" },
 ]
 docs = [
@@ -538,6 +541,7 @@ docs = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-design" },
     { name = "sphinxcontrib-mermaid" },
+    { name = "sphinxcontrib-youtube" },
 ]
 
 [[package]]
@@ -2000,6 +2004,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/3b/44/6716b257b0aa6bfd51a1b31665d1c205fb12cb5ad56de752dfa15657de2f/sphinxcontrib_serializinghtml-2.0.0.tar.gz", hash = "sha256:e9d912827f872c029017a53f0ef2180b327c3f7fd23c87229f7a8e8b70031d4d", size = 16080, upload-time = "2024-07-29T01:10:09.332Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl", hash = "sha256:6e2cb0eef194e10c27ec0023bfeb25badbbb5868244cf5bc5bdc04e4464bf331", size = 92072, upload-time = "2024-07-29T01:10:08.203Z" },
+]
+
+[[package]]
+name = "sphinxcontrib-youtube"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/54/5c/61d1f11ad543f3a4da3b463de69f743051164087b5b9615aff9a1d2e49b8/sphinxcontrib_youtube-1.5.0.tar.gz", hash = "sha256:541b5880096e0a8759f49711f45087c91d6992ff45f03c178e974c66c8f5e326", size = 6088, upload-time = "2026-04-01T13:57:38.1Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/98/5a7457f5c57da4d30185a63fca7beff54e35fca8328473a92e90a1d621de/sphinxcontrib_youtube-1.5.0-py2.py3-none-any.whl", hash = "sha256:58d92bec536fbf029b642de3c9bbd32c7de307e0e13686015a0c0e91b7dfe3b8", size = 7680, upload-time = "2026-04-01T13:57:37.201Z" },
 ]
 
 [[package]]

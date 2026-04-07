@@ -9,24 +9,36 @@ The remaining videos demonstrate more advanced usage of e-Babylab, including:
 
 ## Introduction to e-Babylab
 
-[![Introduction to e-Babylab](http://img.youtube.com/vi/Zssrfr0G2Ag/0.jpg)](https://www.youtube.com/watch?v=Zssrfr0G2Ag "Introduction to e-Babylab")
+:::{youtube} Zssrfr0G2Ag
+:align: center
+:::
 
 ## e-Babylab Admin Site Tour
 
-[![e-Babylab admin site tour](http://img.youtube.com/vi/hvQJXAH_utE/0.jpg)](https://www.youtube.com/watch?v=hvQJXAH_utE "e-Babylab admin site tour")
+:::{youtube} hvQJXAH_utE
+:align: center
+:::
 
 ## Setting up a Simple 2-AFC Experiment
 
-[![Setting up a simple 2-AFC experiment](http://img.youtube.com/vi/lbl0-TJNQZk/0.jpg)](https://www.youtube.com/watch?v=lbl0-TJNQZk "2-AFC experiment demo")
+:::{youtube} lbl0-TJNQZk
+:align: center
+:::
 
 ## Setting up a Short-Form MacArthur-Bates CDI Experiment
 
-[![Setting up a short-form MacArthur-Bates CDI experiment](http://img.youtube.com/vi/-bTsAWzcnZ4/0.jpg)](https://www.youtube.com/watch?v=-bTsAWzcnZ4 "CDI experiment demo")
+:::{youtube} -bTsAWzcnZ4
+:align: center
+:::
 
-### Configuring Video Recording for an Experiment
+## Configuring Video Recording for an Experiment
 
-[![Configuring video recording for an experiment](http://img.youtube.com/vi/3hDC0EgQS7c/0.jpg)](https://www.youtube.com/watch?v=3hDC0EgQS7c "Webcam recording experiment demo")
+:::{youtube} 3hDC0EgQS7c
+:align: center
+:::
 
 ## Configuring Online Eye-Tracking for an Experiment
 
-[![Configuring online eye-tracking for an experiment](http://img.youtube.com/vi/CXf7JDdxEj0/0.jpg)](https://www.youtube.com/watch?v=CXf7JDdxEj0 "Online eye-tracking experiment demo")
+:::{youtube} CXf7JDdxEj0
+:align: center
+:::
