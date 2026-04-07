@@ -48,6 +48,7 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
+	{include-group = "docs"},
 	"pytest",
 	"pytest-cov",
 	"pytest-django",
@@ -58,7 +59,17 @@ dev = [
 	"ruff",
 	"setuptools_scm",
 	"pandas-stubs",
-	"types-requests"
+	"types-requests",
+]
+docs = [
+	"myst-parser[linkify]",
+	"nbsphinx",
+	"pydata-sphinx-theme",
+	"sphinx",
+	"sphinx-autodoc-typehints",
+	"sphinx-design",
+	"sphinxcontrib-mermaid",
+	"sphinxcontrib-youtube",
 ]
 
 [tool.setuptools.packages.find]
