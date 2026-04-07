@@ -1,4 +1,4 @@
-(experiment-administration)=
+(target-experiment-administration)=
 # Experiment Administration
 
 The experiments a user has access to (i.e. has permission to change or delete) are shown in the Experiment Admin.
@@ -22,7 +22,7 @@ Clicking the **Download results** button allows users to download a `.zip` file 
 
 The options to **import** and **export** experiment setups are also provided and may be useful when a user wishes to share an experiment setup but not their participant data and results, or when a user needs to duplicate an experiment setup.
 
-(validation-measures)=
+(target-validation-measures)=
 ## Validation Measures
 
 **Accuracy**

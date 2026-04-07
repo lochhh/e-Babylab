@@ -1,4 +1,4 @@
-(instrument-administration)=
+(target-instrument-administration)=
 # Instrument Administration
 
 e-Babylab provides the option to administer adaptive, short-form versions of the MacArthur–Bates Communicative Development Inventories (CDIs) as a part of each experiment. CDIs (termed _Instruments_ in e-Babylab) are administered via item response theory and CDI estimates are computed based on prior CDI data (retrieved from [Wordbank](http://wordbank.stanford.edu/)) from children with matching key demographics ([Chai et al., 2020](https://doi.org/10.1044/2020_JSLHR-20-00361); [Mayor & Mani, 2019](https://doi.org/10.3758/s13428-018-1146-0)).

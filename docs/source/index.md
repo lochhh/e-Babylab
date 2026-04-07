@@ -14,21 +14,21 @@ Introduction to e-Babylab
 :::{grid-item-card} Get Started
 :img-bottom: images/person-running-solid-full.svg
 :class-img-bottom: .sd-img-bottom-small
-:link: get-started
+:link: target-get-started
 :link-type: ref
 :link-alt: Get Started
 :::
 :::{grid-item-card} User Guide
 :img-bottom: images/book-open-reader-solid-full.svg
 :class-img-bottom: .sd-img-bottom-small
-:link: user-guide
+:link: target-user-guide
 :link-type: ref
 :link-alt: User Guide
 :::
 :::{grid-item-card} FAQs
 :img-bottom: images/circle-question-solid-full.svg
 :class-img-bottom: .sd-img-bottom-small
-:link: faq
+:link: target-faq
 :link-type: ref
 :link-alt: FAQs
 :::

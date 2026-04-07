@@ -1,4 +1,4 @@
-(typical-experiment-run)=
+(target-typical-experiment-run)=
 # Typical Experiment Run
 
 The flow chart below summarises a typical e-Babylab experiment run.

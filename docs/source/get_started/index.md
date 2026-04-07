@@ -1,5 +1,5 @@
-(get-started)=
-# Getting Started with e-Babylab
+(target-get-started)=
+# Getting Started
 
 This guide walks you through everything you need to get e-Babylab up and running for the first time — from obtaining the code to accessing the admin interface.
 

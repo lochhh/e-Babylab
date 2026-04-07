@@ -1,4 +1,4 @@
-(faq)=
+(target-faq)=
 # Frequently Asked Questions
 
 ## General
@@ -16,11 +16,11 @@ Background colour picker
 
 ### What are the supported file types in e-Babylab?
 
-The supported file types can be found in [File Management](file-management).
+The supported file types can be found in [File Management](target-file-management).
 
 ### What are the recommended file sizes and formats for stimuli?
 
-In general, we recommend that you keep the file sizes as small as possible to ensure quick loading times (i.e. minimise lag in experiments). See [File Management](file-management) for more details.
+In general, we recommend that you keep the file sizes as small as possible to ensure quick loading times (i.e. minimise lag in experiments). See [File Management](target-file-management) for more details.
 
 ### How do I convert videos into different formats?
 
@@ -28,7 +28,7 @@ You can use [Handbrake](https://handbrake.fr/) to convert videos into different 
 
 ### What can I do with `label` and `code` in trial settings?
 
-These are fields that you can use to store information about the [trial](experiment-setup#trials). For example, in a 2-alternative forced choice task, you can use `label` to store the trial condition, and `code` to store information about the stimuli (e.g. `"target-distractor"`, to indicate the target is on the left, and distractor on the right). Together with ROIs (defined using `rows` and `columns` in trial settings), you can then use these information to infer whether the response (click/touch/gaze) falls on the target or the distractor when post-processing your data.
+These are fields that you can use to store information about the [trial](target-trials). For example, in a 2-alternative forced choice task, you can use `label` to store the trial condition, and `code` to store information about the stimuli (e.g. `"target-distractor"`, to indicate the target is on the left, and distractor on the right). Together with ROIs (defined using `rows` and `columns` in trial settings), you can then use these information to infer whether the response (click/touch/gaze) falls on the target or the distractor when post-processing your data.
 
 ### What is a (gaze) calibration trial?
 
@@ -58,7 +58,7 @@ On the e-Babylab admin site, you can only download _individual_ files. To _batch
 
 ### Can I modify the HTML templates to skip the participant page?
 
-The participant page cannot be skipped as this "creates" the participant on the database by assigning them a unique ID for linking their experiment results. What you can do is to leave the participant page empty (by removing the title of the page in the HTML template, and removing any [participant form questions](experiment-setup#participant-form)), keeping only the "Next" button.
+The participant page cannot be skipped as this "creates" the participant on the database by assigning them a unique ID for linking their experiment results. What you can do is to leave the participant page empty (by removing the title of the page in the HTML template, and removing any [participant form questions](target-participant-form)), keeping only the "Next" button.
 
 ### Can video controls (play, pause, seek, etc.) be displayed for video stimuli in an experiment?
 
