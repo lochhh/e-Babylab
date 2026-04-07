@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "e-Babylab"
+version = "2.0.0.a1"
+description = "An open-source browser-based tool for unmoderated online developmental studies"
+authors = [
+	{ name = "Chang Huan Lo" }
+]
+requires-python = ">=3.13"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+dependencies = [
+	"django>=5.2.6",
+	"psycopg2-binary",
+	"django-colorfield",
+	"xlsxwriter",
+	"gunicorn; sys_platform != 'win32'",
+	"python-dateutil",
+	"pillow",
+	"django-grappelli>=2.14.3",
+	"django-filebrowser>=3.13.2",
+	"django-tinymce",
+	"scipy",
+	"numpy",
+	"pandas>=3.0",
+	"catsim>=0.17.1",
+	"numexpr>=2.8.3",
+	"tqdm>=4.64.0",
+	"requests",
+]
+
+[tool.ruff]
+exclude = ["__init__.py", "migrations"]
+fix=true
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[dependency-groups]
+dev = [
+	"pytest",
+	"pytest-cov",
+	"pytest-django",
+	"pytest-mock",
+	"coverage",
+	"mypy",
+	"pre-commit",
+	"ruff",
+	"setuptools_scm",
+	"pandas-stubs",
+	"types-requests"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest]
+addopts = [
+    "--cov=experiments",
+    "--cov=config",
+	"--cov-branch",
+    "--cov-report=xml",
+    "--ds=config.settings",
+]
+pythonpath = ["src"]
+testpaths = ["tests"]

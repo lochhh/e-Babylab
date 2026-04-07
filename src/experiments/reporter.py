@@ -1,0 +1,427 @@
+import contextlib
+import datetime
+import json
+import logging
+import os
+import re
+import shutil
+import uuid
+import zipfile
+from io import StringIO
+
+import pandas as pd
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from django.utils.text import get_valid_filename
+
+from .models import (
+    AnswerBase,
+    AnswerInteger,
+    AnswerRadio,
+    AnswerSelect,
+    AnswerSelectMultiple,
+    AnswerText,
+    BlockItem,
+    CdiResult,
+    ConsentQuestion,
+    OuterBlockItem,
+    Question,
+    SubjectData,
+    TrialResult,
+)
+
+# Create a logger for this file
+logger = logging.getLogger(__name__)
+
+
+class Reporter:
+    """Utility for generating results as a zip file to be downloaded."""
+
+    def __init__(self, experiment):
+        self.experiment = experiment
+
+        # Trial columns
+        self.trial_columns = [
+            "Outer Block",
+            "Inner Block",
+            "Randomized",
+            "Trial Number",
+            "Trial Label",
+            "Trial Code",
+            "Visual Onset (ms)",
+            "Audio Onset (ms)",
+            "Visual Presented",
+            "Audio Presented",
+            "Max Duration (ms)",
+            "User Input",
+            "Response Keys",
+            "Nrows",
+            "Ncols",
+            "Area Clicked (row,col)",
+            "Response Time (ms)",
+            "Record Media",
+            "Webcam File",
+            "Screen Width",
+            "Screen Height",
+            "Record Gaze",
+        ]
+
+        # Define report folders
+        self.output_file = get_valid_filename(experiment.exp_name + ".zip")
+        self.output_folder = settings.REPORTS_ROOT
+
+        # Create random folder
+        self.tmp_folder = str(uuid.uuid4())
+        os.makedirs(os.path.join(self.output_folder, self.tmp_folder))
+
+        # Create zip file, delete if already exists
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(self.output_folder, self.output_file))
+        self.zip_file = zipfile.ZipFile(
+            os.path.join(self.output_folder, self.output_file),
+            "w",
+            zipfile.ZIP_DEFLATED,
+        )
+
+        # Create webcam directory if it doesn't exist
+        if not os.path.exists("webcam"):
+            os.makedirs("webcam")
+
+    def calc_trial_duration(self, t1, t2):
+        """Calculates trial duration based on the start and end times."""
+        if t1 and t2:
+            return str(t2 - t1)
+        return ""
+
+    def calc_roi_response(self, result, coords):
+        """Determines row and col responded to (click/gaze) based on grid size defined for the trial."""
+        width = result.resolution_w
+        height = result.resolution_h
+        boundaries_r = list(range(0, height, int(height / result.trialitem.grid_row)))
+        boundaries_r.append(height)
+        boundaries_c = list(range(0, width, int(width / result.trialitem.grid_col)))
+        boundaries_c.append(width)
+
+        if len(coords) == 2:
+            if coords[0] > max(boundaries_c):
+                col_num = len(boundaries_c) - 1
+            else:
+                col_num = next(i for i, c in enumerate(boundaries_c) if c >= coords[0])
+            if coords[1] > max(boundaries_r):
+                row_num = len(boundaries_r) - 1
+            else:
+                row_num = next(i for i, r in enumerate(boundaries_r) if r >= coords[1])
+            return f"({row_num},{col_num})"
+        return ""
+
+    def gcd(self, a, b):
+        """Calculate greatest common divisor of a and b using Euclidean algorithm."""
+        if b == 0:
+            return a
+        return self.gcd(b, a % b)
+
+    def create_subject_worksheet(self, subject):
+        """Create a dataframe for each participant containing the data
+        obtained from the consent form and the demographic/participant data form.
+        """
+        gcd = self.gcd(subject.resolution_w, subject.resolution_h)
+        if gcd == 0:
+            gcd = 1
+        try:
+            subject_data = {
+                "Report Date": datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+                "Experiment Name": subject.experiment.exp_name,
+                "Global Timeout": subject.listitem.global_timeout
+                if subject.listitem
+                else "",
+                "List": subject.listitem.list_name if subject.listitem else "",
+                "Participant Number": subject.participant_id,
+                "Participant UUID": subject.id,
+                "Participation Date": subject.created.strftime("%d.%m.%Y %H:%M:%S"),
+                "Aspect Ratio": f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}",
+                "Resolution": f"{subject.resolution_w}x{subject.resolution_h}",
+                "Consent Questions": "",
+            }
+
+            consent_questions = ConsentQuestion.objects.filter(
+                experiment_id=subject.experiment.id
+            )
+            for consent_question in consent_questions:
+                # format dictionary key with pos to ensure uniqueness
+                subject_data[
+                    f"{consent_question.position + 1}. {consent_question.text}"
+                ] = "Y"
+
+            answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
+            subject_data["Participant Form Responses"] = ""
+            for answer_base in answer_bases:
+                value = ""
+                if answer_base.question.question_type == Question.TEXT:
+                    value = str(AnswerText.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.AGE:
+                    if AnswerText.objects.filter(pk=answer_base.pk).first():
+                        value = str(AnswerText.objects.get(pk=answer_base.pk).body)
+                        dob = datetime.date.fromisoformat(value)
+                        value += (
+                            " ("
+                            + str(
+                                round(
+                                    ((subject.created.date() - dob).days) / (365 / 12)
+                                )
+                            )
+                            + " mo.)"
+                        )
+                    else:
+                        value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+                elif (
+                    answer_base.question.question_type == Question.INTEGER
+                    or answer_base.question.question_type == Question.NUM_RANGE
+                ):
+                    value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+                elif (
+                    answer_base.question.question_type == Question.RADIO
+                    or answer_base.question.question_type == Question.SEX
+                ):
+                    value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.SELECT:
+                    value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
+                elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
+                    value = str(
+                        AnswerSelectMultiple.objects.get(pk=answer_base.pk).body
+                    )
+                # format dictionary key with pos to ensure uniqueness
+                subject_data[
+                    f"{answer_base.question.position + 1}. {answer_base.question.text}"
+                ] = value
+
+            cdi_results = CdiResult.objects.filter(subject=subject.id)
+            subject_data["CDI estimate"] = subject.cdi_estimate
+            subject_data["CDI instrument"] = (
+                subject.experiment.instrument.instr_name
+                if subject.experiment.instrument
+                else ""
+            )
+            for cdi_result in cdi_results:
+                subject_data[cdi_result.given_label] = cdi_result.response
+        except ObjectDoesNotExist as e:
+            logger.exception("Object does not exist: " + str(e))
+            raise
+        return pd.DataFrame.from_dict(subject_data, orient="index")
+
+    def create_trial_worksheet(self, subject):
+        """Creates a dataframe per participant containing the trial results
+        and adds the corresponding webcam/audio files to the final zip file.
+        """
+        trial_data = []
+        outer_blocks_pk = list(
+            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
+                "pk", flat=True
+            )
+        )
+        blocks_pk = list(
+            BlockItem.objects.filter(
+                outerblockitem__pk__in=outer_blocks_pk
+            ).values_list("pk", flat=True)
+        )
+        trial_results = TrialResult.objects.filter(
+            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
+        ).order_by("pk", "trial_number")
+        trial_numbers = trial_results.values_list("trial_number", flat=True)
+        unique_trial_number = len(trial_numbers) == len(
+            set(trial_numbers)
+        )  # need to infer trial number if non-unique
+        for result in trial_results:
+            audio_file = result.trialitem.audio_file
+            coords = list(map(int, re.findall(r"\d+", result.key_pressed)))
+            block = result.trialitem.blockitem
+            trial_data.append(
+                [
+                    block.outerblockitem.outer_block_name,
+                    block.label,
+                    block.randomise_trials,
+                    (
+                        result.trial_number
+                        if unique_trial_number
+                        else (trial_results.filter(pk__lt=result.pk).count() + 1)
+                    ),
+                    result.trialitem.label,
+                    result.trialitem.code,
+                    result.trialitem.visual_onset,
+                    result.trialitem.audio_onset,
+                    result.trialitem.visual_file.filename,
+                    (audio_file.filename if audio_file else ""),
+                    result.trialitem.max_duration,
+                    result.trialitem.user_input,
+                    result.key_pressed,
+                    result.trialitem.grid_row,
+                    result.trialitem.grid_col,
+                    (
+                        self.calc_roi_response(result, coords)
+                        if "mouse" in result.key_pressed
+                        and (
+                            result.trialitem.grid_row != 1
+                            or result.trialitem.grid_col != 1
+                        )
+                        else ""
+                    ),
+                    self.calc_trial_duration(result.start_time, result.end_time),
+                    (
+                        block.outerblockitem.listitem.experiment.recording_option
+                        in ["AUD", "VID"]
+                        and result.trialitem.record_media
+                    ),
+                    result.webcam_file.name,
+                    result.resolution_w,
+                    result.resolution_h,
+                    (
+                        block.outerblockitem.listitem.experiment.recording_option
+                        in ["EYE", "ALL"]
+                        and result.trialitem.record_gaze
+                    ),
+                ]
+            )
+
+            # Add webcam file to zip
+            self.zip_file.write(
+                os.path.join("webcam", result.webcam_file.name), result.webcam_file.name
+            )
+
+        return pd.DataFrame(trial_data, columns=self.trial_columns)
+
+    def create_webgazer_worksheet(self, subject):
+        """Creates a worksheet per participant containing the eye-tracking results."""
+        outer_blocks_pk = list(
+            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
+                "pk", flat=True
+            )
+        )
+        blocks_pk = list(
+            BlockItem.objects.filter(
+                outerblockitem__pk__in=outer_blocks_pk
+            ).values_list("pk", flat=True)
+        )
+        trial_results = TrialResult.objects.filter(
+            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
+        ).order_by("pk", "trial_number")
+        trial_numbers = trial_results.values_list("trial_number", flat=True)
+        unique_trial_number = len(trial_numbers) == len(
+            set(trial_numbers)
+        )  # need to infer trial number if non-unique
+        validation_data = pd.DataFrame()
+        webgazer_data = pd.DataFrame()
+        logger.info(trial_results)
+        for result in trial_results:
+            # skip trials where gaze is not recorded
+            if (not result.trialitem.record_gaze) or (not result.webgazer_data):
+                continue
+            trial_number = (
+                result.trial_number
+                if unique_trial_number
+                else (trial_results.filter(pk__lt=result.pk).count() + 1)
+            )
+            if result.trialitem.is_calibration:
+                curr_webgazer_data = pd.read_json(
+                    StringIO(json.dumps(result.webgazer_data[1:]))
+                )
+                curr_validation_data = pd.read_json(
+                    StringIO(json.dumps(result.webgazer_data[0]))
+                ).drop(columns=["trial_type"])
+                curr_validation_data.insert(0, "Trial Number", trial_number)
+                curr_validation_data.insert(1, "Trial Label", result.trialitem.label)
+                curr_validation_data.insert(2, "Trial Code", result.trialitem.code)
+                validation_data = pd.concat(
+                    [
+                        validation_data,
+                        curr_validation_data,
+                    ]
+                )
+            else:
+                curr_webgazer_data = pd.read_json(
+                    StringIO(json.dumps(result.webgazer_data))
+                )
+            curr_webgazer_data.insert(0, "Trial Number", trial_number)
+            curr_webgazer_data.insert(1, "Trial Label", result.trialitem.label)
+            curr_webgazer_data.insert(2, "Trial Code", result.trialitem.code)
+            curr_webgazer_data["Nrows"] = result.trialitem.grid_row
+            curr_webgazer_data["Ncols"] = result.trialitem.grid_col
+            if result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1:
+                curr_webgazer_data["Gaze Area (row,col)"] = curr_webgazer_data.apply(
+                    lambda x, result=result: self.calc_roi_response(
+                        result, [x["x"], x["y"]]
+                    ),
+                    axis=1,
+                )
+            else:
+                curr_webgazer_data["Gaze Area (row,col)"] = ""
+            webgazer_data = pd.concat(
+                [
+                    webgazer_data,
+                    curr_webgazer_data,
+                ]
+            )
+
+        return [webgazer_data, validation_data]
+
+    def create_report(self):
+        """Create a zip file containing all participants' results and recordings.
+
+        The .zip file contains an .xlsx report for each participant with their trial results
+        and responses to consent and demographic questions, as well as their corresponding
+        webcam/audio files for an experiment.
+        """
+        # For each subject
+        subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
+        for subject in subjects:
+            # Create excel report
+            workbook_file = (
+                str(subject.participant_id)
+                + "_"
+                + self.experiment.exp_name
+                + "_"
+                + subject.created.strftime("%Y%m%d")
+                + "_"
+                + subject.id
+                + ".xlsx"
+            )
+            workbook_file = get_valid_filename(workbook_file)
+
+            # Create Pandas Excel writer using XlsxWriter as the engine
+            writer = pd.ExcelWriter(
+                os.path.join(self.output_folder, self.tmp_folder, workbook_file),
+                engine="xlsxwriter",
+            )
+
+            # Create subject data worksheet
+            self.create_subject_worksheet(subject).to_excel(
+                writer, sheet_name="Participant", header=False
+            )
+
+            if subject.listitem:
+                # Create trial data worksheet
+                self.create_trial_worksheet(subject).to_excel(
+                    writer, sheet_name="Trials", index=False
+                )
+                if self.experiment.recording_option in ["EYE", "ALL"]:
+                    # Create webgazer worksheet
+                    webgazer_worksheets = self.create_webgazer_worksheet(subject)
+                    webgazer_worksheets[0].to_excel(
+                        writer, sheet_name="EyeTrackingData", index=False
+                    )
+                    webgazer_worksheets[1].to_excel(
+                        writer, sheet_name="EyeTrackingValidation", index=False
+                    )
+
+            # Close the Pandas Excel writer and store excel report
+            writer.close()
+            self.zip_file.write(
+                os.path.join(self.output_folder, self.tmp_folder, workbook_file),
+                workbook_file,
+            )
+
+        # Close zip
+        self.zip_file.close()
+
+        # Remove tmp folder
+        shutil.rmtree(os.path.join(self.output_folder, self.tmp_folder))
+
+        return os.path.join(self.output_folder, self.output_file)

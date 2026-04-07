@@ -1,27 +1,38 @@
 services:
   db:
-    image: postgres:10
+    image: postgres
     logging:
       driver: "json-file"
       options:
         max-size: "5m"
+    env_file: ./.env
     environment:
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql
     restart: always
   web:
-    build: ./ipl
+    build:
+      context: .
+      target: base
     image: ipl:latest
     volumes:
-      - ./ipl:/usr/src/app
+      - ./src:/usr/src/app # Mount source code for live reload
+      - ./tests:/usr/src/tests # Mount tests directory
+      - venv_cache:/usr/src/.venv # Preserve virtual environment
     depends_on:
       - db
     ports:
       - "8080:8080"
-    command: "./wait-for-it.sh db:5432 -- python3 manage.py runserver 0:8080"
+    command: "sh -c 'chmod +x ./wait-for-it.sh && ./wait-for-it.sh db:5432 -- python manage.py runserver 0:8080'"
+    env_file: ./.env
     environment:
       - DJANGO_ENV=dev
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTEST_ADDOPTS=--cov=experiments --cov=config --cov-report=term-missing /usr/src/tests
     logging:
       driver: "json-file"
       options:
@@ -29,14 +40,19 @@ services:
     restart: always
   pgadmin:
     image: dpage/pgadmin4
+    env_file: ./.env
     environment:
-      PGADMIN_DEFAULT_EMAIL: "user@domain.com"
-      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     depends_on:
       - db
     ports:
-      - "80"
+      - "5050:80"
     logging:
       driver: "json-file"
       options:
         max-size: "5m"
+
+volumes:
+  venv_cache:
+  postgres_data_dev:
