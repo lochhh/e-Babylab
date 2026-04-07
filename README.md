@@ -1,3 +1,7 @@
+[![Test](https://github.com/lochhh/e-Babylab/actions/workflows/test.yaml/badge.svg)](https://github.com/lochhh/e-Babylab/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/lochhh/e-Babylab/branch/main/graph/badge.svg)](https://codecov.io/gh/lochhh/e-Babylab)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 # e-Babylab
 
 > [!WARNING]
