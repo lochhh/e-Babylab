@@ -94,3 +94,4 @@ html_theme_options = {
     "show_toc_level": 3,  # Show the first 3 levels of the local TOC
 }
 html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]
