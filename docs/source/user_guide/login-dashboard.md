@@ -1,4 +1,4 @@
-(login-dashboard)=
+(target-login-dashboard)=
 # Login Page and Dashboard
 
 In order to access e-Babylab, login credentials are required for every user and are only provided by a site administrator.

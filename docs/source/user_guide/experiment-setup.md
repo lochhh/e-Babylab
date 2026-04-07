@@ -1,4 +1,4 @@
-(experiment-setup)=
+(target-experiment-setup)=
 # Experiment Setup
 
 ## Experiment Wizard
@@ -22,7 +22,7 @@ Experiment Wizard
 Fields in boldface are mandatory.
 :::
 
-(general-settings)=
+(target-general-settings)=
 ## General Settings
 
 - **`Experiment name`**
@@ -46,7 +46,7 @@ Fields in boldface are mandatory.
 - `Include pause page` provides the option to redirect participants to a pause page when they fail to complete an experiment within a given time or when the exit button is clicked during an experiment, instead of ending an experiment immediately. Pause events are recorded in the results.
 - `Show gaze estimations` allows WebGazer estimations to be visualised as a red dot to check if eye-tracking is working properly. This is typically used for debugging purposes but should be disabled in actual experiments.
 
-(html-templates)=
+(target-html-templates)=
 ## HTML Templates
 
 :::{figure} https://github.com/user-attachments/assets/ce8a2775-377f-4084-9672-688d664940a2
@@ -57,7 +57,7 @@ HTML Templates
 
 The **Templates** section provides a "What You See Is What You Get" (_WYSIWYG editor_) for customising the looks and text (e.g., language, instructions) of the experiment webpages, including the welcome page, browser compatibility check page, consent, participant, and CDI forms, webcam and microphone check pages, experimental task page, pause page, error page, and end pages. These fields are pre-populated with default HTML code that works as is. Alternatively, users can change the text as needed. Some elements (e.g., button labels, error messages, success messages) are not visible in the WYSIWYG editor. To change these texts, use the _source code editor_ accessed via the `<>` icon on the toolbar.
 
-(cdi-administration)=
+(target-cdi-administration)=
 ## CDI Administration
 
 :::{figure} https://github.com/user-attachments/assets/aa72e32a-af68-4871-a711-486f611f223f
@@ -72,7 +72,7 @@ The **CDI Administration** section allows users to optionally administer adaptiv
 It is necessary to obtain information on the participant's age and sex in the participant form (configured in Demographic Information) as this is required to compute CDI estimates for the participant. The accepted age range must also match what is in the data files of the selected Instrument.
 :::
 
-(consent-form)=
+(target-consent-form)=
 ## Consent Form
 
 :::{figure} https://github.com/user-attachments/assets/5a04ce4d-2ac7-4fff-9c0f-3899cd60d984
@@ -87,7 +87,7 @@ The **Consent Questions** section allows users to add consent questions (**`text
 Participants are only allowed to proceed with an experiment when all consent questions are responded with yeses, otherwise they will be redirected to the "Failed to obtain consent" page, which serves to provide an explanation as to why they are unable to proceed with the experiment as well as the option to return to the consent form to make any changes.
 :::
 
-(participant-form)=
+(target-participant-form)=
 ## Participant Form
 
 :::{figure} https://github.com/user-attachments/assets/fc377aa8-8c48-4ea1-b793-bf083b856cd6
@@ -111,7 +111,7 @@ The **Demographic Information** section allows users to add form items to the pa
   - `sex`: must be included and marked as a required question for experiments that administer CDIs; requires female and male values to be specified in `Choices` as a comma-separated list, with female preceding male.
 - **`Position`** fields determine the order in which the form fields or questions appear on the participant form and are automatically updated. Items can be reordered using drag and drop as well.
 
-(experimental-task)=
+(target-experimental-task)=
 ## Experimental Task
 
 An experimental task design is made up of four layers:
@@ -123,7 +123,7 @@ An experimental task design is made up of four layers:
 
 In general, experiments have lists, lists have outer-blocks, outer-blocks have inner-blocks, and inner-blocks have trials.
 
-(lists)=
+(target-lists)=
 ### Lists
 
 :::{figure} https://github.com/user-attachments/assets/fd8784ba-df95-4636-938f-b2f2241026ff
@@ -138,7 +138,7 @@ Each list may represent different versions of the experiment or different condit
 - **`Global timeout`** is the maximum duration allowed for participants to complete the entire experimental task. If no time limit is required, this can simply be a very large number.
 - `Do not include this list` temporarily "disables" a list (i.e. prevents a list from being distributed to future participants).
 
-(outer-blocks)=
+(target-outer-blocks)=
 ### Outer-Blocks
 
 :::{figure} https://github.com/user-attachments/assets/5f386369-4a92-464b-b289-8a342fa3e9b5
@@ -149,7 +149,7 @@ Outer block
 
 Outer-blocks are presented in a **fixed order** according to the **`Position`** field (automatically updated; use drag and drop to reorder). Having outer-blocks allows inner-blocks to either be `randomised` or presented in a fixed order, thereby increasing the flexibility in designing experimental tasks.
 
-(inner-blocks)=
+(target-inner-blocks)=
 ### Inner-Blocks
 
 :::{figure} https://github.com/user-attachments/assets/174bf69a-cc02-4955-830c-121e5b065d13
@@ -166,7 +166,7 @@ Inner-blocks allow users to organise different phases of an experimental task in
 - `Randomise trials` determines whether trials within the inner-block should be presented in a random order.
 - **`Position`** determines the order in which the inner block is presented within its outer-block, unless inner-blocks are set to be randomised. Users can also drag and drop to reorder inner-blocks.
 
-(trials)=
+(target-trials)=
 ### Trials
 
 :::{figure} https://github.com/user-attachments/assets/8832a29e-4547-4cdc-bbaf-4eb53c3c4109

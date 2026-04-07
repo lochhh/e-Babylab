@@ -1,4 +1,4 @@
-(participant-data)=
+(target-participant-data)=
 # Participant Data and Result Administration
 
 The Participant Data Admin shows the list of participants in all experiments a user has access to.

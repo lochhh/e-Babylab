@@ -1,4 +1,4 @@
-(video-tutorials)=
+(target-video-tutorials)=
 # Video Tutorials
 We recommend that you begin with the [introduction video](#introduction-to-e-babylab), which introduces the key features of e-Babylab. If you decide that e-Babylab fits your needs, the [e-Babylab admin site tour video](#e-babylab-admin-site-tour) will guide you through the e-Babylab administration site, showing you how to perform basic operations (e.g., create, read, update, and delete). The [Setting up a simple 2-AFC experiment video](#setting-up-a-simple-2-afc-experiment) will demonstrate how a basic two-alternative forced-choice experiment that records mouse clicks or screen touches can be set up by the experimenter and how the output results will look like. It will also show how the experiment looks like on the participants' end.
 
