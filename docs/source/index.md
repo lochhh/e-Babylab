@@ -44,5 +44,5 @@ Lo, C.H., Hermes, J., Kartushina, N. et al. e-Babylab: An open-source browser-ba
 
 get_started/index
 user_guide/index
-faq
+faq/index
 :::
