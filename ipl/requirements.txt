@@ -11,9 +11,9 @@ django-filebrowser>=3.13.2
 tablib
 django-tinymce
 scipy
-numpy
-pandas
-catsim>=0.17.1
+numpy<2.0.0
+pandas<2.1.0
+catsim>=0.17.1,<0.18.0
 numexpr>=2.8.3
 tqdm>=4.64.0
 requests
