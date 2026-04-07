@@ -68,7 +68,8 @@ where = ["src"]
 addopts = [
     "--cov=experiments",
     "--cov=config",
-    "--cov-report=term-missing",
+	"--cov-branch",
+    "--cov-report=xml",
     "--ds=config.settings",
 ]
 pythonpath = ["src"]
