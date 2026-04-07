@@ -5,11 +5,6 @@ e-Babylab [(Lo et al., 2023)](https://link.springer.com/article/10.3758/s13428-0
 
 [^1]: Online webcam eye-tracking is currently under beta testing. This feature is implemented based on WebGazer [(Papoutsaki et al., 2016)](https://jeffhuang.com/papers/WebGazer_IJCAI16.pdf) and allows self-calibration using participants' gaze to better suit e-Babylab's use with young children.
 
-:::{iframe} https://www.youtube.com/watch?v=Zssrfr0G2Ag
-:width: 100%
-Introduction to e-Babylab
-:::
-
 ::::{grid} 3
 :::{grid-item-card} Get Started
 :img-bottom: images/person-running-solid-full.svg
