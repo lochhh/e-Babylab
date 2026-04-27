@@ -118,3 +118,6 @@ src/static/**
 src/webcam/**
 postgres[-_]data
 src/reports/**
+
+# Node
+node_modules/
