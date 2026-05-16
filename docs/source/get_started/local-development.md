@@ -55,6 +55,39 @@ docker compose -f docker-compose.dev.yml stop
 
 For more information about the differences between these commands, see the documentation for [docker compose down](https://docs.docker.com/compose/reference/down/) and [docker compose stop](https://docs.docker.com/compose/reference/stop/).
 
+## Running Tests
+
+### Python (pytest)
+
+Run the Python test suite inside the Docker container:
+
+```bash
+docker compose -f docker-compose.dev.yml exec web uv run pytest
+```
+
+### JavaScript (Vitest)
+
+JS unit tests run directly on your machine (no Docker needed). Requires [Node.js](https://nodejs.org/).
+
+Install dependencies once:
+
+```bash
+cd tests/js
+npm install
+```
+
+Run tests:
+
+```bash
+npm test
+```
+
+To run in watch mode (re-runs on file change):
+
+```bash
+npm run test:watch
+```
+
 ## Database Admin (pgAdmin)
 
 The development environment includes [pgAdmin](https://www.pgadmin.org/) for easy access to the database. It is accessible at `http://localhost:5050`. The default port can be changed by updating the `5050:80` port mapping under the `pgadmin` service in `docker-compose.dev.yml`. Login credentials are set via `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` in `.env`.
