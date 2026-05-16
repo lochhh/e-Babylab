@@ -1,24 +1,22 @@
 'use strict';
 
-$(function() {
-    // Check MediaRecorder support
-    var mediaRecorderSupported = !(window.MediaRecorder == undefined);
-    var getUserMediaSupported = navigator.mediaDevices;
-    /*
-     * Step 1
-     */
-    var checkStepOne = function() {
-        var alertWindow = $("#webcam_step_1 .alert-danger");
-        var successWindow = $("#webcam_step_1 .alert-success");
-        var button = $("#webcam_step_1 button");
+$(function () {
+    // Check MediaRecorder and getUserMedia support
+    const mediaRecorderSupported = window.MediaRecorder != null;
+    const getUserMediaSupported = navigator.mediaDevices;
 
-        if(!getUserMediaSupported) {
+    const checkStepOne = () => {
+        const alertWindow = $("#webcam_step_1 .alert-danger");
+        const successWindow = $("#webcam_step_1 .alert-success");
+        const button = $("#webcam_step_1 button");
+
+        if (!getUserMediaSupported) {
             alertWindow.show();
             alertWindow.append("<br />Your browser does not support webcam and microphone access (getUserMedia).");
             return;
         }
 
-        if(!mediaRecorderSupported) {
+        if (!mediaRecorderSupported) {
             alertWindow.show();
             alertWindow.append("<br />Your browser does not support media recording via webcam and microphone (MediaRecorder).");
             return;
@@ -28,6 +26,5 @@ $(function() {
         button.removeAttr("disabled");
     };
 
-    // Start webcam calibration
     checkStepOne();
 });
