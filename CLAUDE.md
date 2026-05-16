@@ -16,6 +16,7 @@ Admin UI at `http://localhost:8080/admin/`, pgAdmin at `http://localhost:5050`.
 
 ## Tests
 
+### Python (pytest)
 Run pytest inside the container:
 ```bash
 docker compose -f docker-compose.dev.yml exec web uv run pytest 
@@ -31,6 +32,20 @@ Inside `tests/data/`, there is a sample participant .xlsx file that is the outpu
 Test 
 
 For testing CDI Instruments, use the files in `tests/data/norwegian-ws-production` to create the `Instrument`.
+
+### JavaScript (Vitest)
+Requires [Node.js](https://nodejs.org/).
+
+Install dependencies once:
+```bash
+cd tests/js
+npm install
+```
+
+Run tests:
+```bash
+npm test
+```
 
 ## Modernisation in progress
 
@@ -49,10 +64,10 @@ The experiment structure is a five-level hierarchy defined in `src/experiments/m
 
 ```
 Experiment
-  └─ ListItem          (ordered sequence of outer blocks)
-       └─ OuterBlockItem   (groups blocks; controls inter-stimulus intervals)
-            └─ BlockItem       (a block of trials)
-                 └─ TrialItem      (stimulus + response configuration)
+  └─ ListItem          (contains ordered sequence of outer blocks)
+       └─ OuterBlockItem   (groups blocks; can be randomised or ordered)
+            └─ BlockItem       (groups  trials; can be randomised or ordered)
+                 └─ TrialItem      (stimulus + response configuration; can be randomised or ordered)
 ```
 
 `SubjectData` tracks a participant session (UUID-keyed). `TrialResult` records per-trial responses. `CdiResult` stores CDI responses. `Instrument` holds CDI word lists and IRT parameters used by `cdi.py` for adaptive administration via `catsim`.
@@ -69,4 +84,4 @@ Experiments and data are shared within Django `Group`s, reflecting real research
 
 ### Settings
 
-`DJANGO_ENV=dev` enables debug mode. `DJANGO_SETTINGS_MODULE=config.settings`. All secrets and DB config come from `.env`.
+All secrets and DB config come from `.env`.
