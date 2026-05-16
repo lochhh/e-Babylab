@@ -7,11 +7,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/webgazer-calibration.js')
 
 // All calculation functions are let-declared, so we capture them explicitly.
-let calculateAccuracy, calculatePrecisionRMS, calculatePrecisionSD
+let calculateAccuracy, calculatePrecisionRMS, calculatePrecisionSD, calculateAverage
 beforeAll(() => {
-  ;({ calculateAccuracy, calculatePrecisionRMS, calculatePrecisionSD } = loadScript(
+  ;({ calculateAccuracy, calculatePrecisionRMS, calculatePrecisionSD, calculateAverage } = loadScript(
     SRC,
-    ['calculateAccuracy', 'calculatePrecisionRMS', 'calculatePrecisionSD'],
+    ['calculateAccuracy', 'calculatePrecisionRMS', 'calculatePrecisionSD', 'calculateAverage'],
   ))
 })
 
@@ -104,5 +104,30 @@ describe('calculatePrecisionSD', () => {
     const [sdX, sdY] = calculatePrecisionSD(pts([5, 5, 5], [1, 3, 5]), 3)
     expect(sdX).toBe(0)
     expect(sdY).toBeGreaterThan(0)
+  })
+})
+
+describe('calculateAverage', () => {
+  // Sums first numPredictions entries, divides by numPredictions.
+
+  it('returns the mean of a single-element array', () => {
+    expect(calculateAverage([42], 1)).toBe(42)
+  })
+
+  it('returns the mean of a uniform array', () => {
+    expect(calculateAverage([100, 100, 100], 3)).toBe(100)
+  })
+
+  it('returns the mean of a mixed array', () => {
+    expect(calculateAverage([0, 100], 2)).toBeCloseTo(50)
+  })
+
+  it('only considers the first numPredictions entries', () => {
+    // Third entry (999) should be ignored
+    expect(calculateAverage([50, 50, 999], 2)).toBeCloseTo(50)
+  })
+
+  it('returns NaN when numPredictions is 0', () => {
+    expect(calculateAverage([], 0)).toBeNaN()
   })
 })
