@@ -1,6 +1,6 @@
 'use strict';
 
-$(function () {
+(function () {
 
     // Webcam constraints
     const constraints = {
@@ -17,22 +17,6 @@ $(function () {
         audio: true,
     };
 
-    // Get Django CSRF token
-    const csrftoken = Cookies.get('csrftoken');
-
-    const csrfSafeMethod = function (method) {
-        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-    };
-
-    // Add CSRF to AJAX
-    $.ajaxSetup({
-        beforeSend: function (xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
-        }
-    });
-
     // Stream reference
     let mediaStream;
 
@@ -40,9 +24,9 @@ $(function () {
     let mediaRecorder;
 
     // Get configuration from data attributes
-    const config = $("#webcam-calibration").data();
+    const config = document.getElementById('webcam-calibration').dataset;
     const subjectUuid = config.subjectUuid;
-    const include_pause_page = config.includePausePage;
+    const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
     const recording_option = config.recordingOption;
     const webcam_not_found = config.webcamNotFound ?? `Unfortunately your device could not be detected.<br /><br />Please make sure a device is connected and click "Repeat test recording" to return to the test.<br /><br />If you do not agree to allow access to your device and have therefore selected "do not allow", please close the browser window.`;
 
@@ -77,53 +61,53 @@ $(function () {
      * Step 2
      */
     const checkStepTwo = function () {
-        const button = $("#webcam_step_2 button");
+        const button = document.querySelector('#webcam_step_2 button');
 
-        $("#webcam_step_1").removeClass("active");
-        $("#webcam_step_2").addClass("active");
+        document.getElementById('webcam_step_1').classList.remove('active');
+        document.getElementById('webcam_step_2').classList.add('active');
         if (recording_option === 'AUD') { // Skip to audio test
-            button.click(checkStepFour);
+            button.addEventListener('click', checkStepFour);
         } else { // Webcam calibration
-            button.click(checkStepThree);
+            button.addEventListener('click', checkStepThree);
         }
-        button.removeAttr("disabled");
+        button.removeAttribute('disabled');
     };
 
     /*
      * Step 3
      */
     const checkStepThree = function () {
-        $("#webcam_step_2").removeClass("active");
-        $("#webcam_step_3").addClass("active");
+        document.getElementById('webcam_step_2').classList.remove('active');
+        document.getElementById('webcam_step_3').classList.add('active');
 
-        const button = $("#webcam_step_3 button.btn-primary");
-        const alertWindow = $("#webcam_step_3 .alert-danger");
+        const button = document.querySelector('#webcam_step_3 button.btn-primary');
+        const alertWindow = document.querySelector('#webcam_step_3 .alert-danger');
 
         // Start webcam stream
         startStream()
             .then(() => {
-                $("#webcam_step_3 .media-container").show();
-                const video = $("#webcam_step_3 video").get(0);
+                document.querySelector('#webcam_step_3 .media-container').style.display = 'block';
+                const video = document.querySelector('#webcam_step_3 video');
                 video.srcObject = mediaStream;
                 video.onloadedmetadata = function () {
                     video.muted = true;
                     video.play();
 
                     // Enable continue button
-                    button.click(() => {
+                    button.addEventListener('click', () => {
                         video.muted = false;
                         stopStream();
                         checkStepFour();
                     });
-                    button.removeAttr("disabled");
+                    button.removeAttribute('disabled');
                 };
             })
             .catch(e => {
-                alertWindow.show();
-                alertWindow.append(`${webcam_not_found}<br><strong>${e.name}:</strong> ${e.message}`);
-                const repeatButton = $("#repeat-check-button");
-                repeatButton.show();
-                repeatButton.on('click', () => { location.reload(); });
+                alertWindow.style.display = 'block';
+                alertWindow.insertAdjacentHTML('beforeend', `${webcam_not_found}<br><strong>${e.name}:</strong> ${e.message}`);
+                const repeatButton = document.getElementById('repeat-check-button');
+                repeatButton.style.display = 'block';
+                repeatButton.addEventListener('click', () => { location.reload(); });
             });
     };
 
@@ -133,55 +117,55 @@ $(function () {
     let firstChunk = true;
     const checkStepFour = function () {
         if (recording_option !== 'AUD') {
-            $("#webcam_step_3 video").get(0).pause();
-            $("#webcam_step_3").removeClass("active");
+            document.querySelector('#webcam_step_3 video').pause();
+            document.getElementById('webcam_step_3').classList.remove('active');
         } else {
-            $("#webcam_step_2").removeClass("active");
+            document.getElementById('webcam_step_2').classList.remove('active');
         }
-        $("#webcam_step_4").addClass("active");
-        $("#webcam_step_4 .alert-danger").hide();
-        $("#webcam_step_4 .alert-success").hide();
-        $("#webcam_step_4 .media-container").hide();
+        document.getElementById('webcam_step_4').classList.add('active');
+        document.querySelector('#webcam_step_4 .alert-danger').style.display = 'none';
+        document.querySelector('#webcam_step_4 .alert-success').style.display = 'none';
+        document.querySelector('#webcam_step_4 .media-container').style.display = 'none';
         if (recording_option === 'AUD') {
-            $("#webcam_step_4 .media-container audio").eq(0).empty();
+            document.querySelector('#webcam_step_4 .media-container audio').innerHTML = '';
         } else {
-            $("#webcam_step_4 .media-container video").eq(0).empty();
+            document.querySelector('#webcam_step_4 .media-container video').innerHTML = '';
         }
-        const button = $("#webcam_step_4 button.btn-primary");
-        button.attr('disabled', true);
-        const repeatButton = $("#webcam_step_4 button.btn-warning");
-        repeatButton.attr('disabled', true);
-        const uploadProgress = $("#upload-progress");
-        uploadProgress.show();
-        $("#repeatWebcamModal").modal('hide');
+        const button = document.querySelector('#webcam_step_4 button.btn-primary');
+        button.setAttribute('disabled', '');
+        const repeatButton = document.querySelector('#webcam_step_4 button.btn-warning');
+        repeatButton.setAttribute('disabled', '');
+        const uploadProgress = document.getElementById('upload-progress');
+        uploadProgress.style.display = 'block';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('repeatWebcamModal')).hide();
         firstChunk = true;
 
         // Start recording
         startStream()
             .then(() => { recordStream(); })
             .catch(e => {
-                uploadProgress.hide();
-                const alertWindow = $("#webcam_step_4 .alert-danger");
-                alertWindow.show();
-                alertWindow.append(e);
+                uploadProgress.style.display = 'none';
+                const alertWindow = document.querySelector('#webcam_step_4 .alert-danger');
+                alertWindow.style.display = 'block';
+                alertWindow.insertAdjacentHTML('beforeend', String(e));
                 console.log(e);
                 stopStream();
             });
     };
 
     const enableRepeat = function () {
-        const repeatButton = $("#webcam_step_4 button.btn-warning");
-        repeatButton.removeAttr("disabled");
+        const repeatButton = document.querySelector('#webcam_step_4 button.btn-warning');
+        repeatButton.removeAttribute('disabled');
 
-        const modelRepeatButton = $("#repeatRutton");
-        modelRepeatButton.one('click', () => { checkStepFour(); });
+        const modelRepeatButton = document.getElementById('repeatRutton');
+        modelRepeatButton.addEventListener('click', () => { checkStepFour(); }, { once: true });
     };
 
     const enableFinalContinue = function () {
-        const button = $("#webcam_step_4 button.btn-primary");
-        button.removeAttr("disabled");
-        button.click(function () {
-            window.location = $(this).data("target");
+        const button = document.querySelector('#webcam_step_4 button.btn-primary');
+        button.removeAttribute('disabled');
+        button.addEventListener('click', function () {
+            window.location = this.dataset.target;
         });
         enableRepeat();
     };
@@ -202,9 +186,9 @@ $(function () {
         if (!firstChunk) return;
         firstChunk = false;
 
-        const uploadProgress = $("#upload-progress");
-        const alertWindow = $("#webcam_step_4 .alert-danger");
-        const successWindow = $("#webcam_step_4 .alert-success");
+        const uploadProgress = document.getElementById('upload-progress');
+        const alertWindow = document.querySelector('#webcam_step_4 .alert-danger');
+        const successWindow = document.querySelector('#webcam_step_4 .alert-success');
 
         const codec = recording_option === 'AUD' ? 'audio/webm' : 'video/webm';
         const file = new File([event.data], 'webcam-test.webm', { type: codec });
@@ -212,38 +196,42 @@ $(function () {
         formData.append('file', file);
         formData.append('type', codec);
 
-        $.ajax({
-            url: `/${subjectUuid}/webcamtest/upload`,
+        fetch(`/${subjectUuid}/webcamtest/upload`, {
             method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false
-        }).done(function (data) {
-            uploadProgress.hide();
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            body: formData,
+        })
+        .then(r => {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+        })
+        .then(data => {
+            uploadProgress.style.display = 'none';
 
             if (data.videoUrl) {
-                $("#webcam_step_4 .media-container").empty();
+                document.querySelector('#webcam_step_4 .media-container').innerHTML = '';
                 const source = document.createElement('source');
                 source.src = data.videoUrl;
                 source.type = data.type;
                 const videoElem = recording_option === 'AUD'
-                    ? document.createElement("audio")
-                    : document.createElement("video");
+                    ? document.createElement('audio')
+                    : document.createElement('video');
                 videoElem.controls = true;
                 videoElem.appendChild(source);
-                $("#webcam_step_4 .media-container").get(0).appendChild(videoElem);
+                document.querySelector('#webcam_step_4 .media-container').appendChild(videoElem);
 
                 // Show recorded media
-                successWindow.show();
-                $("#webcam_step_4 .media-container").show();
+                successWindow.style.display = 'block';
+                document.querySelector('#webcam_step_4 .media-container').style.display = 'block';
 
                 enableFinalContinue();
             }
-        }).fail(function (xhr, status, error) {
-            uploadProgress.hide();
-            alertWindow.show();
-            alertWindow.append(error);
-            console.error(xhr, status, error);
+        })
+        .catch(e => {
+            uploadProgress.style.display = 'none';
+            alertWindow.style.display = 'block';
+            alertWindow.insertAdjacentHTML('beforeend', String(e));
+            console.error(e);
             enableRepeat();
         });
     };
@@ -256,7 +244,7 @@ $(function () {
         mediaStream.getVideoTracks().forEach(track => track.stop());
     };
 
-    $("#exit-button").click(() => {
+    document.getElementById('exit-button').addEventListener('click', () => {
         if (include_pause_page) {
             window.location.replace(`/${subjectUuid}/run/pause`);
         } else {
@@ -266,4 +254,4 @@ $(function () {
 
     // Start webcam calibration
     checkStepTwo();
-});
+})();

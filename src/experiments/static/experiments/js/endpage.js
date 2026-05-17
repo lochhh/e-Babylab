@@ -1,14 +1,14 @@
 'use strict';
 
-const approve = $("#end_page_step_1 button.btn-primary");
-const disapprove = $("#end_page_step_1 button.btn-danger");
+const approve = document.querySelector('#end_page_step_1 button.btn-primary');
+const disapprove = document.querySelector('#end_page_step_1 button.btn-danger');
 
-approve.click(() => {
-    $("#end_page_step_1").removeClass("active");
-    $("#end_page_approve").addClass("active");
+approve.addEventListener('click', () => {
+    document.querySelector('#end_page_step_1').classList.remove('active');
+    document.querySelector('#end_page_approve').classList.add('active');
 });
 
-disapprove.click(() => {
-    $("#end_page_step_1").removeClass("active");
-    $("#end_page_disapprove").addClass("active");
+disapprove.addEventListener('click', () => {
+    document.querySelector('#end_page_step_1').classList.remove('active');
+    document.querySelector('#end_page_disapprove').classList.add('active');
 });

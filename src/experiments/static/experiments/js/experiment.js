@@ -1,21 +1,21 @@
 'use strict';
 
 (function () {
-    const config = $('#trials').data();
-    const trials = JSON.parse($('#trials-data').text());
+    const config = document.getElementById('trials').dataset;
+    const trials = JSON.parse(document.getElementById('trials-data').textContent);
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
-    const include_pause_page = config.includePausePage;
+    const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
     const recording_option = config.recordingOption;
     const general_onset = config.generalOnset;
     const show_gaze_estimations = config.showGazeEstimations;
 
     // Subject id
-    const subjectUuid = $('#trials').data('subjectUuid');
-    const subjectId = $('#trials').data('subjectId');
+    const subjectUuid = config.subjectUuid;
+    const subjectId = config.subjectId;
 
     // Body tag reference
-    let body = $('body');
+    const body = document.body;
 
     // Key codes
     const codes = {
@@ -42,6 +42,13 @@
     // Media stream object
     let mediaStream;
 
+    // Event handler refs for cleanup
+    let keydownHandler = null;
+    let clickHandler = null;
+    let audioCanPlayHandlerRef = null;
+    const videoCanPlayHandlerRefs = {};
+    const videoEndedHandlerRefs = {};
+
     // Populate keycode dictionary with letters
     for (let i = 97; i < 123; i++) {
         codes[String.fromCharCode(i)] = i - 32;
@@ -50,20 +57,6 @@
     for (let i = 48; i < 58; i++) {
         codes[i - 48] = i;
     }
-
-    // Get Django CSRF token
-    const csrftoken = Cookies.get('csrftoken');
-
-    const csrfSafeMethod = method => /^(GET|HEAD|OPTIONS|TRACE)$/.test(method);
-
-    // Add CSRF to AJAX
-    $.ajaxSetup({
-        beforeSend: function (xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
-        }
-    });
 
     /**
      * Create and add an empty audio container.
@@ -137,7 +130,7 @@
                 preloadVideo(trials[currentTrial + 1]);
             }
 
-            body.css('background-color', trialObj.background_colour);
+            body.style.backgroundColor = trialObj.background_colour;
 
             // Set up trial
             trialObj.webgazer_data = [];
@@ -200,8 +193,8 @@
 
             }).then(trialObj => {
                 console.log(trialObj);
-                $(document).off('keydown');
-                $(document).off('click');
+                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+                if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
                 if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
                     stopGazeRecording();
                 }
@@ -237,13 +230,18 @@
                 }
                 webgazer.pause();
 
-                $(document).off('keydown mozfullscreenchange webkitfullscreenchange fullscreenchange');
+                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+                document.removeEventListener('mozfullscreenchange', onFullscreenChange);
+                document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+                document.removeEventListener('fullscreenchange', onFullscreenChange);
                 exitFullscreen();
 
-                $.get(`/${subjectUuid}/run/error`).then(data => {
-                    $("body").html(data);
-                    $("div.alert").html(e);
-                });
+                fetch(`/${subjectUuid}/run/error`)
+                    .then(r => r.text())
+                    .then(data => {
+                        document.body.innerHTML = data;
+                        document.querySelector('div.alert').innerHTML = String(e);
+                    });
 
                 console.error("Error during experiment:", e);
             });
@@ -323,12 +321,15 @@
         return new Promise((resolve, reject) => {
             const audio = document.querySelector('.trial-audio audio');
             audio.querySelector('source').src = trialObj.audio_file;
-            $(audio).on('canplay', function () {
+            const handler = function () {
+                audio.removeEventListener('canplay', handler);
                 setTimeout(() => {
                     audio.play();
                     resolve(trialObj);
                 }, Number(trialObj.audio_onset));
-            });
+            };
+            audioCanPlayHandlerRef = handler;
+            audio.addEventListener('canplay', handler);
             audio.load();
         });
     };
@@ -353,7 +354,8 @@
                 displayVideo();
             } else {
                 console.log("Video is still loading.");
-                $(video).on('canplay', displayVideo);
+                videoCanPlayHandlerRefs[trialObj.trial_id] = displayVideo;
+                video.addEventListener('canplay', displayVideo);
             }
         });
     };
@@ -393,14 +395,14 @@
      * Wait for upload queue to be empty.
      */
     const waitForWebcamUploadToFinish = function () {
-        $('#trials').css({
-            'height': '100%', 'width': '100%',
-            'background-image': `url('${loading_image}')`,
-            'background-position': 'center',
-            'background-repeat': 'no-repeat',
-            'background-size': 'contain'
-        });
-        $('#trials').show();
+        const trialsEl = document.getElementById('trials');
+        trialsEl.style.height = '100%';
+        trialsEl.style.width = '100%';
+        trialsEl.style.backgroundImage = `url('${loading_image}')`;
+        trialsEl.style.backgroundPosition = 'center';
+        trialsEl.style.backgroundRepeat = 'no-repeat';
+        trialsEl.style.backgroundSize = 'contain';
+        trialsEl.style.display = 'block';
         console.log("Check queue.");
         return webcam.waitForQueue(0);
     };
@@ -421,10 +423,14 @@
      * Remove trial audio source.
      */
     const removeTrialAudio = function () {
-        if (document.querySelector('.trial-audio audio')) {
-            $('.trial-audio audio').off('canplay');
-            document.querySelector('.trial-audio audio').pause();
-            document.querySelector('.trial-audio audio source').src = '';
+        const audioEl = document.querySelector('.trial-audio audio');
+        if (audioEl) {
+            if (audioCanPlayHandlerRef) {
+                audioEl.removeEventListener('canplay', audioCanPlayHandlerRef);
+                audioCanPlayHandlerRef = null;
+            }
+            audioEl.pause();
+            audioEl.querySelector('source').src = '';
         }
     };
 
@@ -433,7 +439,14 @@
      */
     const removeTrialVideo = function (trialObj) {
         const video = document.querySelector(`#video-container-${trialObj.trial_id} > video`);
-        $(video).off('canplay');
+        if (videoCanPlayHandlerRefs[trialObj.trial_id]) {
+            video.removeEventListener('canplay', videoCanPlayHandlerRefs[trialObj.trial_id]);
+            delete videoCanPlayHandlerRefs[trialObj.trial_id];
+        }
+        if (videoEndedHandlerRefs[trialObj.trial_id]) {
+            video.removeEventListener('ended', videoEndedHandlerRefs[trialObj.trial_id]);
+            delete videoEndedHandlerRefs[trialObj.trial_id];
+        }
         video.pause();
         document.querySelector('.trial-video').outerHTML = '';
     };
@@ -449,23 +462,33 @@
             if (keysPressed instanceof Array) {
                 keysPressed = keysPressed.join(',');
             }
-            $.ajax({
-                url: `/${subjectUuid}/run/storeresult`,
-                data: {
-                    'trialitem': trialObj.trial_id,
-                    'start_time': trialObj.start_time,
-                    'end_time': trialObj.end_time,
-                    'key_pressed': keysPressed,
-                    'trial_number': trialObj.trial_number,
-                    'resolution_w': window.screen.width,
-                    'resolution_h': window.screen.height,
-                    'webgazer_data': JSON.stringify(trialObj.webgazer_data),
+            const params = new URLSearchParams({
+                'trialitem': trialObj.trial_id,
+                'start_time': trialObj.start_time,
+                'end_time': trialObj.end_time,
+                'key_pressed': keysPressed,
+                'trial_number': trialObj.trial_number,
+                'resolution_w': window.screen.width,
+                'resolution_h': window.screen.height,
+                'webgazer_data': JSON.stringify(trialObj.webgazer_data),
+            });
+            fetch(`/${subjectUuid}/run/storeresult`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                method: 'POST'
-            }).done(function (data) {
+                body: params,
+            })
+            .then(r => {
+                if (!r.ok) throw new Error(r.statusText);
+                return r.json();
+            })
+            .then(data => {
                 trialObj.resultId = data.resultId;
                 resolve(trialObj);
-            }).fail(function () {
+            })
+            .catch(() => {
                 console.error(`Failed to post result (ID: ${trialObj.trial_id})`);
                 reject(trialObj);
             });
@@ -493,8 +516,8 @@
     const setupKeyPresses = function (trialObj) {
         return new Promise((resolve, reject) => {
             trialObj.keysPressed = [];
-            $(document).off('keydown');
-            $(document).on('keydown', function (event) {
+            if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); }
+            keydownHandler = function (event) {
                 // Get key and convert to code
                 const key = Object.keys(codes).find(key => codes[key] === event.which).toString();
                 trialObj.keysPressed.push(key);
@@ -504,20 +527,22 @@
                     resetGlobalTimer();
                     resolve(trialObj);
                 }
-            });
+            };
+            document.addEventListener('keydown', keydownHandler);
             // Click response allowed
             if (trialObj.response_keys.indexOf('click') !== -1) {
-                $(document).off('click');
-                $(document).on('click', function (event) {
+                if (clickHandler) { document.removeEventListener('click', clickHandler); }
+                clickHandler = function (event) {
                     // Ignore clicks on exit button
-                    if (!$(event.target).closest('#exit-button').length) {
+                    if (!event.target.closest('#exit-button')) {
                         const key = `mouseX: ${event.screenX} - mouseY: ${event.screenY}`;
                         trialObj.keysPressed.push(key);
                         console.log("Trial ended with click.");
                         resetGlobalTimer();
                         resolve(trialObj);
                     }
-                });
+                };
+                document.addEventListener('click', clickHandler);
             }
         });
     };
@@ -529,11 +554,13 @@
     const setupVideoEnd = function (trialObj) {
         return new Promise((resolve, reject) => {
             const video = document.querySelector(`#video-container-${trialObj.trial_id} > video`);
-            $(video).on('ended', function () {
+            const handler = function () {
                 console.log("Trial ended with video end.", trialObj);
                 trialObj.keysPressed = '-';
                 resolve(trialObj);
-            });
+            };
+            videoEndedHandlerRefs[trialObj.trial_id] = handler;
+            video.addEventListener('ended', handler);
         });
     };
 
@@ -551,11 +578,11 @@
         return Promise.resolve();
     }).then(() => {
         return new Promise((resolve, reject) => {
-            $("#fullscreen-button").click(function () {
+            document.getElementById('fullscreen-button').addEventListener('click', function () {
                 const docElem = document.documentElement;
                 docElem.requestFullscreen?.() ?? docElem.mozRequestFullScreen?.() ??
                     docElem.webkitRequestFullScreen?.() ?? docElem.msRequestFullscreen?.();
-                $("#fullscreen-message").remove();
+                document.getElementById('fullscreen-message')?.remove();
                 resolve();
             });
         });
@@ -591,18 +618,21 @@
         }
     };
 
-    $(document).on('mozfullscreenchange webkitfullscreenchange fullscreenchange', function () {
+    const onFullscreenChange = function () {
         const fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
         if (!fullScreen) {
             terminateStudy();
         }
+    };
+    document.addEventListener('mozfullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    window.addEventListener('load', () => {
+        document.getElementById('fullscreen-button')?.removeAttribute('disabled');
     });
 
-    $(window).on('load', function () {
-        $('#fullscreen-button').prop('disabled', false);
-    });
-
-    $('#confirmExitButton').click(function () {
+    document.getElementById('confirmExitButton')?.addEventListener('click', function () {
         terminateStudy();
     });
 
@@ -612,14 +642,14 @@
         exitModal = new bootstrap.Modal(exitModalElement);
         // Resolve "aria-hidden on focused element" warning by using 'inert' on background
         exitModalElement.addEventListener('show.bs.modal', function () {
-            $('.container').not('#exitStudyModal').attr('inert', '');
+            document.querySelectorAll('.container:not(#exitStudyModal)').forEach(el => el.setAttribute('inert', ''));
         });
         exitModalElement.addEventListener('hidden.bs.modal', function () {
-            $('.container').removeAttr('inert');
+            document.querySelectorAll('.container').forEach(el => el.removeAttribute('inert'));
         });
     }
 
-    $("#exit-button").click(function () {
+    document.getElementById('exit-button').addEventListener('click', function () {
         if (webcam.getLength()) { // Upload queue not empty, show warning modal
             exitModal?.show();
         } else {

@@ -1,51 +1,58 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { loadScript } from './helpers/load-script.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/browser-check.js')
+const src = readFileSync(SRC, 'utf8')
 
 function run({ hasMediaRecorder, hasGetUserMedia }) {
-  const dom = {}
-  const jq = (sel) => ({
-    show:       ()    => { dom[sel] = { ...dom[sel], shown: true } },
-    append:     (html)=> { dom[sel] = { ...dom[sel], appended: (dom[sel]?.appended ?? '') + html } },
-    removeAttr: (attr)=> { dom[sel] = { ...dom[sel], removedAttr: attr } },
+  document.body.innerHTML = `
+    <div id="webcam_step_1">
+      <div class="alert-danger" style="display:none"></div>
+      <div class="alert-success" style="display:none"></div>
+      <button disabled>Continue</button>
+    </div>
+  `
+  if (hasMediaRecorder) {
+    globalThis.MediaRecorder = class MediaRecorder {}
+  } else {
+    delete globalThis.MediaRecorder
+  }
+  Object.defineProperty(navigator, 'mediaDevices', {
+    value: hasGetUserMedia ? {} : null,
+    writable: true,
+    configurable: true,
   })
-  const $ = (arg) => { if (typeof arg === 'function') { arg(); return } return jq(arg) }
-  loadScript(SRC, [], {
-    $,
-    window:    { MediaRecorder: hasMediaRecorder ? class MediaRecorder {} : undefined },
-    navigator: { mediaDevices: hasGetUserMedia ? {} : null },
-  })
-  return dom
+  eval(src)
+  return document.getElementById('webcam_step_1')
 }
 
 describe('browser-check.js', () => {
   it('shows success and enables button when both APIs are available', () => {
-    const dom = run({ hasMediaRecorder: true, hasGetUserMedia: true })
-    expect(dom['#webcam_step_1 .alert-success']?.shown).toBe(true)
-    expect(dom['#webcam_step_1 button']?.removedAttr).toBe('disabled')
-    expect(dom['#webcam_step_1 .alert-danger']?.shown).toBeUndefined()
+    const step1 = run({ hasMediaRecorder: true, hasGetUserMedia: true })
+    expect(step1.querySelector('.alert-success').style.display).toBe('block')
+    expect(step1.querySelector('button').hasAttribute('disabled')).toBe(false)
+    expect(step1.querySelector('.alert-danger').style.display).not.toBe('block')
   })
 
   it('shows danger alert and getUserMedia message when mediaDevices is missing', () => {
-    const dom = run({ hasMediaRecorder: true, hasGetUserMedia: false })
-    expect(dom['#webcam_step_1 .alert-danger']?.shown).toBe(true)
-    expect(dom['#webcam_step_1 .alert-danger']?.appended).toContain('getUserMedia')
-    expect(dom['#webcam_step_1 .alert-success']?.shown).toBeUndefined()
+    const step1 = run({ hasMediaRecorder: true, hasGetUserMedia: false })
+    expect(step1.querySelector('.alert-danger').style.display).toBe('block')
+    expect(step1.querySelector('.alert-danger').innerHTML).toContain('getUserMedia')
+    expect(step1.querySelector('.alert-success').style.display).not.toBe('block')
   })
 
   it('shows danger alert and MediaRecorder message when MediaRecorder is missing', () => {
-    const dom = run({ hasMediaRecorder: false, hasGetUserMedia: true })
-    expect(dom['#webcam_step_1 .alert-danger']?.shown).toBe(true)
-    expect(dom['#webcam_step_1 .alert-danger']?.appended).toContain('MediaRecorder')
+    const step1 = run({ hasMediaRecorder: false, hasGetUserMedia: true })
+    expect(step1.querySelector('.alert-danger').style.display).toBe('block')
+    expect(step1.querySelector('.alert-danger').innerHTML).toContain('MediaRecorder')
   })
 
   it('reports getUserMedia error first when both APIs are missing', () => {
-    const dom = run({ hasMediaRecorder: false, hasGetUserMedia: false })
-    expect(dom['#webcam_step_1 .alert-danger']?.shown).toBe(true)
-    expect(dom['#webcam_step_1 .alert-danger']?.appended).toContain('getUserMedia')
+    const step1 = run({ hasMediaRecorder: false, hasGetUserMedia: false })
+    expect(step1.querySelector('.alert-danger').style.display).toBe('block')
+    expect(step1.querySelector('.alert-danger').innerHTML).toContain('getUserMedia')
   })
 })
