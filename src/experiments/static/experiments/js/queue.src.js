@@ -68,3 +68,5 @@ function Queue() {
 	}
 
 }
+
+export { Queue };
