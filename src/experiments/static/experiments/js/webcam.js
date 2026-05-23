@@ -1,8 +1,8 @@
-'use strict';
+import { Queue } from './queue.src.js';
+import { getCsrfToken } from './utils.js';
 
-let webcam = (function () {
-
-	let w = {};
+export function createWebcam() {
+    let w = {};
 
 	// Webcam constraints
 	const constraints = {
@@ -292,5 +292,7 @@ let webcam = (function () {
 		console.log("Queue size:", uploadQueue.getLength());
 	};
 
-	return w;
-})();
+    return w;
+}
+
+export const webcam = createWebcam();

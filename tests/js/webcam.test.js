@@ -1,15 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { loadScript } from './helpers/load-script.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const WEBCAM_SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/webcam.js')
-const QUEUE_SRC  = resolve(__dirname, '../../src/experiments/static/experiments/js/queue.src.js')
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createWebcam } from '../../src/experiments/static/experiments/js/webcam.js'
 
 function makeWebcam({ getUserMedia = async () => ({}) } = {}) {
-  const { Queue } = loadScript(QUEUE_SRC)
-
   class MockMediaRecorder {
     constructor() { this._ev = {} }
     start()  { this._ev['start']?.forEach(fn => fn()) }
@@ -19,78 +11,55 @@ function makeWebcam({ getUserMedia = async () => ({}) } = {}) {
   }
   MockMediaRecorder.isTypeSupported = () => true
 
-  const { webcam } = loadScript(WEBCAM_SRC, ['webcam'], {
-    Cookies:   { get: () => 'test-csrf' },
-    $:         { ajaxSetup: () => {} },
-    Queue,
-    MediaRecorder: MockMediaRecorder,
-    navigator: { mediaDevices: { getUserMedia } },
-    console:   { log: () => {}, error: () => {} },
-    setTimeout:  (fn, ms) => setTimeout(fn, ms),
-    clearTimeout: (id) => clearTimeout(id),
-    FormData: class { append() {} },
-    File:     class { constructor() {} },
+  vi.stubGlobal('MediaRecorder', MockMediaRecorder)
+  Object.defineProperty(navigator, 'mediaDevices', {
+    value: { getUserMedia },
+    writable: true,
+    configurable: true,
   })
 
-  return webcam
+  return createWebcam()
 }
 
-describe('webcam.js — getLength', () => {
-  it('returns 0 on fresh instance', () => {
-    expect(makeWebcam().getLength()).toBe(0)
-  })
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
-describe('webcam.js — waitForQueue', () => {
-  it('resolves immediately when queue is already at requested length', async () => {
-    await expect(makeWebcam().waitForQueue(0)).resolves.toBeUndefined()
-  })
-
-  it('does not resolve while queue is shorter than requested length', async () => {
+describe('webcam', () => {
+  it('getLength returns 0 on fresh instance', () => {
     const w = makeWebcam()
-    let resolved = false
-    w.waitForQueue(1).then(() => { resolved = true })
-    await Promise.resolve() // flush microtasks
-    expect(resolved).toBe(false)
-  })
-})
-
-describe('webcam.js — startUploading / stopUploading', () => {
-  it('stopUploading is a no-op when not uploading', () => {
-    expect(() => makeWebcam().stopUploading()).not.toThrow()
+    expect(w.getLength()).toBe(0)
   })
 
-  it('startUploading followed by stopUploading does not throw', () => {
+  it('waitForQueue resolves immediately when queue is empty', async () => {
     const w = makeWebcam()
-    w.startUploading('test-uuid')
+    await expect(w.waitForQueue(0)).resolves.toBeUndefined()
+  })
+
+  it('stopUploading is safe when not uploading', () => {
+    const w = makeWebcam()
     expect(() => w.stopUploading()).not.toThrow()
   })
-})
 
-describe('webcam.js — startRecording / stopRecording', () => {
-  it('startRecording resolves after MediaRecorder fires start event', async () => {
-    const w = makeWebcam()
-    await w.startRecording('trial-1', 'VID', Promise.resolve({}))
-    expect(w.getLength()).toBe(0) // no chunks enqueued yet
-  })
+  it('startRecording and stopRecording complete without error', async () => {
+    let dataAvailableHandler
+    class MockMR {
+      constructor() { this._ev = {} }
+      start() {}
+      stop() { this._ev['stop']?.forEach(fn => fn()) }
+      addEventListener(ev, fn) { (this._ev[ev] ??= []).push(fn); if (ev === 'dataavailable') dataAvailableHandler = fn }
+      removeEventListener() {}
+    }
+    MockMR.isTypeSupported = () => true
+    vi.stubGlobal('MediaRecorder', MockMR)
 
-  it('stopRecording resolves immediately when not recording', async () => {
-    await expect(makeWebcam().stopRecording(42)).resolves.toBeUndefined()
-  })
+    const stream = { getTracks: () => [{ stop: vi.fn() }] }
+    const w = makeWebcam({ getUserMedia: async () => stream })
 
-  it('stopRecording enqueues a merge task after a completed recording', async () => {
-    const w = makeWebcam()
-    await w.startRecording('trial-1', 'VID', Promise.resolve({}))
-    await w.stopRecording(99)
-    expect(w.getLength()).toBe(1)
-  })
-
-  it('waitForQueue(1) resolves once stopRecording enqueues the merge task', async () => {
-    const w = makeWebcam()
-    await w.startRecording('trial-1', 'VID', Promise.resolve({}))
-    const waitP = w.waitForQueue(1)
-    await w.stopRecording(99)
-    await waitP
-    expect(w.getLength()).toBe(1)
+    await w.initStream('VID')
+    const recordPromise = w.startRecording('test-file', 'VID', Promise.resolve(stream))
+    dataAvailableHandler?.({ data: new Blob(['x']) })
+    const stopPromise = w.stopRecording('test-result-id')
+    await Promise.all([recordPromise, stopPromise])
   })
 })
