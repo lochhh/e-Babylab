@@ -1,0 +1,512 @@
+{
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\conf.py": {
+    "mtime": 1777207989.5961645,
+    "ast_hash": "bbe0eae8c4a074fa41f9c0a4faecaf88",
+    "semantic_hash": "bbe0eae8c4a074fa41f9c0a4faecaf88"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\manage.py": {
+    "mtime": 1777207990.1218848,
+    "ast_hash": "59fdf5ed1db7c46adad3d2a4cd386fc5",
+    "semantic_hash": "59fdf5ed1db7c46adad3d2a4cd386fc5"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\wait-for-it.sh": {
+    "mtime": 1777207990.1368096,
+    "ast_hash": "05f391090c0e34dfb4d995ef4148d2e9",
+    "semantic_hash": "05f391090c0e34dfb4d995ef4148d2e9"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\config\\dashboard.py": {
+    "mtime": 1777207989.6843598,
+    "ast_hash": "cbf3914627a8985f66fee1a55bdfcf5e",
+    "semantic_hash": "cbf3914627a8985f66fee1a55bdfcf5e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\config\\settings.py": {
+    "mtime": 1777207989.6874874,
+    "ast_hash": "5b9383c9720496b1d5b1c5d1d7272311",
+    "semantic_hash": "5b9383c9720496b1d5b1c5d1d7272311"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\config\\urls.py": {
+    "mtime": 1777207989.691327,
+    "ast_hash": "0171a35bd4191f7107612d916dd91902",
+    "semantic_hash": "0171a35bd4191f7107612d916dd91902"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\config\\wsgi.py": {
+    "mtime": 1777207989.6928785,
+    "ast_hash": "2d93d680f853dfaed51a6cadf2e950df",
+    "semantic_hash": "2d93d680f853dfaed51a6cadf2e950df"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\config\\__init__.py": {
+    "mtime": 1777207989.6803586,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\admin.py": {
+    "mtime": 1777207989.7011385,
+    "ast_hash": "6276c449a7b37946363e8fc92b5b727d",
+    "semantic_hash": "6276c449a7b37946363e8fc92b5b727d"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\apps.py": {
+    "mtime": 1777207989.7031708,
+    "ast_hash": "6963243530362542ae583edc75d943d2",
+    "semantic_hash": "6963243530362542ae583edc75d943d2"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\cdi.py": {
+    "mtime": 1777207989.7051742,
+    "ast_hash": "05add31843082caa57b4db76f565e81b",
+    "semantic_hash": "05add31843082caa57b4db76f565e81b"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\decorators.py": {
+    "mtime": 1777207989.7081618,
+    "ast_hash": "7f5918f12873e4874906a84e8af255a3",
+    "semantic_hash": "7f5918f12873e4874906a84e8af255a3"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\forms.py": {
+    "mtime": 1777207989.7105613,
+    "ast_hash": "c27e2b2a58d9271f9c913fc16f906082",
+    "semantic_hash": "c27e2b2a58d9271f9c913fc16f906082"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\models.py": {
+    "mtime": 1777207989.7368338,
+    "ast_hash": "bef167bc919aea0263b08721582897e3",
+    "semantic_hash": "bef167bc919aea0263b08721582897e3"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\reporter.py": {
+    "mtime": 1777207989.7368338,
+    "ast_hash": "68fa6a08763dd54f7ac2feda59c47cd2",
+    "semantic_hash": "68fa6a08763dd54f7ac2feda59c47cd2"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\template_defaults.py": {
+    "mtime": 1777207990.0870183,
+    "ast_hash": "e310c771ea26214d52c370145dcce95b",
+    "semantic_hash": "e310c771ea26214d52c370145dcce95b"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\urls.py": {
+    "mtime": 1777207990.1117263,
+    "ast_hash": "fef787c7a8f58487761d371d87203ad4",
+    "semantic_hash": "fef787c7a8f58487761d371d87203ad4"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\views.py": {
+    "mtime": 1777207990.114772,
+    "ast_hash": "d8c553a73eedf44e3a16c388d926f802",
+    "semantic_hash": "d8c553a73eedf44e3a16c388d926f802"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\webcam.py": {
+    "mtime": 1777207990.118885,
+    "ast_hash": "ed8e176793b2accdac0a1b5637767213",
+    "semantic_hash": "ed8e176793b2accdac0a1b5637767213"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\__init__.py": {
+    "mtime": 1777207989.6966064,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\migrations\\0001_initial.py": {
+    "mtime": 1777207989.7198956,
+    "ast_hash": "11a16a1afc88b866de34aa18cba14606",
+    "semantic_hash": "11a16a1afc88b866de34aa18cba14606"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\migrations\\0002_alter_answerbase_id_alter_blockitem_id_and_more.py": {
+    "mtime": 1777207989.7222748,
+    "ast_hash": "2fdfcfdebc86a513e236c89f57c7e3fb",
+    "semantic_hash": "2fdfcfdebc86a513e236c89f57c7e3fb"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\migrations\\0003_alter_experiment_browser_check_page_tpl_and_more.py": {
+    "mtime": 1777207989.727772,
+    "ast_hash": "6a61c6f7290e9f43954e50044e4244d1",
+    "semantic_hash": "6a61c6f7290e9f43954e50044e4244d1"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\migrations\\__init__.py": {
+    "mtime": 1777207989.7318401,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\bootstrap.min.js": {
+    "mtime": 1777207990.0011187,
+    "ast_hash": "5cc1b73e70520fa84b1846afe0ec8fb6",
+    "semantic_hash": "5cc1b73e70520fa84b1846afe0ec8fb6"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\browser-check.js": {
+    "mtime": 1779014067.426389,
+    "ast_hash": "b152294a5d7df5542a848b45c62735d2",
+    "semantic_hash": "b152294a5d7df5542a848b45c62735d2"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\endpage.js": {
+    "mtime": 1779014067.4339821,
+    "ast_hash": "96fd4d4bcf5653ff30c89045913770b7",
+    "semantic_hash": "96fd4d4bcf5653ff30c89045913770b7"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\experiment.js": {
+    "mtime": 1779014067.4339821,
+    "ast_hash": "d9abbd734a937d322a9c5b940c78cc8c",
+    "semantic_hash": "d9abbd734a937d322a9c5b940c78cc8c"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\jquery-3.2.1.min.js": {
+    "mtime": 1777207990.0112953,
+    "ast_hash": "c9f5aeeca3ad37bf2aa006139b935f0a",
+    "semantic_hash": "c9f5aeeca3ad37bf2aa006139b935f0a"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\js.cookie.min.js": {
+    "mtime": 1777207990.0112953,
+    "ast_hash": "cb8789a822c6a9e8e7a31beffaab73f7",
+    "semantic_hash": "cb8789a822c6a9e8e7a31beffaab73f7"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\queue.src.js": {
+    "mtime": 1779051594.6780221,
+    "ast_hash": "f2812a1626380d914f593bb269bebbf7",
+    "semantic_hash": "f2812a1626380d914f593bb269bebbf7"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\recaptcha-handler.js": {
+    "mtime": 1779041157.2684655,
+    "ast_hash": "c185baaadcea16b12ed374917be10a8d",
+    "semantic_hash": "c185baaadcea16b12ed374917be10a8d"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\resolution.js": {
+    "mtime": 1779014067.4392345,
+    "ast_hash": "84bb7eeb51aec67da40d813ea75358d0",
+    "semantic_hash": "84bb7eeb51aec67da40d813ea75358d0"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\utils.js": {
+    "mtime": 1779096384.6623454,
+    "ast_hash": "3b9a5aff7cfacc5627c693fa77216d2e",
+    "semantic_hash": "3b9a5aff7cfacc5627c693fa77216d2e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\webcam-calibration.js": {
+    "mtime": 1779014067.4392345,
+    "ast_hash": "395cf7884fcb5f605c6fd05757a13467",
+    "semantic_hash": "395cf7884fcb5f605c6fd05757a13467"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\webcam.js": {
+    "mtime": 1779014045.8013058,
+    "ast_hash": "830b003ae81048f760031342e75d8486",
+    "semantic_hash": "830b003ae81048f760031342e75d8486"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\webgazer-calibration.js": {
+    "mtime": 1779014045.8013058,
+    "ast_hash": "9355c4a1e26bac4f20900ce34211c162",
+    "semantic_hash": "9355c4a1e26bac4f20900ce34211c162"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\js\\webgazer.min.js": {
+    "mtime": 1777225287.3111732,
+    "ast_hash": "6bc9734cba64836c8c95d3d02ebb44ad",
+    "semantic_hash": "6bc9734cba64836c8c95d3d02ebb44ad"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\media\\uploads\\instruments\\generateInstrumentFiles.r": {
+    "mtime": 1777207990.1316926,
+    "ast_hash": "d7cc1608bcf55c46961b89b94df229ee",
+    "semantic_hash": "d7cc1608bcf55c46961b89b94df229ee"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\conftest.py": {
+    "mtime": 1777225276.2387507,
+    "ast_hash": "7033e140d3a8c2f9c04aed7d44154d48",
+    "semantic_hash": "7033e140d3a8c2f9c04aed7d44154d48"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\__init__.py": {
+    "mtime": 1777207990.1368096,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\browser-check.test.js": {
+    "mtime": 1779014067.4444072,
+    "ast_hash": "0453a8c50a9b1c2270e6fac99fcbe49f",
+    "semantic_hash": "0453a8c50a9b1c2270e6fac99fcbe49f"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\endpage.test.js": {
+    "mtime": 1779014067.4469306,
+    "ast_hash": "2e4ee8ee78ccf9e5026d3ffa965ea65a",
+    "semantic_hash": "2e4ee8ee78ccf9e5026d3ffa965ea65a"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\experiment.test.js": {
+    "mtime": 1779014067.4499571,
+    "ast_hash": "0992a384afca40810de65efa7ac140ef",
+    "semantic_hash": "0992a384afca40810de65efa7ac140ef"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\package.json": {
+    "mtime": 1779014067.4574573,
+    "ast_hash": "cffe3174493dc1575cafdb12eb8290da",
+    "semantic_hash": "cffe3174493dc1575cafdb12eb8290da"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\queue.test.js": {
+    "mtime": 1779051602.5197775,
+    "ast_hash": "d1c9af3c8516a186478109dd85b86b72",
+    "semantic_hash": "d1c9af3c8516a186478109dd85b86b72"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\resolution.test.js": {
+    "mtime": 1779014067.4574573,
+    "ast_hash": "5ec5dc209f2336461bd070d0c3dbe040",
+    "semantic_hash": "5ec5dc209f2336461bd070d0c3dbe040"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\vitest.config.js": {
+    "mtime": 1779014067.4574573,
+    "ast_hash": "87722cb04730aad1b37d96e95764d134",
+    "semantic_hash": "87722cb04730aad1b37d96e95764d134"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\webcam-calibration.test.js": {
+    "mtime": 1779014067.4665747,
+    "ast_hash": "b41708897675d974d7e51dd3244c8d33",
+    "semantic_hash": "b41708897675d974d7e51dd3244c8d33"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\webcam.test.js": {
+    "mtime": 1778948722.6456206,
+    "ast_hash": "6d71b6205eab3b1f58be8b81f86464ea",
+    "semantic_hash": "6d71b6205eab3b1f58be8b81f86464ea"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\webgazer_calculations.test.js": {
+    "mtime": 1778948722.6456206,
+    "ast_hash": "55223f574af817ac7ec30c18b2db569e",
+    "semantic_hash": "55223f574af817ac7ec30c18b2db569e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\js\\helpers\\load-script.js": {
+    "mtime": 1778948722.6248188,
+    "ast_hash": "07180afae577c0b6b103e038a497f243",
+    "semantic_hash": "07180afae577c0b6b103e038a497f243"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_integration\\conftest.py": {
+    "mtime": 1777225278.8598495,
+    "ast_hash": "1997aeefc0af72107a55418851fcf1f8",
+    "semantic_hash": "1997aeefc0af72107a55418851fcf1f8"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_integration\\test_participant_flow.py": {
+    "mtime": 1777207990.1558137,
+    "ast_hash": "b38a1cf7f3fc936479425ff4ac7eb858",
+    "semantic_hash": "b38a1cf7f3fc936479425ff4ac7eb858"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_integration\\test_urls.py": {
+    "mtime": 1777207990.1661618,
+    "ast_hash": "57ffea38f7143f72ee7d4682d98e27f7",
+    "semantic_hash": "57ffea38f7143f72ee7d4682d98e27f7"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_integration\\test_views.py": {
+    "mtime": 1777207990.167256,
+    "ast_hash": "9df45c7351d0c9757ca535c955267954",
+    "semantic_hash": "9df45c7351d0c9757ca535c955267954"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_integration\\__init__.py": {
+    "mtime": 1777207990.1558137,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_admin.py": {
+    "mtime": 1777207990.1763797,
+    "ast_hash": "872770873f91da6caa7e890d8406f502",
+    "semantic_hash": "872770873f91da6caa7e890d8406f502"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_cdi.py": {
+    "mtime": 1777207990.1763797,
+    "ast_hash": "5566abc7aba38f0705c5a8385285d2fc",
+    "semantic_hash": "5566abc7aba38f0705c5a8385285d2fc"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_config.py": {
+    "mtime": 1777207990.1829655,
+    "ast_hash": "89d1ae401e3647d98518136d80980f93",
+    "semantic_hash": "89d1ae401e3647d98518136d80980f93"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_decorators.py": {
+    "mtime": 1777207990.1866715,
+    "ast_hash": "135f8c2dc937827801f0f830b59622c4",
+    "semantic_hash": "135f8c2dc937827801f0f830b59622c4"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_forms.py": {
+    "mtime": 1777207990.1887517,
+    "ast_hash": "af050b4ffe956167840cf8a03d035966",
+    "semantic_hash": "af050b4ffe956167840cf8a03d035966"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_models.py": {
+    "mtime": 1777207990.1887517,
+    "ast_hash": "6006eae15ca6130eaa6f8297bcc55d64",
+    "semantic_hash": "6006eae15ca6130eaa6f8297bcc55d64"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_reporter.py": {
+    "mtime": 1777207990.1948159,
+    "ast_hash": "8abbc6bfc191b29fb32df3a69ba22d9b",
+    "semantic_hash": "8abbc6bfc191b29fb32df3a69ba22d9b"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_template_defaults.py": {
+    "mtime": 1777207990.1968267,
+    "ast_hash": "4ad227f8d7d0a39e41abf68755115170",
+    "semantic_hash": "4ad227f8d7d0a39e41abf68755115170"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_views.py": {
+    "mtime": 1777207990.200023,
+    "ast_hash": "a9b7db332be87c1008efcf73aa9a4c00",
+    "semantic_hash": "a9b7db332be87c1008efcf73aa9a4c00"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\test_webcam.py": {
+    "mtime": 1777207990.2036848,
+    "ast_hash": "881971bfd5e48c6173f0d8316125fa33",
+    "semantic_hash": "881971bfd5e48c6173f0d8316125fa33"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\tests\\test_unit\\__init__.py": {
+    "mtime": 1777207990.170707,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\.pre-commit-config.yaml": {
+    "mtime": 1777207989.5620432,
+    "ast_hash": "f304385d4cf16b28340d480a3c0ee369",
+    "semantic_hash": "f304385d4cf16b28340d480a3c0ee369"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\CLAUDE.md": {
+    "mtime": 1779550171.7319071,
+    "ast_hash": "9d7f9cf594f2701f92075874449c7a24",
+    "semantic_hash": "9d7f9cf594f2701f92075874449c7a24"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docker-compose.dev.yml": {
+    "mtime": 1777207989.5728016,
+    "ast_hash": "497c1523f8f1d56fff332ba151ad2dde",
+    "semantic_hash": "497c1523f8f1d56fff332ba151ad2dde"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\README.md": {
+    "mtime": 1777207989.5620432,
+    "ast_hash": "47ba0f0d111db6b8f6068b315dc9e8d6",
+    "semantic_hash": "47ba0f0d111db6b8f6068b315dc9e8d6"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\.github\\workflows\\docs.yaml": {
+    "mtime": 1777283111.4655516,
+    "ast_hash": "dff96892b0a3018c728b310b5e794019",
+    "semantic_hash": "dff96892b0a3018c728b310b5e794019"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\.github\\workflows\\test.yaml": {
+    "mtime": 1778948722.5525646,
+    "ast_hash": "4293ac376d908346bea3a3db84f2a4b8",
+    "semantic_hash": "4293ac376d908346bea3a3db84f2a4b8"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\index.md": {
+    "mtime": 1777207989.635298,
+    "ast_hash": "b42f928af346531a4e03623baf99cfc4",
+    "semantic_hash": "b42f928af346531a4e03623baf99cfc4"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\faq\\general.md": {
+    "mtime": 1777207989.5981753,
+    "ast_hash": "50b851143c19fb8603106befb5c8516d",
+    "semantic_hash": "50b851143c19fb8603106befb5c8516d"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\faq\\index.md": {
+    "mtime": 1777207989.6041582,
+    "ast_hash": "ed0879c1237f1646a52c8ab8b5260a67",
+    "semantic_hash": "ed0879c1237f1646a52c8ab8b5260a67"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\faq\\troubleshoot.md": {
+    "mtime": 1777207989.6041582,
+    "ast_hash": "d95caa0df642302a97264193b9bafa4e",
+    "semantic_hash": "d95caa0df642302a97264193b9bafa4e"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\get_started\\index.md": {
+    "mtime": 1777207989.6041582,
+    "ast_hash": "e1dbb65ff52840cfa0b0c84dd20aa5ff",
+    "semantic_hash": "e1dbb65ff52840cfa0b0c84dd20aa5ff"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\get_started\\installation.md": {
+    "mtime": 1777207989.6137276,
+    "ast_hash": "d65a95f84bcbfb341a07260b3e551cc0",
+    "semantic_hash": "d65a95f84bcbfb341a07260b3e551cc0"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\get_started\\local-development.md": {
+    "mtime": 1778948722.5631094,
+    "ast_hash": "1ee9e36ef44ac6669f57878c0abe1c2a",
+    "semantic_hash": "1ee9e36ef44ac6669f57878c0abe1c2a"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\get_started\\production.md": {
+    "mtime": 1777207989.6198738,
+    "ast_hash": "8a99914ccd9c13e9ace7428bde481020",
+    "semantic_hash": "8a99914ccd9c13e9ace7428bde481020"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\authentication.md": {
+    "mtime": 1777207989.63902,
+    "ast_hash": "22447a1708520780014a9af00a462a60",
+    "semantic_hash": "22447a1708520780014a9af00a462a60"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\experiment-administration.md": {
+    "mtime": 1777207989.642888,
+    "ast_hash": "08a8d9d0e449131f40fe677d132fe733",
+    "semantic_hash": "08a8d9d0e449131f40fe677d132fe733"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\experiment-setup.md": {
+    "mtime": 1777207989.6464882,
+    "ast_hash": "c33d15b8a375162a5fb5bebd5b8cbe3f",
+    "semantic_hash": "c33d15b8a375162a5fb5bebd5b8cbe3f"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\file-management.md": {
+    "mtime": 1777207989.6494849,
+    "ast_hash": "a23f9bb18a2de0735f5b371a8a51dc71",
+    "semantic_hash": "a23f9bb18a2de0735f5b371a8a51dc71"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\index.md": {
+    "mtime": 1777207989.6519842,
+    "ast_hash": "e81d9b6b642702b331f7053efa144b1d",
+    "semantic_hash": "e81d9b6b642702b331f7053efa144b1d"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\instrument-administration.md": {
+    "mtime": 1777207989.6550045,
+    "ast_hash": "209b97e4b2bbbd588005abd6e44675fa",
+    "semantic_hash": "209b97e4b2bbbd588005abd6e44675fa"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\login-dashboard.md": {
+    "mtime": 1777207989.6575315,
+    "ast_hash": "b6b9e7c0ba9d5eeb5d2cadc38a78317a",
+    "semantic_hash": "b6b9e7c0ba9d5eeb5d2cadc38a78317a"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\participant-data.md": {
+    "mtime": 1777207989.6618035,
+    "ast_hash": "ff76a1e078d7a6416e0a58a140547c68",
+    "semantic_hash": "ff76a1e078d7a6416e0a58a140547c68"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\typical-experiment-run.md": {
+    "mtime": 1777207989.6654909,
+    "ast_hash": "5fc4e136befe71a8f584a0a3d860c3dd",
+    "semantic_hash": "5fc4e136befe71a8f584a0a3d860c3dd"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\user_guide\\video-tutorials.md": {
+    "mtime": 1777207989.6680205,
+    "ast_hash": "57cb729e7614b6cce8572b2c627bbeed",
+    "semantic_hash": "57cb729e7614b6cce8572b2c627bbeed"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\templates\\admin\\experiments\\change_form_help_text.html": {
+    "mtime": 1777207990.0953436,
+    "ast_hash": "1386d5302a3a8b0f9d838c7c6efdca65",
+    "semantic_hash": "1386d5302a3a8b0f9d838c7c6efdca65"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\templates\\admin\\experiments\\import_form.html": {
+    "mtime": 1777207990.1038067,
+    "ast_hash": "b4ba039ec9d4542c907ca4e137a1b0d3",
+    "semantic_hash": "b4ba039ec9d4542c907ca4e137a1b0d3"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\templates\\admin\\experiments\\experiment\\change_list.html": {
+    "mtime": 1777207990.0953436,
+    "ast_hash": "825e9d743a04ea0fa901caa27d3cd749",
+    "semantic_hash": "825e9d743a04ea0fa901caa27d3cd749"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\templates\\experiments\\base.html": {
+    "mtime": 1779014045.8078399,
+    "ast_hash": "82f996d60fdd396eac5f2a50b5aab48a",
+    "semantic_hash": "82f996d60fdd396eac5f2a50b5aab48a"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\templates\\experiments\\report.html": {
+    "mtime": 1777207990.1106246,
+    "ast_hash": "81b49e1603bcc273d6a168053caca909",
+    "semantic_hash": "81b49e1603bcc273d6a168053caca909"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\media\\uploads\\templates\\index.html": {
+    "mtime": 1777207990.1352003,
+    "ast_hash": "062ddc21d2055e561308ecba6a313ead",
+    "semantic_hash": "062ddc21d2055e561308ecba6a313ead"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\images\\book-open-reader-solid-full.svg": {
+    "mtime": 1777207989.624269,
+    "ast_hash": "451fb8bac949c41194a324a2ec7b57bf",
+    "semantic_hash": "451fb8bac949c41194a324a2ec7b57bf"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\images\\circle-question-solid-full.svg": {
+    "mtime": 1777207989.628578,
+    "ast_hash": "eadd3a0eef6053d26cb030a9435153ae",
+    "semantic_hash": "eadd3a0eef6053d26cb030a9435153ae"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\docs\\source\\images\\person-running-solid-full.svg": {
+    "mtime": 1777207989.631596,
+    "ast_hash": "502920e37cc2e71e9c276480e2e3bcb4",
+    "semantic_hash": "502920e37cc2e71e9c276480e2e3bcb4"
+  },
+  "C:\\Users\\locha\\Documents\\Dev_Psych\\lochhh-e-Babylab\\src\\experiments\\static\\experiments\\img\\loading.gif": {
+    "mtime": 1777207990.0011187,
+    "ast_hash": "a51c5608d01acf32df728f299767f82b",
+    "semantic_hash": "a51c5608d01acf32df728f299767f82b"
+  }
+}

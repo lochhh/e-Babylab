@@ -3,6 +3,10 @@
 ## Project
 e-Babylab is a Django web application for running unmoderated online experiments. Researchers use the admin UI to design multi-stage experiments; participants run them in a browser. Features include no-code experiment authoring, multimedia stimuli, CDI (Communicative Development Inventory) assessments, and webcam-based eye tracking (WebGazer, beta).
 
+## Context & Navigation Rules
+- Before running broad file searches, grep, or reading raw files, check the project map inside `graphify-out/`.
+- Use the `/graphify query "<question>"` command to understand cross-module relationships, architectural dependencies, or code logic.
+
 ## Environment Setup
 Requires Docker Desktop. 
 The dev compose file is `docker-compose.dev.yml`. All Django and pytest commands run inside the container:
@@ -30,7 +34,6 @@ Inside `tests/data/`, there is a sample participant .xlsx file that is the outpu
 - "Trials": contains trial-level data
 - "EyeTrackingData": contains gaze data recorded by WebGazer, each row corresponds to a gaze sample with trial number, time, x/y coordinates
 - "EyeTrackingValidation": contains WebGazer validation data
-Test 
 
 For testing CDI Instruments, use the files in `tests/data/norwegian-ws-production` to create the `Instrument`.
 
