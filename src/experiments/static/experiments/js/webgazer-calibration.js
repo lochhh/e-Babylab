@@ -12,18 +12,21 @@ let timeToSaccade = 1000;
 let timePerPoint = 2050;
 let gazeInterval;
 let webgazer_data = [];
+let clockStart;
+export function resetGazeData() { webgazer_data = []; }
+export function getGazeData() { return webgazer_data; }
 
 /**
  * Initialises webgazer for eye-tracking.
  */
-let initWebgazer = function () {
+export let initWebgazer = function () {
     return new Promise((resolve, reject) => {
         if (typeof webgazer === 'undefined') {
             const error = 'Failed to start webgazer.';
             console.error(error);
             reject(error);
         }
-        const showPredictions = show_gaze_estimations.toLowerCase() === 'true';
+        const showPredictions = window.show_gaze_estimations?.toLowerCase() === 'true';
         webgazer.params.showGazeDot = showPredictions;
 
         webgazer.setRegression('ridge')
@@ -117,7 +120,7 @@ let faceDetectEventObserver = function (mutationsList, observer) {
  * Wrapper function for calibrating and validating webgazer.
  * @param {object} trialObj
  */
-let calibrate = async function (trialObj) {
+export let calibrate = async function (trialObj) {
     for (let ptId = 0; ptId < trialObj.calibration_points.length; ptId++) {
         await showCalibrationPoint(trialObj, ptId);
         await calibrateGaze(ptId);
@@ -213,7 +216,7 @@ let validateGaze = function (trialObj) {
     });
 };
 
-let startGazeRecording = function () {
+export let startGazeRecording = function () {
     // reset webgazer.clockStart
     clockStart = performance.now();
     gazeInterval = setInterval(() => {
@@ -224,7 +227,7 @@ let startGazeRecording = function () {
     webgazer.getCurrentPrediction().then(handleGazeDataUpdate);
 };
 
-let stopGazeRecording = function () {
+export let stopGazeRecording = function () {
     clearInterval(gazeInterval);
 };
 
@@ -248,7 +251,7 @@ let handleGazeDataUpdate = function (data) {
  * @param {number} targetX
  * @param {number} targetY
  */
-let calculateAccuracy = function (past50Array, numPredictions, targetX, targetY) {
+export let calculateAccuracy = function (past50Array, numPredictions, targetX, targetY) {
     let totalDistance = 0;
 
     for (let i = 0; i < numPredictions; i++) {
@@ -270,7 +273,7 @@ Since such inter-sample distances only compare
  * @param {Array} past50Array
  * @param {number} numPredictions
  */
-let calculatePrecisionRMS = function (past50Array, numPredictions) {
+export let calculatePrecisionRMS = function (past50Array, numPredictions) {
     let sumSquaredDistances = 0;
 
     for (let i = 1; i < numPredictions; i++) {
@@ -290,7 +293,7 @@ let calculatePrecisionRMS = function (past50Array, numPredictions) {
   * @param {Array} past50Array
  * @param {number} numPredictions
  */
-let calculatePrecisionSD = function (past50Array, numPredictions) {
+export let calculatePrecisionSD = function (past50Array, numPredictions) {
     let meanX = 0;
     let meanY = 0;
     for (let i = 0; i < numPredictions; i++) {
@@ -358,7 +361,7 @@ let calculatePrecisionPercentages = function (precisionPercentages, numPredictio
 /*
  * Calculates the average of all precision percentages.
  */
-let calculateAverage = function (precisionPercentages, numPredictions) {
+export let calculateAverage = function (precisionPercentages, numPredictions) {
     let precision = 0;
     for (let i = 0; i < numPredictions; i++) {
         precision += precisionPercentages[i];
