@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/endpage.js')
+import { init } from '../../src/experiments/static/experiments/js/endpage.js'
 
 describe('endpage.js', () => {
   beforeEach(() => {
@@ -16,7 +11,7 @@ describe('endpage.js', () => {
       <div id="end_page_approve"></div>
       <div id="end_page_disapprove"></div>
     `
-    eval(readFileSync(SRC, 'utf8'))
+    init()
   })
 
   it('approve click removes active from step_1', () => {
