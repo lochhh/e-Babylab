@@ -1,11 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/resolution.js')
-const src = readFileSync(SRC, 'utf8')
+import { describe, it, expect } from 'vitest'
+import { setResolution } from '../../src/experiments/static/experiments/js/resolution.js'
 
 describe('resolution.js', () => {
   function run(width, height) {
@@ -18,7 +12,7 @@ describe('resolution.js', () => {
       writable: true,
       configurable: true,
     })
-    eval(src)
+    setResolution()
     return {
       w: document.querySelector("input[name='resolution_w']").value,
       h: document.querySelector("input[name='resolution_h']").value,
@@ -37,5 +31,10 @@ describe('resolution.js', () => {
     const { w, h } = run(800, 600)
     expect(w).toBe('800')
     expect(h).toBe('600')
+  })
+
+  it('does not throw when inputs are absent', () => {
+    document.body.innerHTML = ''
+    expect(() => setResolution()).not.toThrow()
   })
 })
