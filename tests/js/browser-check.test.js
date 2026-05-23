@@ -1,11 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/browser-check.js')
-const src = readFileSync(SRC, 'utf8')
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { init } from '../../src/experiments/static/experiments/js/browser-check.js'
 
 function run({ hasMediaRecorder, hasGetUserMedia }) {
   document.body.innerHTML = `
@@ -16,18 +10,20 @@ function run({ hasMediaRecorder, hasGetUserMedia }) {
     </div>
   `
   if (hasMediaRecorder) {
-    globalThis.MediaRecorder = class MediaRecorder {}
+    vi.stubGlobal('MediaRecorder', class MediaRecorder {})
   } else {
-    delete globalThis.MediaRecorder
+    vi.stubGlobal('MediaRecorder', undefined)
   }
   Object.defineProperty(navigator, 'mediaDevices', {
     value: hasGetUserMedia ? {} : null,
     writable: true,
     configurable: true,
   })
-  eval(src)
+  init()
   return document.getElementById('webcam_step_1')
 }
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('browser-check.js', () => {
   it('shows success and enables button when both APIs are available', () => {

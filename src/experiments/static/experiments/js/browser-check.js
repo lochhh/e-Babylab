@@ -1,6 +1,8 @@
 'use strict';
 
-(function () {
+export function init() {
+    if (!document.getElementById('webcam_step_1')) return;
+
     const mediaRecorderSupported = window.MediaRecorder != null;
     const getUserMediaSupported = navigator.mediaDevices;
 
@@ -26,4 +28,6 @@
     };
 
     checkStepOne();
-})();
+}
+
+init();
