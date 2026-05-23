@@ -1,14 +1,25 @@
-'use strict';
+import { webcam } from './webcam.js';
+import { getCsrfToken } from './utils.js';
+import {
+    initWebgazer,
+    startGazeRecording,
+    stopGazeRecording,
+    calibrate,
+    resetGazeData,
+    getGazeData,
+} from './webgazer-calibration.js';
 
-(function () {
-    const config = document.getElementById('trials').dataset;
+export function init() {
+    const trialsEl = document.getElementById('trials');
+    if (!trialsEl) return;
+    const config = trialsEl.dataset;
     const trials = JSON.parse(document.getElementById('trials-data').textContent);
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
     const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
     const recording_option = config.recordingOption;
     const general_onset = config.generalOnset;
-    const show_gaze_estimations = config.showGazeEstimations;
+    window.show_gaze_estimations = config.showGazeEstimations;
 
     // Subject id
     const subjectUuid = config.subjectUuid;
@@ -134,7 +145,7 @@
 
             // Set up trial
             trialObj.webgazer_data = [];
-            webgazer_data = [];
+            resetGazeData();
             const trialSetupPromises = [];
             if (trialObj.audio_file !== '') {
                 trialSetupPromises.push(playTrialAudio(trialObj));
@@ -201,7 +212,7 @@
                 webgazer.pause();
 
                 trialObj.end_time = performance.now();
-                trialObj.webgazer_data = trialObj.webgazer_data.concat(webgazer_data);
+                trialObj.webgazer_data = trialObj.webgazer_data.concat(getGazeData());
 
                 if (trialObj.audio_file !== '') {
                     removeTrialAudio();
@@ -657,4 +668,6 @@
         }
     });
 
-})();
+}
+
+init();
