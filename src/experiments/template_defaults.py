@@ -78,7 +78,7 @@ browser_check_page_content = '''{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-<script src="{% static 'experiments/js/browser-check.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/browser-check.js' %}"></script>
 {% endblock %}'''
 
 introduction_page_content = '''{% extends "experiments/base.html" %} {% block title %}Consent form{% endblock %} {% block content %}
@@ -211,7 +211,8 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %}
 </div>
 <!-- reCAPTCHA API -->
 <script src='https://www.google.com/recaptcha/api.js?render={{recaptcha_site_key}}'></script>
-<script src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/resolution.js' %}"></script>
+    <script type="module" src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
 {% endblock %}'''
 
 webcam_check_page_content = '''{% extends "experiments/base.html" %}
@@ -300,7 +301,7 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %}
 </div>
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
-<script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
 microphone_check_page_content = '''{% extends "experiments/base.html" %}
@@ -374,7 +375,7 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %}
 </div>
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
-<script src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
 {% endblock %}'''
 
 experiment_page_content = '''{% extends "experiments/base.html" %}
@@ -434,9 +435,8 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-<script src="{% static 'experiments/js/experiment.js' %}"></script>
 <script src="{% static 'experiments/js/webgazer.min.js' %}"></script>
-<script src="{% static 'experiments/js/webgazer-calibration.js' %}"></script>
+    <script type="module" src="{% static 'experiments/js/experiment.js' %}"></script>
 {% endblock %}
 '''
 
@@ -527,7 +527,7 @@ thank_you_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<script src="{% static 'experiments/js/endpage.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/endpage.js' %}"></script>
 {% endblock %}'''
 
 thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
@@ -579,7 +579,7 @@ thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<script src="{% static 'experiments/js/endpage.js' %}"></script>
+<script type="module" src="{% static 'experiments/js/endpage.js' %}"></script>
 {% endblock %}'''
 
 error_page_content = '''{% extends "experiments/base.html" %} {% block title %}Error{% endblock %} {% block content %}
