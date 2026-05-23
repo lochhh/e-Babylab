@@ -1,11 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/webcam-calibration.js')
-const src = readFileSync(SRC, 'utf8')
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { init } from '../../src/experiments/static/experiments/js/webcam-calibration.js'
 
 const STEP_HTML = `
   <div id="webcam-calibration"
@@ -38,19 +32,20 @@ const STEP_HTML = `
 function makeEnv({ recordingOption = 'VID', getUserMedia = () => new Promise(() => {}) } = {}) {
   document.body.innerHTML = STEP_HTML.replace('PLACEHOLDER', recordingOption)
 
-  globalThis.getCsrfToken = vi.fn().mockReturnValue('test-csrf')
-  globalThis.MediaRecorder = class MockMediaRecorder {}
-  globalThis.bootstrap = {
+  vi.stubGlobal('MediaRecorder', class MockMediaRecorder {})
+  vi.stubGlobal('bootstrap', {
     Modal: { getOrCreateInstance: vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() }) },
-  }
+  })
   Object.defineProperty(navigator, 'mediaDevices', {
     value: { getUserMedia },
     writable: true,
     configurable: true,
   })
 
-  eval(src)
+  init()
 }
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('webcam-calibration.js — init (checkStepTwo)', () => {
   it('removes active class from step 1', () => {
@@ -86,12 +81,8 @@ describe('webcam-calibration.js — startStream error handling', () => {
       recordingOption: 'VID',
       getUserMedia: () => Promise.reject(new Error('NotAllowedError')),
     })
-
-    // Trigger step 2 button click → calls checkStepThree (VID mode)
     document.querySelector('#webcam_step_2 button').click()
-    // Flush the rejected promise chain
     await new Promise(resolve => setTimeout(resolve, 0))
-
     const alertEl = document.querySelector('#webcam_step_3 .alert-danger')
     expect(alertEl.style.display).toBe('block')
     expect(alertEl.innerHTML).toContain('NotAllowedError')

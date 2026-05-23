@@ -1,6 +1,8 @@
-'use strict';
+import { getCsrfToken } from './utils.js';
 
-(function () {
+export function init() {
+    const el = document.getElementById('webcam-calibration');
+    if (!el) return;
 
     // Webcam constraints
     const constraints = {
@@ -24,7 +26,7 @@
     let mediaRecorder;
 
     // Get configuration from data attributes
-    const config = document.getElementById('webcam-calibration').dataset;
+    const config = el.dataset;
     const subjectUuid = config.subjectUuid;
     const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
     const recording_option = config.recordingOption;
@@ -254,4 +256,6 @@
 
     // Start webcam calibration
     checkStepTwo();
-})();
+}
+
+init();
