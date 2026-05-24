@@ -108,7 +108,7 @@ jobs:
       - name: Install Playwright dependencies
         run: cd tests/e2e && npm ci && npx playwright install --with-deps chromium firefox webkit msedge
 
-      - name: Run e2e tests (Chrome, Firefox, WebKit, Edge, Android Chrome)
+      - name: Run e2e tests
         run: >
           cd tests/e2e && npx playwright test
           --project=chromium
@@ -116,55 +116,12 @@ jobs:
           --project=webkit
           --project=edge
           --project=mobile-chrome
+          --project=mobile-safari
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-ubuntu
-          path: tests/e2e/playwright-report/
-          retention-days: 7
-
-  e2e-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install colima and Docker CLI
-        run: |
-          brew install colima docker docker-compose
-          colima start --cpu 2 --memory 4 --disk 20
-
-      - name: Create .env from template
-        run: cp .env.template .env
-
-      - name: Start dev server
-        run: docker compose -f docker-compose.dev.yml up -d --build
-
-      - name: Wait for server to be ready
-        run: |
-          for i in $(seq 1 30); do
-            curl -fs http://localhost:8080/admin/ && break
-            sleep 3
-          done
-
-      - name: Run database migrations
-        run: docker compose -f docker-compose.dev.yml exec -T web uv run python manage.py migrate
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: lts/*
-
-      - name: Install Playwright WebKit
-        run: cd tests/e2e && npm ci && npx playwright install --with-deps webkit
-
-      - name: Run e2e tests (iOS Safari — WebKit + iPhone 14 emulation)
-        run: cd tests/e2e && npx playwright test --project=mobile-safari
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-macos
+          name: playwright-report
           path: tests/e2e/playwright-report/
           retention-days: 7
