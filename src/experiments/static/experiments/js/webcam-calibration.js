@@ -65,7 +65,7 @@ export function init() {
     const checkStepTwo = function () {
         const button = document.querySelector('#webcam_step_2 button');
 
-        document.getElementById('webcam_step_1').classList.remove('active');
+        document.getElementById('webcam_step_1')?.classList.remove('active');
         document.getElementById('webcam_step_2').classList.add('active');
         if (recording_option === 'AUD') { // Skip to audio test
             button.addEventListener('click', checkStepFour);
