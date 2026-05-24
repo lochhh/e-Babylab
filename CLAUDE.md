@@ -37,18 +37,21 @@ Inside `tests/data/`, there is a sample participant .xlsx file that is the outpu
 
 For testing CDI Instruments, use the files in `tests/data/norwegian-ws-production` to create the `Instrument`.
 
-### JavaScript (Vitest)
+### JavaScript (Vitest + Playwright)
 Requires [Node.js](https://nodejs.org/).
 
 Install dependencies once:
 ```bash
-cd tests/js
-npm install
+cd tests/js && npm install
+cd tests/e2e && npm install && npx playwright install chromium firefox webkit msedge --with-deps
 ```
 
-Run tests:
+Run tests from `tests/`:
 ```bash
-npm test
+cd tests
+npm run test:unit   # Vitest unit tests only (no dev server needed)
+npm run test:e2e    # Playwright e2e tests (dev server must be running)
+npm test            # both suites in sequence
 ```
 
 ## Modernisation in progress

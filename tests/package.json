@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "npm test --prefix js",
+    "test:e2e": "npm test --prefix e2e"
+  }
+}
