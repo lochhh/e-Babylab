@@ -1,56 +1,87 @@
-name: Tests
+name: Test
 
 on:
   push:
-    branches: [main, refactor-js]
+    branches: [ '**' ]
   pull_request:
+    branches: [ '**' ]
+
+# Cancel in-progress runs on new push (except main and tags).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref_type != 'tag' }}
 
 jobs:
-  python-tests:
+  test-js:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/js
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Create .env from template
-        run: cp .env.template .env
-
-      - name: Start dev server
-        run: docker compose -f docker-compose.dev.yml up -d --build
-
-      - name: Wait for server to be ready
-        run: |
-          for i in $(seq 1 30); do
-            curl -fs http://localhost:8080/admin/ && break
-            sleep 3
-          done
-
-      - name: Run database migrations
-        run: docker compose -f docker-compose.dev.yml exec -T web uv run python manage.py migrate
-
-      - name: Run pytest
-        run: docker compose -f docker-compose.dev.yml exec -T web uv run pytest
-
-  js-unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: lts/*
           cache: npm
           cache-dependency-path: tests/js/package-lock.json
 
-      - name: Install dependencies
-        run: cd tests/js && npm ci
+      - name: Install JS dependencies
+        run: npm install
 
-      - name: Run Vitest
-        run: cd tests && npm run test:unit
+      - name: Run JS tests
+        run: npm test
+
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.13, 3.14]
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      SECRET_KEY: "ci-test-secret-key-not-for-production"
+      GOOGLE_RECAPTCHA_SITE_KEY: "ci-test-site-key"
+      GOOGLE_RECAPTCHA_SECRET_KEY: "ci-test-secret-key"
+      DB_HOST: localhost
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the project
+        run: uv sync --dev
+
+      - name: Run tests with coverage
+        run: uv run pytest
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   e2e-ubuntu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create .env from template
         run: cp .env.template .env
@@ -68,9 +99,9 @@ jobs:
       - name: Run database migrations
         run: docker compose -f docker-compose.dev.yml exec -T web uv run python manage.py migrate
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: lts/*
           cache: npm
           cache-dependency-path: tests/e2e/package-lock.json
 
@@ -97,7 +128,7 @@ jobs:
   e2e-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install colima and Docker CLI
         run: |
@@ -120,9 +151,9 @@ jobs:
       - name: Run database migrations
         run: docker compose -f docker-compose.dev.yml exec -T web uv run python manage.py migrate
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: lts/*
 
       - name: Install Playwright WebKit
         run: cd tests/e2e && npm ci && npx playwright install --with-deps webkit
