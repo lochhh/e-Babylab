@@ -14,19 +14,19 @@ If you are running e-Babylab for the first time, execute the following steps in 
 2. Set up the database:
 
     ```bash
-    docker compose -f docker-compose.dev.yml exec web python manage.py migrate
+    docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
     ```
 
 3. Expose static files (e.g. JavaScript files):
 
     ```bash
-    docker compose -f docker-compose.dev.yml exec web python manage.py collectstatic
+    docker compose -f docker-compose.dev.yml exec web uv run python manage.py collectstatic
     ```
 
 4. Create a superuser for logging into the admin interface:
 
     ```bash
-    docker compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
+    docker compose -f docker-compose.dev.yml exec web uv run python manage.py createsuperuser
     ```
 
 Once everything is set up, e-Babylab is accessible at `http://localhost:8080/admin/`.
@@ -79,14 +79,68 @@ npm install
 Run tests:
 
 ```bash
-npm test
+cd tests
+npm run test:unit   # unit tests only (no dev server needed)
+npm run test:e2e    # e2e tests (dev server must be running)
+npm test            # both suites in sequence
 ```
 
 To run in watch mode (re-runs on file change):
 
 ```bash
-npm run test:watch
+cd tests/js && npm run test:watch
 ```
+
+### End-to-End Tests (Playwright)
+
+E2e tests run against the live dev server. Requires Docker and Node.js.
+
+**Prerequisites:** The dev server must be running (see [First-Time Setup](#first-time-setup)).
+
+**Install once:**
+
+```bash
+cd tests/e2e
+npm install
+npx playwright install chromium firefox webkit msedge --with-deps
+```
+
+**Run all browsers:**
+
+```bash
+cd tests/e2e && npm test
+```
+
+**Run a single browser:**
+
+```bash
+cd tests/e2e && npx playwright test --project=chromium
+```
+
+**Run a single spec:**
+
+```bash
+cd tests/e2e && npx playwright test specs/experiment.spec.js --project=chromium
+```
+
+**Interactive UI mode:**
+
+```bash
+cd tests/e2e && npm run test:ui
+```
+
+**Browser coverage:**
+
+| Project        | Browser              | Platform          |
+|----------------|----------------------|-------------------|
+| `chromium`     | Chrome               | Desktop           |
+| `firefox`      | Firefox              | Desktop           |
+| `webkit`       | Safari (approximate) | Desktop           |
+| `edge`         | Edge                 | Desktop           |
+| `mobile-chrome`| Chrome               | Android (Pixel 5) |
+| `mobile-safari`| Safari               | iOS (iPhone 14)   |
+
+> **Note:** `mobile-safari` uses WebKit with iPhone 14 device emulation. For the most accurate Safari results, run this project on macOS (CI uses a macOS runner; locally, it works on any platform but macOS gives the closest match to real Safari).
 
 ## Database Admin (pgAdmin)
 
@@ -169,7 +223,7 @@ If you make changes to the data models during development, you will need to crea
 
 ```bash
 # Create migration files
-docker compose -f docker-compose.dev.yml exec web python manage.py makemigrations
+docker compose -f docker-compose.dev.yml exec web uv run python manage.py makemigrations
 
 # Apply migrations
 docker compose -f docker-compose.dev.yml exec web python manage.py migrate
@@ -182,7 +236,7 @@ For more information, see the [Django migrations documentation](https://docs.dja
 To run Django management commands inside the container:
 
 ```bash
-docker compose -f docker-compose.dev.yml exec web python manage.py <command> [options]
+docker compose -f docker-compose.dev.yml exec web uv run python manage.py <command> [options]
 ```
 
 All available commands can be found in the [Django documentation](https://docs.djangoproject.com/en/6.0/ref/django-admin/).
