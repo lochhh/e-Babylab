@@ -289,6 +289,87 @@ describe('experiment.js — global timeout', () => {
   })
 })
 
+describe('experiment.js — video trial', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('renders video container and completes trial on video end', async () => {
+    HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
+    const { locationReplace } = makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ trial_type: 'video', require_user_input: 'NO' })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    // preloadVideo runs synchronously inside showNextTrial — #video-container-1 is in DOM
+    const video = document.querySelector('#video-container-1 > video')
+    video.dispatchEvent(new Event('canplay'))       // triggers displayVideo
+    await vi.advanceTimersByTimeAsync(1)            // past visual_onset(0) setTimeout
+    await flush()
+    expect(document.querySelector('#video-container-1').style.display).toBe('block')
+    video.dispatchEvent(new Event('ended'))         // triggers setupVideoEnd resolve
+    await flush()
+    await vi.advanceTimersByTimeAsync(10)
+    await flush()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/run/storeresult'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+})
+
+describe('experiment.js — keypress response', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('resolves trial on expected key press before max_duration', async () => {
+    // codes['a'] = 97 - 32 = 65 (experiment.js:64)
+    const { locationReplace } = makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ require_user_input: 'YES', response_keys: ['a'], max_duration: 500 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(1)  // past visual_onset(0) and waitPromise(0)
+    await flush()
+    // setupKeyPresses listener is now registered; max_duration (500ms) has not fired
+    document.dispatchEvent(new KeyboardEvent('keydown', { which: 65, bubbles: true }))
+    await flush()
+    await vi.advanceTimersByTimeAsync(10)
+    await flush()
+    expect(fetch).toHaveBeenCalled()
+    expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+})
+
+describe('experiment.js — click response', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('resolves trial on document click when response_keys includes "click"', async () => {
+    const { locationReplace } = makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ require_user_input: 'YES', response_keys: ['click'], max_duration: 500 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(1)
+    await flush()
+    // click handler registered; dispatch on body so event.target is an Element (has .closest)
+    // dispatching on document directly makes event.target = document which lacks .closest
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flush()
+    await vi.advanceTimersByTimeAsync(10)
+    await flush()
+    expect(fetch).toHaveBeenCalled()
+    expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+})
+
 describe('experiment.js — exit button', () => {
   it('navigates when exit button clicked and upload queue is empty', () => {
     const { locationReplace, mockWebcam } = makeEnv({ recordingOption: 'NON', trials: [] })

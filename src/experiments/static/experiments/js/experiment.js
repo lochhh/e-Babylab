@@ -292,8 +292,30 @@ export function init() {
      * Preload video for trial.
      * @param {object} trialObj
      */
-    const preloadVideo = function (trialObj) {
+    /**
+     * Create or upgrade a video element for the given trial.
+     * @param {object} trialObj
+     * @param {boolean} load - true: set preload=auto and call video.load() (fetch data).
+     *   false: create the element with preload=none so it can be gesture-unlocked on iOS
+     *   before any data is fetched. showNextTrial upgrades elements to load=true as trials
+     *   approach, preserving the original 1-2 trial lookahead window.
+     */
+    const preloadVideo = function (trialObj, load = true) {
         if (trialObj.trial_type !== 'video') return;
+
+        const existing = document.getElementById(`video-container-${trialObj.trial_id}`);
+        if (existing) {
+            // Element already exists from the pre-gesture pass (load=false).
+            // If showNextTrial now wants to load data, upgrade the element.
+            if (load) {
+                const video = existing.querySelector('video');
+                if (video && video.preload !== 'auto') {
+                    video.preload = 'auto';
+                    video.load();
+                }
+            }
+            return;
+        }
 
         console.log(`Preload video of trial ${trialObj.trial_id}`);
         const div = document.createElement('div');
@@ -302,7 +324,10 @@ export function init() {
         div.id = `video-container-${trialObj.trial_id}`;
 
         const video = document.createElement('video');
-        video.preload = 'auto';
+        video.preload = load ? 'auto' : 'none';
+        // iOS Safari opens its native AVPlayer on video.play() unless playsinline is set,
+        // even when the experiment page is already in document fullscreen.
+        video.setAttribute('playsinline', '');
 
         const source1 = document.createElement('source');
         source1.src = trialObj.visual_file;
@@ -321,7 +346,7 @@ export function init() {
         video.append(source3);
         div.append(video);
         body.append(div);
-        video.load();
+        if (load) video.load();
     };
 
     /**
@@ -355,7 +380,10 @@ export function init() {
             const displayVideo = function () {
                 setTimeout(() => {
                     document.querySelector(`#video-container-${trialObj.trial_id}`).style.display = 'block';
-                    video.play();
+                    video.play().catch(err => {
+                        if (err.name !== 'NotAllowedError') throw err;
+                        console.warn('video.play() blocked by autoplay policy:', err.message);
+                    });
                     resolve(trialObj);
                 }, Number(trialObj.visual_onset));
             };
@@ -588,12 +616,23 @@ export function init() {
         }
         return Promise.resolve();
     }).then(() => {
+        // Create DOM elements for all video trials (no data fetch yet) so the gesture
+        // handler can unlock each element. showNextTrial will upgrade them to load=true
+        // as trials approach, preserving the original 1-2 trial lookahead window.
+        trials.forEach(trial => preloadVideo(trial, false));
         return new Promise((resolve, reject) => {
             document.getElementById('fullscreen-button').addEventListener('click', function () {
                 const docElem = document.documentElement;
                 docElem.requestFullscreen?.() ?? docElem.mozRequestFullScreen?.() ??
                     docElem.webkitRequestFullScreen?.() ?? docElem.msRequestFullscreen?.();
                 document.getElementById('fullscreen-message')?.remove();
+                // Unlock every video element for iOS: one play() inside a gesture handler
+                // allows all subsequent play() calls on the same element without a gesture.
+                trials.forEach(trial => {
+                    if (trial.trial_type !== 'video') return;
+                    const videoEl = document.querySelector(`#video-container-${trial.trial_id} > video`);
+                    if (videoEl) videoEl.play().then(() => videoEl.pause()).catch(() => {});
+                });
                 resolve();
             });
         });

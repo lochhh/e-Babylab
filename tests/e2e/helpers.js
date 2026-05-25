@@ -1,4 +1,51 @@
 /**
+ * Intercepts webgazer.min.js and replaces it with a lightweight stub.
+ * The real library ends with `webgazer=r.default`, overwriting any addInitScript stub.
+ * Call before page.goto() in tests that trigger initWebgazer() (EYE/ALL modes).
+ * @param {import('@playwright/test').Page} page
+ */
+export async function stubWebgazerScript(page) {
+  const stub = `
+    window.webgazer = {
+      params:                    { showGazeDot: false },
+      pause:                     () => {},
+      resume:                    () => Promise.resolve(),
+      setRegression:             () => window.webgazer,
+      setGazeListener:           () => window.webgazer,
+      setTracker:                () => window.webgazer,
+      saveDataAcrossSessions:    () => window.webgazer,
+      removeMouseEventListeners: () => window.webgazer,
+      showPredictionPoints:      () => window.webgazer,
+      showVideoPreview:          () => window.webgazer,
+      applyKalmanFilter:         () => window.webgazer,
+      begin:                     () => Promise.resolve(window.webgazer),
+      getCurrentPrediction:      () => Promise.resolve(null),
+    };
+  `
+  await page.route('**/webgazer.min.js', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: stub,
+  }))
+}
+
+/**
+ * Waits for #webgazer-init to appear, force-enables the button, and clicks it.
+ * Also sets pointer-events:none on #plotting_canvas, which setup() in
+ * webgazer-calibration.js renders as a full-viewport fixed overlay that otherwise
+ * blocks the button click (fixed elements stack above static ones).
+ * @param {import('@playwright/test').Page} page
+ */
+export async function proceedPastWebgazerInit(page) {
+  await page.waitForSelector('#webgazer-init', { state: 'visible', timeout: 8000 })
+  await page.evaluate(() => {
+    const canvas = document.getElementById('plotting_canvas')
+    if (canvas) canvas.style.pointerEvents = 'none'
+    document.querySelector('#webgazer-init button').disabled = false
+  })
+  await page.locator('#webgazer-init button').click()
+}
+
+/**
  * Stubs browser APIs that require hardware or real fullscreen.
  * Call via page.addInitScript(stubBrowserAPIs) in beforeEach.
  */
@@ -14,16 +61,36 @@ export function stubBrowserAPIs() {
     configurable: true,
   })
 
-  // WebGazer — vendored script, not an ES module
+  // WebGazer — vendored script, not an ES module.
+  // Methods must cover the full initWebgazer() chain in webgazer-calibration.js:
+  // setRegression → setGazeListener → saveDataAcrossSessions → removeMouseEventListeners
+  // → begin() → showVideoPreview → showPredictionPoints → applyKalmanFilter
   window.webgazer = {
-    pause: () => {},
-    resume: () => Promise.resolve(),
-    setGazeListener: () => window.webgazer,
-    setTracker: () => window.webgazer,
-    saveDataAcrossSessions: () => window.webgazer,
-    showPredictionPoints: () => window.webgazer,
-    begin: () => Promise.resolve(window.webgazer),
-    getCurrentPrediction: () => Promise.resolve(null),
+    params:                    { showGazeDot: false },
+    pause:                     () => {},
+    resume:                    () => Promise.resolve(),
+    setRegression:             () => window.webgazer,
+    setGazeListener:           () => window.webgazer,
+    setTracker:                () => window.webgazer,
+    saveDataAcrossSessions:    () => window.webgazer,
+    removeMouseEventListeners: () => window.webgazer,
+    showPredictionPoints:      () => window.webgazer,
+    showVideoPreview:          () => window.webgazer,
+    applyKalmanFilter:         () => window.webgazer,
+    begin:                     () => Promise.resolve(window.webgazer),
+    getCurrentPrediction:      () => Promise.resolve(null),
+  }
+
+  // MediaRecorder — Playwright's WebKit build lacks this API; webcam.js calls
+  // MediaRecorder.isTypeSupported() inside selectCodec() which is called from initStream().
+  if (!window.MediaRecorder) {
+    window.MediaRecorder = class {
+      constructor() {}
+      start() {}
+      stop() {}
+      addEventListener() {}
+      static isTypeSupported() { return false }
+    }
   }
 
   // getUserMedia — avoids real camera/mic permission dialogs
