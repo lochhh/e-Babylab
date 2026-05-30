@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <!-- Match filer button styles to grapelli -->
+    <style>
+        .navigator-button:not(.filter-files-button),
+        .navigator-button:not(.filter-files-button):visited,
+        .navigator-button:not(.filter-files-button):link {
+            color: #fff !important;
+            border: 1px solid #777 !important;
+            background-image: linear-gradient(#666, #444) !important;
+            background-color: transparent !important;
+            border-radius: 30px !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            line-height: 16px !important;
+            padding: 4px 15px !important;
+            vertical-align: middle !important;
+        }
+        .navigator-button:hover,
+        .navigator-button:focus {
+            color: #fff !important;
+            border: 1px solid #2987a6 !important;
+            background-image: linear-gradient(#36b0d9, #309bbf) !important;
+        }
+        .filter-files-button,
+        .filter-files-button:visited,
+        .filter-files-button:link {
+            color: #fff !important;
+            border: 1px solid #777 !important;
+            background-image: linear-gradient(#666, #444) !important;
+            background-color: transparent !important;
+            border-radius: 30px !important;
+            height: auto !important;
+            padding: 4px 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .filter-files-button .icon {
+            left: 0 !important;
+        }
+        .navigator-button-wrapper {
+            vertical-align: middle !important;
+        }
+    </style>
+{% endblock %}
