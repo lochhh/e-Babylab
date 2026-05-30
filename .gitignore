@@ -106,13 +106,11 @@ venv.bak/
 .DS_Store
 
 # Django media folder
-# TODO: remove uploads/ entries below once old filebrowser data confirmed gone
-src/media/uploads/experiments/**
+src/media/uploads/**
 !src/media/uploads/.keep
-src/media/uploads/instruments/**
 !src/media/uploads/instruments/*.r
-src/media/filer_public/**
 src/media/filer_private/**
+src/media/filer_public_thumbnails/**
 
 # Django static folder
 src/static/**
