@@ -160,8 +160,28 @@ USE_TZ = True
 
 # File management settings
 
-FILE_UPLOAD_PERMISSIONS = 0o644
-FILER_CANONICAL_URL = "sharing/"
+FILER_MIME_TYPES_WHITELIST = [
+    # Audio
+    "audio/mpeg",
+    "audio/wav",
+    # Documents
+    "text/css",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/html",
+    "application/pdf",
+    "application/rtf",
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Images
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    # Video
+    "video/mp4",
+    "video/ogg",
+    "video/webm",
+]
 
 # Admin page customisations
 
