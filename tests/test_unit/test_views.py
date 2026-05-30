@@ -983,21 +983,7 @@ class TestDeleteSubject:
 
 @pytest.mark.django_db
 class TestIndex:
-    def test_index_renders_or_404(self, client, mocker):
-        # The index view renders a file from MEDIA_ROOT which may not exist in tests.
-        # Mock render to confirm the view calls it with the correct template path.
-        from django.conf import settings
-        import os
-
-        mock_render = mocker.patch("experiments.views.render")
-        mock_render.return_value = __import__(
-            "django.http", fromlist=["HttpResponse"]
-        ).HttpResponse("INDEX")
+    def test_index_renders(self, client):
         response = client.get(reverse("experiments:index"))
-        expected_path = os.path.join(
-            settings.MEDIA_ROOT, "uploads", "templates", "index.html"
-        )
-        mock_render.assert_called_once()
-        call_args = mock_render.call_args
-        assert call_args[0][1] == expected_path
         assert response.status_code == 200
+        assert "experiments/index.html" in [t.name for t in response.templates]

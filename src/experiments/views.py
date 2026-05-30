@@ -198,7 +198,10 @@ def createTrialDict(trial, block, trial_number):
     if trial.visual_file:
         visual_file = trial.visual_file.url
         _VIDEO_EXTS = {".mp4", ".ogg", ".webm"}
-        if Path(trial.visual_file.original_filename or "").suffix.lower() in _VIDEO_EXTS:
+        if (
+            Path(trial.visual_file.original_filename or "").suffix.lower()
+            in _VIDEO_EXTS
+        ):
             trial_type = "video"
         else:
             trial_type = "image"
@@ -396,7 +399,7 @@ def experimentEnd(request, run_uuid):
     c = RequestContext(request, {"experiment": experiment, "subject_id": run_uuid})
 
     if subject_data.listitem:
-        listitem = get_object_or_404(ListItem, pk=subject_data.listitem.pk)
+        get_object_or_404(ListItem, pk=subject_data.listitem.pk)
         # count number of trials in the listitem
         # get list of outer block id's
         outer_blocks_all = OuterBlockItem.objects.filter(
@@ -428,7 +431,7 @@ def deleteSubject(request, run_uuid):
     if request.method == "POST":
         subject_data = get_object_or_404(SubjectData, pk=run_uuid)
         subject_data.delete()
-        logger.info("Successfully deleted participant %s." % run_uuid)
+        logger.info(f"Successfully deleted participant {run_uuid}.")
         # Return success status with no content
         return HttpResponse(status=204)
     else:
@@ -438,4 +441,4 @@ def deleteSubject(request, run_uuid):
 
 def index(request):
     """Generate the homepage."""
-    return render(request, settings.MEDIA_ROOT + "/uploads/templates/index.html")
+    return render(request, "experiments/index.html")
