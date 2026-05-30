@@ -1,10 +1,18 @@
 import uuid
 import pytest
 from django.contrib.auth.models import User, Group
+from django.core.files.base import ContentFile
 from django.utils import timezone
-from filebrowser.base import FileObject
+from filer.models.filemodels import File as FilerFile
 
 from experiments import models as exp_models
+
+
+def _make_filer_file(filename):
+    """Create a minimal filer File object for use in tests that don't read file content."""
+    f = FilerFile(original_filename=filename)
+    f.file.save(filename, ContentFile(b""), save=True)
+    return f
 
 
 @pytest.fixture
@@ -20,24 +28,24 @@ def group(db):
 
 @pytest.fixture
 def instrument_factory(db):
-    """Create simple Instrument instances; FileBrowseField requires FileObject values."""
+    """Create simple Instrument instances with placeholder filer File objects."""
     def _create(instr_name="instr1"):
         return exp_models.Instrument.objects.create(
             instr_name=instr_name,
-            words_list=FileObject("words.csv"),
-            irt_params=FileObject("irt.csv"),
-            f_lm_np_mean=FileObject("f_np_mean.csv"),
-            f_lm_np_sd=FileObject("f_np_sd.csv"),
-            f_lm_p_mean=FileObject("f_p_mean.csv"),
-            f_lm_p_sd=FileObject("f_p_sd.csv"),
-            f_bmin=FileObject("f_bmin.csv"),
-            f_slope=FileObject("f_slope.csv"),
-            m_lm_np_mean=FileObject("m_np_mean.csv"),
-            m_lm_np_sd=FileObject("m_np_sd.csv"),
-            m_lm_p_mean=FileObject("m_p_mean.csv"),
-            m_lm_p_sd=FileObject("m_p_sd.csv"),
-            m_bmin=FileObject("m_bmin.csv"),
-            m_slope=FileObject("m_slope.csv"),
+            words_list=_make_filer_file("words.csv"),
+            irt_params=_make_filer_file("irt.csv"),
+            f_lm_np_mean=_make_filer_file("f_np_mean.csv"),
+            f_lm_np_sd=_make_filer_file("f_np_sd.csv"),
+            f_lm_p_mean=_make_filer_file("f_p_mean.csv"),
+            f_lm_p_sd=_make_filer_file("f_p_sd.csv"),
+            f_bmin=_make_filer_file("f_bmin.csv"),
+            f_slope=_make_filer_file("f_slope.csv"),
+            m_lm_np_mean=_make_filer_file("m_np_mean.csv"),
+            m_lm_np_sd=_make_filer_file("m_np_sd.csv"),
+            m_lm_p_mean=_make_filer_file("m_p_mean.csv"),
+            m_lm_p_sd=_make_filer_file("m_p_sd.csv"),
+            m_bmin=_make_filer_file("m_bmin.csv"),
+            m_slope=_make_filer_file("m_slope.csv"),
         )
     return _create
 

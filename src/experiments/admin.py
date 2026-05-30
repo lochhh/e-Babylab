@@ -11,7 +11,6 @@ from django.db import models
 from django.db.models import Q
 from django.utils.safestring import mark_safe
 
-from filebrowser.base import FileObject
 from datetime import datetime
 
 from .models import Instrument, Experiment, ListItem, OuterBlockItem, BlockItem, TrialItem, TrialResult, CdiResult, SubjectData, \
@@ -190,12 +189,14 @@ class TrialResultInline(admin.TabularInline):
     trial_blockitem.short_description = 'Block item'
 
     def trial_audio(self, obj):
-        return obj.trialitem.audio_file.filename
+        f = obj.trialitem.audio_file
+        return f.original_filename if f else ""
 
     trial_audio.short_description = 'Audio file'
 
     def trial_visual(self, obj):
-        return obj.trialitem.visual_file.filename
+        f = obj.trialitem.visual_file
+        return f.original_filename if f else ""
 
     trial_visual.short_description = 'Visual file'
 

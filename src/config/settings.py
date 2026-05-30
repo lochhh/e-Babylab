@@ -27,7 +27,6 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "grappelli.dashboard",
     "grappelli",
-    "filebrowser",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.sessions",
@@ -35,6 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "colorfield",
     "tinymce",
+    "easy_thumbnails",
+    "filer",
 ]
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
@@ -160,24 +161,7 @@ USE_TZ = True
 # File management settings
 
 FILE_UPLOAD_PERMISSIONS = 0o644
-FILEBROWSER_ADMIN_VERSIONS = []
-FILEBROWSER_ADMIN_THUMBNAIL = "small"
-FILEBROWSER_EXTENSIONS = {
-    "Image": [".jpg", ".jpeg", ".gif", ".png"],
-    "Document": [
-        ".pdf",
-        ".docx",
-        ".rtf",
-        ".txt",
-        ".xlsx",
-        ".csv",
-        ".tpl",
-        ".html",
-        ".css",
-    ],
-    "Video": [".webm", ".ogg", ".mp4"],
-    "Audio": [".mp3", ".wav"],
-}
+FILER_CANONICAL_URL = "sharing/"
 
 # Admin page customisations
 
@@ -197,7 +181,6 @@ TINYMCE_DEFAULT_CONFIG = {
     "fontsize_formats": "8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt",
     "extended_valid_elements": "script[language|type|src]",
 }
-TINYMCE_FILEBROWSER = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # Static files (CSS, JavaScript, Images)

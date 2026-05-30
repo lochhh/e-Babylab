@@ -555,16 +555,20 @@ def test_create_trial_worksheet_with_one_result(
     """create_trial_worksheet processes a TrialResult row and writes its webcam
     file entry to the zip archive.
     """
-    from filebrowser.base import FileObject
-
+    from django.core.files.base import ContentFile
+    from filer.models.filemodels import File as FilerFile
     from experiments.models import TrialResult
+
+    def _make_filer_file(filename):
+        f = FilerFile(original_filename=filename)
+        f.file.save(filename, ContentFile(b""), save=True)
+        return f
 
     subject = subjectdata_factory()
     outerblock = outerblock_factory(listitem=subject.listitem)
     blockitem = blockitem_factory(outerblock=outerblock)
     trialitem = trialitem_factory(blockitem=blockitem)
-    # FileBrowseField returns a raw string (not FileObject) when blank; set a real path
-    trialitem.visual_file = FileObject("test-image.png")
+    trialitem.visual_file = _make_filer_file("test-image.png")
     trialitem.save()
     TrialResult.objects.create(
         subject=subject, trialitem=trialitem, key_pressed=""

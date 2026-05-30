@@ -134,7 +134,7 @@ class TestCreateTrialDict:
     def test_video_visual_file_sets_type_and_url(self):
         from unittest.mock import MagicMock
 
-        vf = MagicMock(url="/media/clip.mp4", filetype="video/mp4")
+        vf = MagicMock(url="/media/clip.mp4", original_filename="clip.mp4")
         result = createTrialDict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/clip.mp4"
         assert result["trial_type"] == "video"
@@ -142,7 +142,7 @@ class TestCreateTrialDict:
     def test_image_visual_file_sets_type_and_url(self):
         from unittest.mock import MagicMock
 
-        vf = MagicMock(url="/media/img.png", filetype="image/png")
+        vf = MagicMock(url="/media/img.png", original_filename="img.png")
         result = createTrialDict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/img.png"
         assert result["trial_type"] == "image"

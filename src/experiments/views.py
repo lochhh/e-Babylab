@@ -1,6 +1,7 @@
 import json
 import logging
 import os.path
+from pathlib import Path
 from random import shuffle
 
 import requests
@@ -196,8 +197,8 @@ def createTrialDict(trial, block, trial_number):
 
     if trial.visual_file:
         visual_file = trial.visual_file.url
-        vftype = trial.visual_file.filetype
-        if "video" in vftype.lower():
+        _VIDEO_EXTS = {".mp4", ".ogg", ".webm"}
+        if Path(trial.visual_file.original_filename or "").suffix.lower() in _VIDEO_EXTS:
             trial_type = "video"
         else:
             trial_type = "image"

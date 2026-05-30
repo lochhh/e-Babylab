@@ -1,7 +1,7 @@
 """Unit tests that cover models.py behaviour and helpers.
 
 These tests exercise:
-- experiment_folder, visual_folder, audio_folder helper functions
+- visual_folder, audio_folder helper functions
 - model __str__ methods for all models
 - OuterBlockItem, BlockItem, TrialItem, ConsentQuestion ordering
 - Question.get_choices, validate_list, validate_range, and clean()
@@ -18,16 +18,6 @@ from experiments import models as exp_models
 # ---------------------------------------------------------------------------
 # Folder helper functions
 # ---------------------------------------------------------------------------
-
-
-def test_experiment_folder():
-    """experiment_folder returns the expected upload path."""
-
-    class FakeInstance:
-        exp_name = "MyExp"
-
-    result = exp_models.experiment_folder(FakeInstance(), "logo.png")
-    assert result == "uploads/experiments/MyExp/logo.png"
 
 
 def test_visual_folder():

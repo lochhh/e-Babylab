@@ -92,6 +92,67 @@ npm run test:watch
 
 The development environment includes [pgAdmin](https://www.pgadmin.org/) for easy access to the database. It is accessible at `http://localhost:5050`. The default port can be changed by updating the `5050:80` port mapping under the `pgadmin` service in `docker-compose.dev.yml`. Login credentials are set via `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` in `.env`.
 
+## Rebuilding the Image
+
+Pass `--build` to force Docker to rebuild the `web` image:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Do this after:
+
+- Adding or removing a Python dependency (`pyproject.toml` / `uv.lock` changed)
+- Modifying `Dockerfile` (e.g. adding a system package)
+- Switching base image or Python version
+
+**You do not need to rebuild** when changing Python source files under `src/` — those are volume-mounted and Django's dev server reloads them automatically.
+
+## Common Workflows
+
+### View container logs
+
+```bash
+# Follow live output
+docker compose -f docker-compose.dev.yml logs -f web
+
+# Last 100 lines only
+docker compose -f docker-compose.dev.yml logs --tail=100 web
+```
+
+### Open a shell inside the container
+
+```bash
+docker compose -f docker-compose.dev.yml exec web bash
+```
+
+### Restart only the web service (e.g. after .env changes)
+
+```bash
+docker compose -f docker-compose.dev.yml restart web
+```
+
+### Add a Python dependency
+
+```bash
+# 1. Add the package (updates pyproject.toml and uv.lock)
+docker compose -f docker-compose.dev.yml exec web uv add <package>
+
+# 2. Rebuild so the next `up` uses the updated lockfile
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+### Wipe and reset the database
+
+> **Warning:** This permanently deletes all data in the dev database.
+
+```bash
+docker compose -f docker-compose.dev.yml down -v   # removes containers + named volumes
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
+docker compose -f docker-compose.dev.yml exec web uv run python manage.py createsuperuser
+```
+
 ## Data Model Changes
 
 If you make changes to the data models during development, you will need to create and apply migration files:
@@ -114,4 +175,4 @@ To run Django management commands inside the container:
 docker compose -f docker-compose.dev.yml exec web python manage.py <command> [options]
 ```
 
-All available commands can be found in the [Django documentation](https://docs.djangoproject.com/en/5.2/ref/django-admin/).
+All available commands can be found in the [Django documentation](https://docs.djangoproject.com/en/6.0/ref/django-admin/).
