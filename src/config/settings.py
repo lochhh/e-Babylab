@@ -223,7 +223,6 @@ FILER_MIME_TYPES_WHITELIST = [
     "video/ogg",
     "video/webm",
 ]
-
 FILER_STORAGES = {
     "public": {
         "main": {
@@ -248,3 +247,5 @@ FILER_STORAGES = {
         },
     },
 }
+FILER_THUMBNAIL_ICON_SIZE = 60  # File browser grid view thumbnail size
+THUMBNAIL_PRESERVE_EXTENSIONS = ["gif"]
