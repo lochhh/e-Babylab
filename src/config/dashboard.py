@@ -57,9 +57,7 @@ class CustomIndexDashboard(Dashboard):
                 title="Media Management",
                 collapsible=False,
                 column=1,
-                models=(
-                    "filer.*",
-                    "easy_thumbnails.*",
-                ),
+                models=("filer.*",),
+                exclude=("filer.models.thumbnailoptionmodels.*",),
             )
         )
