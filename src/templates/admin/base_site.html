@@ -2,8 +2,9 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <!-- Match filer button styles to grapelli -->
+    <!-- Match filer button styles to grappelli -->
     <style>
+        /* Filer browser buttons */
         .navigator-button:not(.filter-files-button),
         .navigator-button:not(.filter-files-button):visited,
         .navigator-button:not(.filter-files-button):link {
@@ -45,5 +46,119 @@
         .navigator-button-wrapper {
             vertical-align: middle !important;
         }
+        /* Filer form widget */
+        .grp-related-widget-wrapper, .grp-related-widget, .filer-widget {
+            height: auto !important;
+            overflow: visible !important;
+        }
+        form .form-row .filer-dropzone { height: auto !important; min-height: 0 !important; }
+
+        form .form-row .filer-dropzone .filerFile.js-file-selector {
+            /* Override filer's position:absolute + float layout */
+            position: relative !important;
+            top: auto !important; left: auto !important;
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 8px !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
+            /* Button colours via CSS variables — filer reads these, no specificity war needed */
+            --button-radius: 30px;
+            --primary: #555;
+            --default-button-fg: #fff;
+            --dca-black: #777;
+            --dca-white: #555;
+            --dca-gray-light: #fff;
+            --dca-gray-lighter: #777;
+            --dca-gray-lightest: #309bbf;
+        }
+
+        /* Thumbnail link: reset grappelli spritesheet and negative margin */
+        form .form-row .filer-dropzone .filerFile.js-file-selector > a:first-child {
+            flex-shrink: 0 !important;
+            float: none !important; margin: 0 !important; padding: 0 !important;
+            width: auto !important; height: auto !important;
+            background: none !important; border: none !important;
+        }
+        form .form-row .filer-dropzone .filerFile.js-file-selector img {
+            width: 40px !important; height: 40px !important;
+            display: block !important; margin: 0 !important;
+        }
+        /* Filename: fill remaining space; override filer's height:80px on spans */
+        form .form-row .filer-dropzone .filerFile.js-file-selector .description_text,
+        form .form-row .filer-dropzone .filerFile.js-file-selector span:not(:empty):not(.choose-file):not(.replace-file):not(.edit-file) {
+            flex: 1 !important; min-width: 0 !important;
+            width: auto !important; height: auto !important;
+            overflow: hidden !important; text-overflow: ellipsis !important;
+            white-space: nowrap !important; line-height: 1.4 !important; margin: 0 !important;
+        }
+        form .form-row .filer-dropzone .filerFile.js-file-selector br { display: none !important; }
+        form .form-row .filer-dropzone .filerFile.js-file-selector a span { margin-bottom: 0 !important; }
+
+        /* Buttons: reset filer's floats; size and shape */
+        form .form-row .filer-dropzone .filerFile.js-file-selector a {
+            float: none !important; margin: 0 !important;
+        }
+        /* Hide dz-message — filerFile choose-file button handles empty state instead */
+        form .form-row .filer-dropzone:not(.dz-drag-hover) .dz-message { display: none !important; }
+
+        /* Icon buttons: uniform 28×28 circle (clear, edit, lookup when attached) */
+        form .form-row .filer-dropzone .filerFile.js-file-selector a.filerClearer,
+        form .form-row .filer-dropzone .filerFile.js-file-selector a.js-related-lookup {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            height: 28px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            flex-shrink: 0 !important;
+        }
+        /* Edit button: same 28×28 circle, only visible when attached */
+        form .form-row .filer-dropzone.js-object-attached .filerFile.js-file-selector a.js-related-edit {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            height: 28px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            flex-shrink: 0 !important;
+        }
+        /* Choose File (empty state): pill sized to text, explicit colours */
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector a.js-related-lookup {
+            width: auto !important;
+            padding: 4px 12px !important;
+            border-radius: 30px !important;
+            background-color: #555 !important;
+            background-image: none !important;
+            border: 1px solid #777 !important;
+            color: #fff !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            line-height: 16px !important;
+        }
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector a.js-related-lookup span {
+            color: #fff !important;
+            font-weight: bold !important;
+        }
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector a.js-related-lookup:hover,
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector a.js-related-lookup:focus {
+            background-color: #309bbf !important;
+            background-image: none !important;
+            border-color: #2987a6 !important;
+            filter: none !important;
+        }
+        /* Empty state: hide thumbnail, filename, clear */
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector > a:first-child,
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector img,
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector .description_text,
+        form .form-row .filer-dropzone:not(.js-object-attached) .filerFile.js-file-selector a.filerClearer {
+            display: none !important;
+        }
     </style>
+
 {% endblock %}
