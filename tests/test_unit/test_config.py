@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # config/wsgi.py
 # ---------------------------------------------------------------------------
@@ -96,7 +95,9 @@ class TestCustomIndexDashboard:
         dashboard = CustomIndexDashboard()
         context = MagicMock()
 
-        with patch("config.dashboard.get_admin_site_name", return_value="admin") as mock_get:
+        with patch(
+            "config.dashboard.get_admin_site_name", return_value="admin"
+        ) as mock_get:
             dashboard.init_with_context(context)
 
         mock_get.assert_called_once_with(context)
@@ -104,7 +105,7 @@ class TestCustomIndexDashboard:
         assert isinstance(dashboard.children[0], modules.RecentActions)
         assert isinstance(dashboard.children[1], modules.ModelList)
         assert isinstance(dashboard.children[2], modules.ModelList)
-        assert isinstance(dashboard.children[3], modules.LinkList)
+        assert isinstance(dashboard.children[3], modules.ModelList)
 
 
 # ---------------------------------------------------------------------------

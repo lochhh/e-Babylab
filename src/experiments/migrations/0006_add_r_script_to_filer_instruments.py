@@ -1,7 +1,6 @@
 import os
 
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db import migrations
 
 
@@ -9,6 +8,7 @@ def add_r_script_to_filer(apps, schema_editor):
     """Register the bundled R script as a filer File in the instruments folder."""
     Folder = apps.get_model("filer", "Folder")
     File = apps.get_model("filer", "File")
+    ContentType = apps.get_model("contenttypes", "contenttype")
 
     instruments_folder, _ = Folder.objects.get_or_create(name="instruments", parent=None)
 
@@ -17,7 +17,7 @@ def add_r_script_to_filer(apps, schema_editor):
     script_abs_path = os.path.join(settings.MEDIA_ROOT, "uploads", script_storage_path)
     file_size = os.path.getsize(script_abs_path) if os.path.exists(script_abs_path) else None
 
-    file_ct = ContentType.objects.get(app_label="filer", model="file")
+    file_ct, _ = ContentType.objects.get_or_create(app_label="filer", model="file")
 
     File.objects.get_or_create(
         folder=instruments_folder,
@@ -36,6 +36,7 @@ def add_r_script_to_filer(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("experiments", "0005_create_default_filer_folders"),
+        ("contenttypes", "0002_remove_content_type_name"),
     ]
 
     operations = [
