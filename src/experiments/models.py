@@ -1,6 +1,7 @@
 import os
 import random
 import uuid
+from typing import ClassVar
 
 from colorfield.fields import ColorField
 from django.conf import settings
@@ -13,111 +14,168 @@ from filer.fields.file import FilerFileField
 from filer.fields.image import FilerImageField
 from tinymce import models as tinymce_models
 
-from .template_defaults import *
-
+from .template_defaults import (
+    browser_check_page_content,
+    cdi_page_content,
+    consent_fail_page_content,
+    demographic_data_page_content,
+    error_page_content,
+    experiment_page_content,
+    information_page_content,
+    introduction_page_content,
+    microphone_check_page_content,
+    pause_page_content,
+    thank_you_abort_page_content,
+    thank_you_page_content,
+    webcam_check_page_content,
+)
 
 
 class Instrument(models.Model):
+    """A CDI instrument definition, holding the word list and parameter files."""
+
     instr_name = models.CharField("instrument name", max_length=200)
     words_list = FilerFileField(
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_words_list",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     irt_params = FilerFileField(
         verbose_name="IRT parameters",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_irt_params",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_lm_np_mean = FilerFileField(
         verbose_name="NP: M (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_lm_np_mean",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_lm_np_sd = FilerFileField(
         verbose_name="NP: SD (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_lm_np_sd",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_lm_p_mean = FilerFileField(
         verbose_name="P: M (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_lm_p_mean",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_lm_p_sd = FilerFileField(
         verbose_name="P: SD (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_lm_p_sd",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_bmin = FilerFileField(
         verbose_name="BMin (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_bmin",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     f_slope = FilerFileField(
         verbose_name="Slope (female)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_f_slope",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_lm_np_mean = FilerFileField(
         verbose_name="NP: M (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_lm_np_mean",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_lm_np_sd = FilerFileField(
         verbose_name="NP: SD (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_lm_np_sd",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_lm_p_mean = FilerFileField(
         verbose_name="P: M (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_lm_p_mean",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_lm_p_sd = FilerFileField(
         verbose_name="P: SD (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_lm_p_sd",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_bmin = FilerFileField(
         verbose_name="BMin (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_bmin",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
     m_slope = FilerFileField(
         verbose_name="Slope (male)",
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="instrument_m_slope",
         on_delete=models.SET_NULL,
         help_text="Only .csv files are supported.",
     )
 
+    _CSV_FILE_FIELDS: ClassVar[list[str]] = [
+        "words_list",
+        "irt_params",
+        "f_lm_np_mean",
+        "f_lm_np_sd",
+        "f_lm_p_mean",
+        "f_lm_p_sd",
+        "f_bmin",
+        "f_slope",
+        "m_lm_np_mean",
+        "m_lm_np_sd",
+        "m_lm_p_mean",
+        "m_lm_p_sd",
+        "m_bmin",
+        "m_slope",
+    ]
+
+    def clean(self):
+        """Validate that all file fields reference .csv files."""
+        errors = {}
+        for field_name in self._CSV_FILE_FIELDS:
+            filer_file = getattr(self, field_name)
+            if filer_file and not filer_file.original_filename.lower().endswith(".csv"):
+                errors[field_name] = "Only .csv files are supported."
+        if errors:
+            raise ValidationError(errors)
+
     def __str__(self):
+        """Return the name of the Instrument."""
         return self.instr_name
 
 
@@ -161,7 +219,8 @@ class Experiment(models.Model):
         help_text="When global timeout is encountered / exit button is pressed, go to pause page instead of ending experiment immediately.",
     )
     loading_image = FilerImageField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="experiment_loading_image",
         on_delete=models.SET_NULL,
         help_text="Shown at the end of the experiment, if media recordings are still being uploaded.",
@@ -255,6 +314,7 @@ class Experiment(models.Model):
     )
 
     def __str__(self):
+        """Return the experiment name."""
         return self.exp_name
 
     def subject_questions(self):
@@ -315,13 +375,15 @@ class ListItem(models.Model):
     exclude_list = models.BooleanField("do not include this list", default=False)
 
     def __str__(self):
+        """Return the list name."""
         return self.list_name
 
 
 class OuterBlockItem(models.Model):
     """The third layer of an experiment.
 
-    The outer block has a fixed order and will hence be presented according to the position number.
+    The outer block has a fixed order and will hence be presented according to the
+    position number.
     Each list is made up of at least one outer block.
     """
 
@@ -331,16 +393,20 @@ class OuterBlockItem(models.Model):
     randomise_inner_blocks = models.BooleanField(default=False)
 
     class Meta:
+        """Orders outer blocks by position."""
+
         ordering = ["position"]
 
     def __str__(self):
+        """Return the outer block name."""
         return self.outer_block_name
 
 
 class BlockItem(models.Model):
     """The fourth layer of an experiment and can be seen as the inner block.
 
-    The order of (inner) blocks can either be fixed or randomised, depending on the outer block settings.
+    The order of (inner) blocks can either be fixed or randomised, depending on the
+    outer block settings.
     Each (inner) block is made up of at least one trial.
     """
 
@@ -352,13 +418,17 @@ class BlockItem(models.Model):
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
+        """Orders inner blocks by position."""
+
         ordering = ["position"]
 
     def __str__(self):
+        """Return the block label."""
         return self.label
 
 
 def visual_folder(instance, filename):
+    """Return upload path for visual stimuli files."""
     return "/".join(
         [
             "uploads",
@@ -371,6 +441,7 @@ def visual_folder(instance, filename):
 
 
 def audio_folder(instance, filename):
+    """Return upload path for audio stimuli files."""
     return "/".join(
         [
             "uploads",
@@ -416,12 +487,14 @@ class TrialItem(models.Model):
     visual_onset = models.IntegerField("visual onset (ms)", default=0)
     audio_onset = models.IntegerField("audio onset (ms)", default=0)
     audio_file = FilerFileField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="trial_audio_file",
         on_delete=models.SET_NULL,
     )
     visual_file = FilerFileField(
-        null=True, blank=False,
+        null=True,
+        blank=False,
         related_name="trial_visual_file",
         on_delete=models.SET_NULL,
     )
@@ -463,9 +536,12 @@ class TrialItem(models.Model):
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
+        """Orders trials by position."""
+
         ordering = ["position"]
 
     def __str__(self):
+        """Return the trial label."""
         return self.label
 
 
@@ -488,10 +564,13 @@ class SubjectData(models.Model):
     resolution_h = models.IntegerField("Resolution Height", default=0)
 
     class Meta:
+        """Sets human-readable verbose names for admin display."""
+
         verbose_name = "Participant data"
         verbose_name_plural = "Participant data"
 
     def __str__(self):
+        """Return the participant session ID."""
         return "%s" % (self.id)
 
 
@@ -615,6 +694,8 @@ class Question(models.Model):
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     class Meta:
+        """Orders questions by position."""
+
         ordering = ["position"]
 
     def clean(self):
@@ -643,6 +724,7 @@ class Question(models.Model):
         return choices_tuple
 
     def __str__(self):
+        """Return the question text."""
         return self.text
 
 
@@ -701,9 +783,12 @@ class ConsentQuestion(models.Model):
     response_no = models.CharField("no", max_length=50, default="No")
 
     class Meta:
+        """Orders consent questions by position."""
+
         ordering = ["position"]
 
     def __str__(self):
+        """Return the consent question text."""
         return self.text
 
 

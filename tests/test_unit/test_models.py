@@ -5,6 +5,7 @@ These tests exercise:
 - model __str__ methods for all models
 - OuterBlockItem, BlockItem, TrialItem, ConsentQuestion ordering
 - Question.get_choices, validate_list, validate_range, and clean()
+- Instrument.clean() CSV-only file validation
 - Experiment helper methods that are model-level (subject_questions, consent_questions, get_list_item)
 - TrialResult filename property and _delete_file/delete_file receiver behavior
 """
@@ -68,6 +69,95 @@ def test_audio_folder():
 def test_instrument_str(instrument_factory):
     inst = instrument_factory(instr_name="My Instrument")
     assert str(inst) == "My Instrument"
+
+
+# ---------------------------------------------------------------------------
+# Instrument.clean() — CSV-only validation
+# ---------------------------------------------------------------------------
+
+
+def test_instrument_clean_accepts_all_csv(instrument_factory):
+    """clean() does not raise when all file fields reference .csv files."""
+    inst = instrument_factory()
+    inst.clean()  # must not raise
+
+
+def test_instrument_clean_rejects_non_csv(db):
+    """clean() raises ValidationError naming the offending field when a non-.csv file is attached."""
+    from django.core.files.base import ContentFile
+    from filer.models.filemodels import File as FilerFile
+
+    def make_filer_file(name):
+        f = FilerFile(original_filename=name)
+        f.file.save(name, ContentFile(b""), save=True)
+        return f
+
+    csv = make_filer_file("data.csv")
+    bad = make_filer_file("data.xlsx")
+
+    inst = exp_models.Instrument.objects.create(
+        instr_name="test",
+        words_list=bad,
+        irt_params=csv,
+        f_lm_np_mean=csv,
+        f_lm_np_sd=csv,
+        f_lm_p_mean=csv,
+        f_lm_p_sd=csv,
+        f_bmin=csv,
+        f_slope=csv,
+        m_lm_np_mean=csv,
+        m_lm_np_sd=csv,
+        m_lm_p_mean=csv,
+        m_lm_p_sd=csv,
+        m_bmin=csv,
+        m_slope=csv,
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        inst.clean()
+    assert "words_list" in exc_info.value.message_dict
+    assert "irt_params" not in exc_info.value.message_dict
+
+
+def test_instrument_clean_reports_all_offending_fields(db):
+    """clean() collects errors for every non-.csv field, not just the first."""
+    from django.core.files.base import ContentFile
+    from filer.models.filemodels import File as FilerFile
+
+    def make_filer_file(name):
+        f = FilerFile(original_filename=name)
+        f.file.save(name, ContentFile(b""), save=True)
+        return f
+
+    bad = make_filer_file("bad.txt")
+
+    inst = exp_models.Instrument.objects.create(
+        instr_name="test",
+        words_list=bad,
+        irt_params=bad,
+        f_lm_np_mean=make_filer_file("a.csv"),
+        f_lm_np_sd=make_filer_file("b.csv"),
+        f_lm_p_mean=make_filer_file("c.csv"),
+        f_lm_p_sd=make_filer_file("d.csv"),
+        f_bmin=make_filer_file("e.csv"),
+        f_slope=make_filer_file("f.csv"),
+        m_lm_np_mean=make_filer_file("g.csv"),
+        m_lm_np_sd=make_filer_file("h.csv"),
+        m_lm_p_mean=make_filer_file("i.csv"),
+        m_lm_p_sd=make_filer_file("j.csv"),
+        m_bmin=make_filer_file("k.csv"),
+        m_slope=make_filer_file("l.csv"),
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        inst.clean()
+    errors = exc_info.value.message_dict
+    assert "words_list" in errors
+    assert "irt_params" in errors
+
+
+def test_instrument_clean_skips_null_fields(db):
+    """clean() does not raise for file fields that are null."""
+    inst = exp_models.Instrument.objects.create(instr_name="empty")
+    inst.clean()  # all fields null — must not raise
 
 
 def test_experiment_str_and_subject_consent_questions(
