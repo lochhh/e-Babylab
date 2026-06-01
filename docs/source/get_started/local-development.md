@@ -132,14 +132,24 @@ docker compose -f docker-compose.dev.yml exec web bash
 docker compose -f docker-compose.dev.yml restart web
 ```
 
-### Add a Python dependency
+### Add or remove a Python dependency
+
+`pyproject.toml` is not mounted inside the container, so dependency changes must be made on the host. The `venv_cache` Docker volume persists the virtual environment across container restarts — simply rebuilding the image is not enough, because the volume overrides the image's venv on startup. You must clear the volume so Docker re-initialises it from the freshly built image.
 
 ```bash
-# 1. Add the package (updates pyproject.toml and uv.lock)
-docker compose -f docker-compose.dev.yml exec web uv add <package>
+# 1. Add or remove the package on the host (updates pyproject.toml and uv.lock)
+uv add <package>
+uv remove <package>
 
-# 2. Rebuild so the next `up` uses the updated lockfile
+# 2. Stop containers and remove the venv volume (keeps database intact)
+docker compose -f docker-compose.dev.yml down
+docker volume rm lochhh-e-babylab_venv_cache
+
+# 3. Rebuild the image and restart (Docker copies the new venv into the fresh volume)
 docker compose -f docker-compose.dev.yml up -d --build
+
+# 4. If the package adds or removes Django apps with migrations, apply them
+docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
 ```
 
 ### Wipe and reset the database
