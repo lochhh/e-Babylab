@@ -160,6 +160,105 @@ def test_instrument_clean_skips_null_fields(db):
     inst.clean()  # all fields null — must not raise
 
 
+# ---------------------------------------------------------------------------
+# _validate_file_extension helper
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "filename, allowed, expect_error",
+    [
+        ("data.csv",  {".csv"}, False),  # allowed extension
+        ("data.CSV",  {".csv"}, False),  # case-insensitive match
+        (None,        {".csv"}, False),  # null file skipped
+        ("data.xlsx", {".csv"}, True),   # disallowed extension
+    ],
+    ids=["allowed", "case-insensitive", "null-file", "disallowed"],
+)
+def test_validate_file_extension(filename, allowed, expect_error):
+    """_validate_file_extension adds an error only for disallowed extensions."""
+    class FakeFile:
+        def __init__(self, name):
+            self.original_filename = name
+
+    filer_file = FakeFile(filename) if filename is not None else None
+    errors = {}
+    exp_models._validate_file_extension(filer_file, allowed, "field", errors)
+    if expect_error:
+        assert "field" in errors
+    else:
+        assert errors == {}
+
+
+# ---------------------------------------------------------------------------
+# TrialItem.clean() — audio/visual file extension validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("filename", ["sound.mp3", "track.wav"])
+def test_trialitem_clean_accepts_valid_audio(
+    filename, filer_file_factory, trialitem_factory
+):
+    """clean() does not raise for allowed audio extensions."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory(filename)
+    trial.save()
+    trial.clean()
+
+
+@pytest.mark.parametrize(
+    "filename", ["image.png", "photo.jpg", "photo.jpeg", "anim.gif",
+                 "clip.mp4", "clip.ogg", "clip.webm"]
+)
+def test_trialitem_clean_accepts_valid_visual(
+    filename, filer_file_factory, trialitem_factory
+):
+    """clean() does not raise for allowed visual extensions."""
+    trial = trialitem_factory()
+    trial.visual_file = filer_file_factory(filename)
+    trial.save()
+    trial.clean()
+
+
+def test_trialitem_clean_rejects_bad_audio(filer_file_factory, trialitem_factory):
+    """clean() raises ValidationError on audio_file with disallowed extension."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory("sound.pdf")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    assert "audio_file" in exc_info.value.message_dict
+
+
+def test_trialitem_clean_rejects_bad_visual(filer_file_factory, trialitem_factory):
+    """clean() raises ValidationError on visual_file with disallowed extension."""
+    trial = trialitem_factory()
+    trial.visual_file = filer_file_factory("image.csv")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    assert "visual_file" in exc_info.value.message_dict
+
+
+def test_trialitem_clean_reports_both_bad_fields(filer_file_factory, trialitem_factory):
+    """clean() collects errors for both fields when both are invalid."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory("bad.pdf")
+    trial.visual_file = filer_file_factory("bad.pdf")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    errors = exc_info.value.message_dict
+    assert "audio_file" in errors
+    assert "visual_file" in errors
+
+
+def test_trialitem_clean_skips_null_files(trialitem_factory):
+    """clean() does not raise when audio_file and visual_file are null."""
+    trial = trialitem_factory()
+    trial.clean()  # both null — must not raise
+
+
 def test_experiment_str_and_subject_consent_questions(
     experiment_factory, question_factory, consent_question_factory
 ):

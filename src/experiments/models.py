@@ -31,6 +31,20 @@ from .template_defaults import (
 )
 
 
+def _validate_file_extension(filer_file, allowed_extensions, field_name, errors):
+    """Add a ValidationError entry if filer_file extension is not in allowed_extensions.
+
+    allowed_extensions: set of lowercase dot-prefixed strings, e.g. {".csv"}.
+    """
+    if filer_file:
+        ext = os.path.splitext(filer_file.original_filename.lower())[1]
+        if ext not in allowed_extensions:
+            errors[field_name] = (
+                f"File type '{ext or '(none)'}' not allowed. "
+                f"Supported: {', '.join(sorted(allowed_extensions))}"
+            )
+
+
 class Instrument(models.Model):
     """A CDI instrument definition, holding the word list and parameter files."""
 
@@ -168,9 +182,9 @@ class Instrument(models.Model):
         """Validate that all file fields reference .csv files."""
         errors = {}
         for field_name in self._CSV_FILE_FIELDS:
-            filer_file = getattr(self, field_name)
-            if filer_file and not filer_file.original_filename.lower().endswith(".csv"):
-                errors[field_name] = "Only .csv files are supported."
+            _validate_file_extension(
+                getattr(self, field_name), {".csv"}, field_name, errors
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -535,10 +549,33 @@ class TrialItem(models.Model):
     grid_col = models.IntegerField("columns", default=1)
     position = models.PositiveSmallIntegerField("Position", null=True)
 
+    _AUDIO_EXTENSIONS: ClassVar[set[str]] = {".mp3", ".wav"}
+    _VISUAL_EXTENSIONS: ClassVar[set[str]] = {
+        ".gif",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".mp4",
+        ".ogg",
+        ".webm",
+    }
+
     class Meta:
         """Orders trials by position."""
 
         ordering = ["position"]
+
+    def clean(self):
+        """Validate audio_file and visual_file extension types."""
+        errors = {}
+        _validate_file_extension(
+            self.audio_file, self._AUDIO_EXTENSIONS, "audio_file", errors
+        )
+        _validate_file_extension(
+            self.visual_file, self._VISUAL_EXTENSIONS, "visual_file", errors
+        )
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         """Return the trial label."""
