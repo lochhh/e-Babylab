@@ -16,6 +16,49 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL(
+            sql="""
+                ALTER TABLE experiments_experiment ALTER COLUMN loading_image DROP NOT NULL;
+                UPDATE experiments_experiment SET loading_image = NULL;
+
+                ALTER TABLE experiments_instrument ALTER COLUMN f_bmin DROP NOT NULL;
+                UPDATE experiments_instrument SET f_bmin = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN f_lm_np_mean DROP NOT NULL;
+                UPDATE experiments_instrument SET f_lm_np_mean = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN f_lm_np_sd DROP NOT NULL;
+                UPDATE experiments_instrument SET f_lm_np_sd = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN f_lm_p_mean DROP NOT NULL;
+                UPDATE experiments_instrument SET f_lm_p_mean = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN f_lm_p_sd DROP NOT NULL;
+                UPDATE experiments_instrument SET f_lm_p_sd = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN f_slope DROP NOT NULL;
+                UPDATE experiments_instrument SET f_slope = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN irt_params DROP NOT NULL;
+                UPDATE experiments_instrument SET irt_params = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_bmin DROP NOT NULL;
+                UPDATE experiments_instrument SET m_bmin = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_lm_np_mean DROP NOT NULL;
+                UPDATE experiments_instrument SET m_lm_np_mean = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_lm_np_sd DROP NOT NULL;
+                UPDATE experiments_instrument SET m_lm_np_sd = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_lm_p_mean DROP NOT NULL;
+                UPDATE experiments_instrument SET m_lm_p_mean = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_lm_p_sd DROP NOT NULL;
+                UPDATE experiments_instrument SET m_lm_p_sd = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN m_slope DROP NOT NULL;
+                UPDATE experiments_instrument SET m_slope = NULL;
+                ALTER TABLE experiments_instrument ALTER COLUMN words_list DROP NOT NULL;
+                UPDATE experiments_instrument SET words_list = NULL;
+
+                ALTER TABLE experiments_trialitem ALTER COLUMN audio_file DROP NOT NULL;
+                UPDATE experiments_trialitem SET audio_file = NULL;
+                ALTER TABLE experiments_trialitem ALTER COLUMN visual_file DROP NOT NULL;
+                UPDATE experiments_trialitem SET visual_file = NULL;
+
+                SET CONSTRAINTS ALL IMMEDIATE;
+            """,
+            reverse_sql=migrations.RunSQL.noop,
+        ),
         migrations.AlterField(
             model_name='experiment',
             name='loading_image',
