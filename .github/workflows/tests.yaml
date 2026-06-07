@@ -27,7 +27,8 @@ jobs:
           cache-dependency-path: tests/package-lock.json
 
       - name: Install JS dependencies
-        run: npm ci
+        # npm ci misses platform-specific optional deps in workspaces
+        run: npm install
 
       - name: Run JS tests
         run: npm run test:unit
