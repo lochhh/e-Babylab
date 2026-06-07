@@ -88,7 +88,7 @@ class Migration(migrations.Migration):
     """Update existing Experiment records to use ES module script tags."""
 
     dependencies = [
-        ("experiments", "0003_alter_experiment_browser_check_page_tpl_and_more"),
+        ("experiments", "0006_add_r_script_to_filer_instruments"),
     ]
 
     operations = [
