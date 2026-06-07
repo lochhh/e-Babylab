@@ -125,6 +125,16 @@ cd tests/e2e && npm run test:ui
 
 > **Note:** `mobile-safari` uses WebKit with iPhone 14 device emulation. For the most accurate Safari results, run this project on macOS (CI uses a macOS runner; locally, it works on any platform but macOS gives the closest match to real Safari).
 
+### Updating JS dependencies
+
+Whenever you add, remove, or upgrade a JS dependency, commit the updated `package-lock.json` alongside your `package.json` changes:
+
+```bash
+cd tests && npm install
+git add tests/package.json tests/js/package.json tests/e2e/package.json tests/package-lock.json
+git commit -m "Update JS dependencies"
+```
+
 ## Database Admin (pgAdmin)
 
 The development environment includes [pgAdmin](https://www.pgadmin.org/) for easy access to the database. It is accessible at `http://localhost:5050`. The default port can be changed by updating the `5050:80` port mapping under the `pgadmin` service in `docker-compose.dev.yml`. Login credentials are set via `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` in `.env`.
