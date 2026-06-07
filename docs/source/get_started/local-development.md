@@ -143,7 +143,7 @@ uv remove <package>
 
 # 2. Stop containers and remove the venv volume (keeps database intact)
 docker compose -f docker-compose.dev.yml down
-docker volume rm lochhh-e-babylab_venv_cache
+docker volume rm e-babylab_venv_cache
 
 # 3. Rebuild the image and restart (Docker copies the new venv into the fresh volume)
 docker compose -f docker-compose.dev.yml up -d --build
