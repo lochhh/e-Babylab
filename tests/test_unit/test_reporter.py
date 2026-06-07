@@ -40,7 +40,11 @@ _CALIBRATION_WEBGAZER_DATA = [
     # gaze sample collected at the calibration target).  The reporter reads this with
     # pd.read_json and then drops "trial_type".
     {
-        "trial_type": ["webgazer_calibrate", "webgazer_calibrate", "webgazer_calibrate"],
+        "trial_type": [
+            "webgazer_calibrate",
+            "webgazer_calibrate",
+            "webgazer_calibrate",
+        ],
         "x": [995.0225736782604, 991.6243043637024, 993.645883309357],
         "y": [601.6824880372583, 573.7935240063534, 576.4765554663201],
         "accuracy": [123.8960048500634, 123.8960048500634, 123.8960048500634],
@@ -490,6 +494,36 @@ def test_create_subject_worksheet_question_types(
     assert df.data["5. Tags"] == "a,b"
 
 
+@pytest.mark.parametrize("body", [None, ""])
+def test_create_subject_worksheet_age_blank_body(
+    monkeypatch,
+    tmp_path,
+    experiment_factory,
+    subjectdata_factory,
+    question_factory,
+    body,
+):
+    """AGE question with an AnswerText row whose body is None or empty string
+    leaves the reported value as an empty string rather than crashing.
+    """
+    from experiments.models import AnswerText
+
+    exp = experiment_factory(exp_name="age-blank-test")
+    subject = subjectdata_factory(experiment=exp)
+    q_age = question_factory(
+        text="DOB",
+        question_type=rpt.Question.AGE,
+        experiment=exp,
+        position=0,
+    )
+    AnswerText.objects.create(question=q_age, subject_data=subject, body=body)
+
+    rep = make_reporter(monkeypatch, tmp_path, exp)
+    df = rep.create_subject_worksheet(subject)
+
+    assert df.data["1. DOB"] == ""
+
+
 def test_create_subject_worksheet_age_integer_fallback(
     monkeypatch,
     tmp_path,
@@ -497,7 +531,11 @@ def test_create_subject_worksheet_age_integer_fallback(
     subjectdata_factory,
     question_factory,
 ):
-    """When an AGE question has no AnswerText, falls back to reading AnswerInteger (line 174)."""
+    """When an AGE question has no AnswerText,
+    falls back to reading AnswerInteger. Older versions
+    used to store age questions as AnswerInteger, with
+    the age in months as an integer.
+    """
     from experiments.models import AnswerInteger
 
     exp = experiment_factory(exp_name="age-int-test")
@@ -557,6 +595,7 @@ def test_create_trial_worksheet_with_one_result(
     """
     from django.core.files.base import ContentFile
     from filer.models.filemodels import File as FilerFile
+
     from experiments.models import TrialResult
 
     def _make_filer_file(filename):
@@ -570,9 +609,7 @@ def test_create_trial_worksheet_with_one_result(
     trialitem = trialitem_factory(blockitem=blockitem)
     trialitem.visual_file = _make_filer_file("test-image.png")
     trialitem.save()
-    TrialResult.objects.create(
-        subject=subject, trialitem=trialitem, key_pressed=""
-    )
+    TrialResult.objects.create(subject=subject, trialitem=trialitem, key_pressed="")
 
     rep = make_reporter(monkeypatch, tmp_path, subject.experiment)
     df = rep.create_trial_worksheet(subject)
@@ -624,6 +661,7 @@ def test_create_webgazer_worksheet_non_calibration_trial(
     Expected columns are verified against the EyeTrackingData sheet of the sample xlsx.
     """
     import pandas as pd
+
     from experiments.models import TrialResult
 
     subject = subjectdata_factory()
@@ -667,6 +705,7 @@ def test_create_webgazer_worksheet_calibration_trial(
     Output columns are verified against the sample xlsx.
     """
     import pandas as pd
+
     from experiments.models import TrialResult
 
     subject = subjectdata_factory()
@@ -697,6 +736,6 @@ def test_create_webgazer_worksheet_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert list(webgazer.columns) == _xlsx_sheet_columns(3)   # EyeTrackingData
+    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
     assert list(validation.columns) == _xlsx_sheet_columns(4)  # EyeTrackingValidation
