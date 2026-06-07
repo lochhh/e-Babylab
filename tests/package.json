@@ -1,7 +1,10 @@
 {
+  "private": true,
+  "workspaces": ["js", "e2e"],
   "scripts": {
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "npm test --prefix js",
-    "test:e2e": "npm test --prefix e2e"
+    "test:unit": "npm run test --workspace=js",
+    "test:e2e": "npm run test --workspace=e2e",
+    "test:watch": "npm run test:watch --workspace=js"
   }
 }

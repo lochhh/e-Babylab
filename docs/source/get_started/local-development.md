@@ -65,51 +65,34 @@ Run the Python test suite inside the Docker container:
 docker compose -f docker-compose.dev.yml exec web uv run pytest
 ```
 
-### JavaScript (Vitest)
+### JavaScript (Vitest) and End-to-End Tests (Playwright)
 
-JS unit tests run directly on your machine (no Docker needed). Requires [Node.js](https://nodejs.org/).
+JS tests run directly on your machine (no Docker needed). Requires [Node.js](https://nodejs.org/).
 
-Install dependencies once:
-
-```bash
-cd tests/js
-npm install
-```
-
-Run tests:
+**Install dependencies once** (installs both Vitest and Playwright deps):
 
 ```bash
 cd tests
-npm run test:unit   # unit tests only (no dev server needed)
-npm run test:e2e    # e2e tests (dev server must be running)
-npm test            # both suites in sequence
-```
-
-To run in watch mode (re-runs on file change):
-
-```bash
-cd tests/js && npm run test:watch
-```
-
-### End-to-End Tests (Playwright)
-
-E2e tests run against the live dev server. Requires Docker and Node.js.
-
-**Prerequisites:** The dev server must be running (see [First-Time Setup](#first-time-setup)).
-
-**Install once:**
-
-```bash
-cd tests/e2e
 npm install
 npx playwright install chromium firefox webkit msedge --with-deps
 ```
 
-**Run all browsers:**
+**Run tests:**
 
 ```bash
-cd tests/e2e && npm test
+cd tests
+npm run test:unit   # Vitest unit tests only (no dev server needed)
+npm run test:e2e    # Playwright e2e tests (dev server must be running)
+npm test            # both suites in sequence
 ```
+
+**Watch mode** (re-runs unit tests on file change):
+
+```bash
+cd tests && npm run test:watch
+```
+
+**E2e tests** require the dev server to be running (see [First-Time Setup](#first-time-setup)).
 
 **Run a single browser:**
 

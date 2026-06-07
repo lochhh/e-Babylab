@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tests/js
+        working-directory: tests
     steps:
       - uses: actions/checkout@v6
 
@@ -24,13 +24,13 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
-          cache-dependency-path: tests/js/package-lock.json
+          cache-dependency-path: tests/package-lock.json
 
       - name: Install JS dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run JS tests
-        run: npm test
+        run: npm run test:unit
 
   test-python:
     runs-on: ubuntu-latest
@@ -103,10 +103,10 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
-          cache-dependency-path: tests/e2e/package-lock.json
+          cache-dependency-path: tests/package-lock.json
 
       - name: Install Playwright dependencies
-        run: cd tests/e2e && npm ci && npx playwright install --with-deps chromium firefox webkit msedge
+        run: cd tests && npm ci && cd e2e && npx playwright install --with-deps chromium firefox webkit msedge
 
       - name: Run e2e tests
         run: >
