@@ -41,6 +41,9 @@ fix=true
 select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
 ignore = []
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D205"] # missing-blank-line-after-summary
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
