@@ -1,8 +1,13 @@
 """Management command to seed deterministic e2e test fixtures."""
 
+import io
+import wave as _wave
+
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
-from filebrowser.base import FileObject
+from filer.models import Folder
+from filer.models.filemodels import File as FilerFile
 
 from experiments.models import (
     BlockItem,
@@ -42,6 +47,39 @@ MODES = [
     ),
 ]
 
+# Minimal 1x1 white pixel PNG (valid, browser-renderable)
+_PLACEHOLDER_PNG = (
+    b"\x89PNG\r\n\x1a\n"
+    b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde"
+    b"\x00\x00\x00\x0cIDATx\xd7c\xf8\xcf\xc0\x00\x00\x00"
+    b"\x02\x00\x01\xe2!\xbc3"
+    b"\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def _make_silent_wav(duration_ms=100):
+    """Return bytes for a short silent mono WAV file."""
+    buf = io.BytesIO()
+    with _wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"\x00\x00" * int(8000 * duration_ms / 1000))
+    return buf.getvalue()
+
+
+def _get_or_create_filer_file(filename, content, folder):
+    """Return an existing filer File in folder, or create one with the given content."""
+    existing = FilerFile.objects.filter(
+        original_filename=filename, folder=folder
+    ).first()
+    if existing:
+        return existing
+    f = FilerFile(original_filename=filename, folder=folder)
+    f.file.save(filename, ContentFile(content), save=True)
+    return f
+
 
 class Command(BaseCommand):
     """Create or refresh e2e test fixtures for all recording modes."""
@@ -63,6 +101,14 @@ class Command(BaseCommand):
         )
         user.set_password("e2epass")
         user.save()
+
+        folder, _ = Folder.objects.get_or_create(name="e2e-fixtures")
+        visual_file = _get_or_create_filer_file(
+            "e2e-placeholder.png", _PLACEHOLDER_PNG, folder
+        )
+        audio_file = _get_or_create_filer_file(
+            "e2e-placeholder.wav", _make_silent_wav(), folder
+        )
 
         for exp_id, subject_id, mode in MODES:
             experiment, _ = Experiment.objects.get_or_create(
@@ -100,16 +146,15 @@ class Command(BaseCommand):
                 },
             )
 
-            TrialItem.objects.get_or_create(
+            trial, created = TrialItem.objects.get_or_create(
                 blockitem=block,
                 label="e2e-trial",
                 defaults={
                     "code": "E2E1",
                     "visual_onset": 0,
                     "audio_onset": 0,
-                    "audio_file": "",
-                    # Path need not exist — trial div still renders
-                    "visual_file": FileObject("uploads/e2e-test/placeholder.jpg"),
+                    "audio_file": audio_file,
+                    "visual_file": visual_file,
                     "user_input": "NO",
                     "max_duration": 1500,
                     "record_media": False,
@@ -119,6 +164,10 @@ class Command(BaseCommand):
                     "position": 1,
                 },
             )
+            if not created:
+                trial.visual_file = visual_file
+                trial.audio_file = audio_file
+                trial.save(update_fields=["visual_file", "audio_file"])
 
             SubjectData.objects.get_or_create(
                 id=subject_id,
