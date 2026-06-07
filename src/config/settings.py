@@ -27,7 +27,6 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "grappelli.dashboard",
     "grappelli",
-    "filebrowser",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.sessions",
@@ -35,6 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "colorfield",
     "tinymce",
+    "easy_thumbnails",
+    "filer",
 ]
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
@@ -54,7 +55,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates"), os.path.join(BASE_DIR, "media")],
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -157,27 +158,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-# File management settings
-
-FILE_UPLOAD_PERMISSIONS = 0o644
-FILEBROWSER_ADMIN_VERSIONS = []
-FILEBROWSER_ADMIN_THUMBNAIL = "small"
-FILEBROWSER_EXTENSIONS = {
-    "Image": [".jpg", ".jpeg", ".gif", ".png"],
-    "Document": [
-        ".pdf",
-        ".docx",
-        ".rtf",
-        ".txt",
-        ".xlsx",
-        ".csv",
-        ".tpl",
-        ".html",
-        ".css",
-    ],
-    "Video": [".webm", ".ogg", ".mp4"],
-    "Audio": [".mp3", ".wav"],
-}
 
 # Admin page customisations
 
@@ -197,7 +177,6 @@ TINYMCE_DEFAULT_CONFIG = {
     "fontsize_formats": "8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt",
     "extended_valid_elements": "script[language|type|src]",
 }
-TINYMCE_FILEBROWSER = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # Static files (CSS, JavaScript, Images)
@@ -220,3 +199,53 @@ REPORTS_ROOT = os.path.join(BASE_DIR, "reports")
 
 # Default auto field for models
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# File management settings
+FILER_MIME_TYPES_WHITELIST = [
+    # Audio
+    "audio/mpeg",
+    "audio/wav",
+    # Documents
+    "text/css",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/html",
+    "application/pdf",
+    "application/rtf",
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Images
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    # Video
+    "video/mp4",
+    "video/ogg",
+    "video/webm",
+]
+FILER_STORAGES = {
+    "public": {
+        "main": {
+            "ENGINE": "filer.storage.PublicFileSystemStorage",
+            "OPTIONS": {
+                "location": MEDIA_ROOT + "/uploads",
+                "base_url": MEDIA_URL + "uploads/",
+            },
+            "UPLOAD_TO": "filer.utils.generate_filename.by_date",
+            "UPLOAD_TO_PREFIX": "",
+        },
+    },
+    "private": {
+        "main": {
+            "ENGINE": "filer.storage.PrivateFileSystemStorage",
+            "OPTIONS": {
+                "location": MEDIA_ROOT + "/filer_private",
+                "base_url": "/smedia/filer_private/",
+            },
+            "UPLOAD_TO": "filer.utils.generate_filename.by_date",
+            "UPLOAD_TO_PREFIX": "",
+        },
+    },
+}
+FILER_THUMBNAIL_ICON_SIZE = 60  # File browser grid view thumbnail size
+THUMBNAIL_PRESERVE_EXTENSIONS = ["gif"]

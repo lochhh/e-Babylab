@@ -104,7 +104,7 @@ def make_experiment(num_words=2):
 
 def make_instrument():
     def _fp(name):
-        return SimpleNamespace(path=name)
+        return SimpleNamespace(file=SimpleNamespace(path=name))
 
     return SimpleNamespace(
         words_list=_fp("words.csv"),

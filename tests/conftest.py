@@ -1,10 +1,30 @@
+"""Fixtures for experiments app tests."""
+
 import uuid
+
 import pytest
-from django.contrib.auth.models import User, Group
-from django.utils import timezone
-from filebrowser.base import FileObject
+from django.contrib.auth.models import Group, User
+from django.core.files.base import ContentFile
+from filer.models.filemodels import File as FilerFile
 
 from experiments import models as exp_models
+
+
+def _make_filer_file(filename):
+    """Create a minimal filer File object for use in tests that don't read file content."""
+    f = FilerFile(original_filename=filename)
+    f.file.save(filename, ContentFile(b""), save=True)
+    return f
+
+
+@pytest.fixture
+def filer_file_factory(db):
+    """Return a factory that creates saved filer File objects by filename."""
+
+    def _create(filename):
+        return _make_filer_file(filename)
+
+    return _create
 
 
 @pytest.fixture
@@ -15,84 +35,114 @@ def user(db):
 
 @pytest.fixture
 def group(db):
+    """Create a basic Group for tests that require group membership."""
     return Group.objects.create(name="testgroup")
 
 
 @pytest.fixture
 def instrument_factory(db):
-    """Create simple Instrument instances; FileBrowseField requires FileObject values."""
+    """Create simple Instrument instances with placeholder filer File objects."""
+
     def _create(instr_name="instr1"):
         return exp_models.Instrument.objects.create(
             instr_name=instr_name,
-            words_list=FileObject("words.csv"),
-            irt_params=FileObject("irt.csv"),
-            f_lm_np_mean=FileObject("f_np_mean.csv"),
-            f_lm_np_sd=FileObject("f_np_sd.csv"),
-            f_lm_p_mean=FileObject("f_p_mean.csv"),
-            f_lm_p_sd=FileObject("f_p_sd.csv"),
-            f_bmin=FileObject("f_bmin.csv"),
-            f_slope=FileObject("f_slope.csv"),
-            m_lm_np_mean=FileObject("m_np_mean.csv"),
-            m_lm_np_sd=FileObject("m_np_sd.csv"),
-            m_lm_p_mean=FileObject("m_p_mean.csv"),
-            m_lm_p_sd=FileObject("m_p_sd.csv"),
-            m_bmin=FileObject("m_bmin.csv"),
-            m_slope=FileObject("m_slope.csv"),
+            words_list=_make_filer_file("words.csv"),
+            irt_params=_make_filer_file("irt.csv"),
+            f_lm_np_mean=_make_filer_file("f_np_mean.csv"),
+            f_lm_np_sd=_make_filer_file("f_np_sd.csv"),
+            f_lm_p_mean=_make_filer_file("f_p_mean.csv"),
+            f_lm_p_sd=_make_filer_file("f_p_sd.csv"),
+            f_bmin=_make_filer_file("f_bmin.csv"),
+            f_slope=_make_filer_file("f_slope.csv"),
+            m_lm_np_mean=_make_filer_file("m_np_mean.csv"),
+            m_lm_np_sd=_make_filer_file("m_np_sd.csv"),
+            m_lm_p_mean=_make_filer_file("m_p_mean.csv"),
+            m_lm_p_sd=_make_filer_file("m_p_sd.csv"),
+            m_bmin=_make_filer_file("m_bmin.csv"),
+            m_slope=_make_filer_file("m_slope.csv"),
         )
+
     return _create
 
 
 @pytest.fixture
 def experiment_factory(db, user):
-    """
-    Minimal experiment factory; many fields have defaults in the model.
+    """Minimal experiment factory.
+
+    Many fields have defaults in the model.
     Usage: experiment_factory(exp_name='My exp')
     """
+
     def _create(exp_name="Test Experiment"):
         return exp_models.Experiment.objects.create(user=user, exp_name=exp_name)
+
     return _create
 
 
 @pytest.fixture
 def listitem_factory(db, experiment_factory):
+    """Return a factory that creates ListItem instances."""
+
     def _create(list_name="L1", experiment=None, exclude_list=False):
         if experiment is None:
             experiment = experiment_factory()
-        return exp_models.ListItem.objects.create(experiment=experiment, list_name=list_name, exclude_list=exclude_list)
+        return exp_models.ListItem.objects.create(
+            experiment=experiment, list_name=list_name, exclude_list=exclude_list
+        )
+
     return _create
 
 
 @pytest.fixture
 def outerblock_factory(db, listitem_factory):
+    """Return a factory that creates OuterBlockItem instances."""
+
     def _create(listitem=None, outer_block_name="Outer", position=1):
         if listitem is None:
             listitem = listitem_factory()
-        return exp_models.OuterBlockItem.objects.create(listitem=listitem, outer_block_name=outer_block_name, position=position)
+        return exp_models.OuterBlockItem.objects.create(
+            listitem=listitem, outer_block_name=outer_block_name, position=position
+        )
+
     return _create
 
 
 @pytest.fixture
 def blockitem_factory(db, outerblock_factory):
+    """Return a factory that creates BlockItem instances."""
+
     def _create(outerblock=None, label="Block", position=1):
         if outerblock is None:
             outerblock = outerblock_factory()
-        return exp_models.BlockItem.objects.create(outerblockitem=outerblock, label=label, position=position)
+        return exp_models.BlockItem.objects.create(
+            outerblockitem=outerblock, label=label, position=position
+        )
+
     return _create
 
 
 @pytest.fixture
 def trialitem_factory(db, blockitem_factory):
+    """Return a factory that creates TrialItem instances."""
+
     def _create(blockitem=None, label="Trial", code="C1", position=1):
         if blockitem is None:
             blockitem = blockitem_factory()
         return exp_models.TrialItem.objects.create(
-            blockitem=blockitem, label=label, code=code, max_duration=1000, position=position
+            blockitem=blockitem,
+            label=label,
+            code=code,
+            max_duration=1000,
+            position=position,
         )
+
     return _create
 
 
 @pytest.fixture
 def subjectdata_factory(db, experiment_factory, listitem_factory):
+    """Return a factory that creates SubjectData instances."""
+
     def _create(id=None, experiment=None, listitem=None, participant_id=1):
         if experiment is None:
             experiment = experiment_factory()
@@ -100,12 +150,20 @@ def subjectdata_factory(db, experiment_factory, listitem_factory):
             listitem = listitem_factory(experiment=experiment)
         if id is None:
             id = str(uuid.uuid4())
-        return exp_models.SubjectData.objects.create(id=id, participant_id=participant_id, experiment=experiment, listitem=listitem)
+        return exp_models.SubjectData.objects.create(
+            id=id,
+            participant_id=participant_id,
+            experiment=experiment,
+            listitem=listitem,
+        )
+
     return _create
 
 
 @pytest.fixture
 def trialresult_factory(db, subjectdata_factory, trialitem_factory):
+    """Return a factory that creates TrialResult instances."""
+
     def _create(subject=None, trialitem=None, webcam_name=None):
         if subject is None:
             subject = subjectdata_factory()
@@ -117,22 +175,45 @@ def trialresult_factory(db, subjectdata_factory, trialitem_factory):
             tr.webcam_file.name = webcam_name
             tr.save(update_fields=["webcam_file"])
         return tr
+
     return _create
 
 
 @pytest.fixture
 def question_factory(db, experiment_factory):
-    def _create(text="Q", required=False, experiment=None, question_type=exp_models.Question.TEXT, choices="", position=1):
+    """Return a factory that creates Question instances."""
+
+    def _create(
+        text="Q",
+        required=False,
+        experiment=None,
+        question_type=exp_models.Question.TEXT,
+        choices="",
+        position=1,
+    ):
         if experiment is None:
             experiment = experiment_factory()
-        return exp_models.Question.objects.create(text=text, required=required, experiment=experiment, question_type=question_type, choices=choices, position=position)
+        return exp_models.Question.objects.create(
+            text=text,
+            required=required,
+            experiment=experiment,
+            question_type=question_type,
+            choices=choices,
+            position=position,
+        )
+
     return _create
 
 
 @pytest.fixture
 def consent_question_factory(db, experiment_factory):
+    """Return a factory that creates ConsentQuestion instances."""
+
     def _create(text="Consent?", experiment=None, position=1):
         if experiment is None:
             experiment = experiment_factory()
-        return exp_models.ConsentQuestion.objects.create(text=text, experiment=experiment, position=position)
+        return exp_models.ConsentQuestion.objects.create(
+            text=text, experiment=experiment, position=position
+        )
+
     return _create

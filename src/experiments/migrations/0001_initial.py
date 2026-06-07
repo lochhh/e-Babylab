@@ -5,7 +5,6 @@ from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 import experiments.models
-import filebrowser.fields
 import tinymce.models
 import uuid
 
@@ -51,7 +50,7 @@ class Migration(migrations.Migration):
                 ('sharing_option', models.CharField(choices=[('OWN', 'Only me'), ('GRP', 'Group members only'), ('PUB', 'Everyone')], default='OWN', max_length=3, verbose_name='sharing options')),
                 ('list_selection_strategy', models.CharField(choices=[('LPF', 'Least played'), ('SEQ', 'Sequential'), ('RAN', 'Random')], default='LPF', max_length=3, verbose_name='list selection strategy')),
                 ('include_pause_page', models.BooleanField(default=True, help_text='When global timeout is encountered / exit button is pressed, go to pause page instead of ending experiment immediately.')),
-                ('loading_image', filebrowser.fields.FileBrowseField(blank=True, help_text='Shown at the end of the experiment, if media recordings are still being uploaded.', max_length=200)),
+                ('loading_image', models.CharField(blank=True, max_length=200)),
                 ('show_gaze_estimations', models.BooleanField(default=False, help_text='Display webgazer estimations during experiment (for debugging purposes).')),
                 ('recording_option', models.CharField(choices=[('NON', 'Key/Click responses only'), ('AUD', 'Audio + key/click responses'), ('VID', 'Video + key/click responses'), ('EYE', 'Eye-tracking + key/click responses'), ('ALL', 'Eye-tracking + video + key/click responses')], default='NON', max_length=3)),
                 ('general_onset', models.IntegerField(default=0, verbose_name='wait to enable key/click response (ms)')),
@@ -78,20 +77,20 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('instr_name', models.CharField(max_length=200, verbose_name='instrument name')),
-                ('words_list', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250)),
-                ('irt_params', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='IRT parameters')),
-                ('f_lm_np_mean', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: M (female)')),
-                ('f_lm_np_sd', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: SD (female)')),
-                ('f_lm_p_mean', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: M (female)')),
-                ('f_lm_p_sd', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: SD (female)')),
-                ('f_bmin', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='BMin (female)')),
-                ('f_slope', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='Slope (female)')),
-                ('m_lm_np_mean', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: M (male)')),
-                ('m_lm_np_sd', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: SD (male)')),
-                ('m_lm_p_mean', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: M (male)')),
-                ('m_lm_p_sd', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: SD (male)')),
-                ('m_bmin', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='BMin (male)')),
-                ('m_slope', filebrowser.fields.FileBrowseField(help_text='Only .csv files are supported.', max_length=250, verbose_name='Slope (male)')),
+                ('words_list', models.CharField(help_text='Only .csv files are supported.', max_length=250)),
+                ('irt_params', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='IRT parameters')),
+                ('f_lm_np_mean', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: M (female)')),
+                ('f_lm_np_sd', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: SD (female)')),
+                ('f_lm_p_mean', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: M (female)')),
+                ('f_lm_p_sd', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: SD (female)')),
+                ('f_bmin', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='BMin (female)')),
+                ('f_slope', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='Slope (female)')),
+                ('m_lm_np_mean', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: M (male)')),
+                ('m_lm_np_sd', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='NP: SD (male)')),
+                ('m_lm_p_mean', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: M (male)')),
+                ('m_lm_p_sd', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='P: SD (male)')),
+                ('m_bmin', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='BMin (male)')),
+                ('m_slope', models.CharField(help_text='Only .csv files are supported.', max_length=250, verbose_name='Slope (male)')),
             ],
         ),
         migrations.CreateModel(
@@ -130,8 +129,8 @@ class Migration(migrations.Migration):
                 ('code', models.CharField(max_length=20)),
                 ('visual_onset', models.IntegerField(default=0, verbose_name='visual onset (ms)')),
                 ('audio_onset', models.IntegerField(default=0, verbose_name='audio onset (ms)')),
-                ('audio_file', filebrowser.fields.FileBrowseField(blank=True, max_length=200)),
-                ('visual_file', filebrowser.fields.FileBrowseField(max_length=200)),
+                ('audio_file', models.CharField(blank=True, max_length=200)),
+                ('visual_file', models.CharField(max_length=200)),
                 ('user_input', models.CharField(choices=[('NO', 'Do not require user input'), ('YES', 'Require user input')], default='NO', max_length=3)),
                 ('response_keys', models.CharField(blank=True, help_text='Provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b).', max_length=200, null=True, verbose_name='response key(s)')),
                 ('max_duration', models.IntegerField(help_text='This value will be ignored for video trials which do not require user input.', verbose_name='maximum duration (ms)')),

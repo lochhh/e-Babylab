@@ -143,12 +143,12 @@ class TestTrialResultInline:
 
     def test_trial_audio(self, inline):
         obj = MagicMock()
-        obj.trialitem.audio_file.filename = 'audio.mp3'
+        obj.trialitem.audio_file.original_filename = 'audio.mp3'
         assert inline.trial_audio(obj) == 'audio.mp3'
 
     def test_trial_visual(self, inline):
         obj = MagicMock()
-        obj.trialitem.visual_file.filename = 'image.png'
+        obj.trialitem.visual_file.original_filename = 'image.png'
         assert inline.trial_visual(obj) == 'image.png'
 
     def test_trial_input(self, inline):

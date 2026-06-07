@@ -2,7 +2,6 @@ import csv
 import datetime
 import json
 import logging
-import os.path
 from io import StringIO
 
 import numpy as np
@@ -12,7 +11,6 @@ from catsim.estimation import NumericalSearchEstimator
 from catsim.initialization import FixedPointInitializer
 from catsim.irt import inf_hpc, max_info_hpc
 from catsim.selection import MaxInfoSelector
-from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template import RequestContext, Template
@@ -56,12 +54,10 @@ def estimateCDI(run_uuid):
     )
 
     try:
-        words_list = instrument.words_list
-
         # parse instrument word list
         all_words_reader = csv.DictReader(
             open(
-                os.path.join(settings.MEDIA_ROOT, instrument.words_list.path),
+                instrument.words_list.file.path,
                 encoding="utf-8-sig",
             ),
             delimiter=",",
@@ -93,43 +89,19 @@ def estimateCDI(run_uuid):
 
         # get lookup files for child's sex
         if sex.strip().lower() == choices[0].lower():  # choices0 = female
-            lm_np_mean = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_lm_np_mean.path)
-            )
-            lm_np_sd = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_lm_np_sd.path)
-            )
-            lm_p_mean = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_lm_p_mean.path)
-            )
-            lm_p_sd = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_lm_p_sd.path)
-            )
-            bmin = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_bmin.path)
-            )
-            slope = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.f_slope.path)
-            )
+            lm_np_mean = pd.read_csv(instrument.f_lm_np_mean.file.path)
+            lm_np_sd = pd.read_csv(instrument.f_lm_np_sd.file.path)
+            lm_p_mean = pd.read_csv(instrument.f_lm_p_mean.file.path)
+            lm_p_sd = pd.read_csv(instrument.f_lm_p_sd.file.path)
+            bmin = pd.read_csv(instrument.f_bmin.file.path)
+            slope = pd.read_csv(instrument.f_slope.file.path)
         else:  # choices1 = male
-            lm_np_mean = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_lm_np_mean.path)
-            )
-            lm_np_sd = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_lm_np_sd.path)
-            )
-            lm_p_mean = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_lm_p_mean.path)
-            )
-            lm_p_sd = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_lm_p_sd.path)
-            )
-            bmin = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_bmin.path)
-            )
-            slope = pd.read_csv(
-                os.path.join(settings.MEDIA_ROOT, instrument.m_slope.path)
-            )
+            lm_np_mean = pd.read_csv(instrument.m_lm_np_mean.file.path)
+            lm_np_sd = pd.read_csv(instrument.m_lm_np_sd.file.path)
+            lm_p_mean = pd.read_csv(instrument.m_lm_p_mean.file.path)
+            lm_p_sd = pd.read_csv(instrument.m_lm_p_sd.file.path)
+            bmin = pd.read_csv(instrument.m_bmin.file.path)
+            slope = pd.read_csv(instrument.m_slope.file.path)
 
         instr_num_words = len(lm_np_mean.index)
         basis = np.ones(instr_num_words + 1)
@@ -202,7 +174,7 @@ def cdiRun(request, run_uuid):
         # parse instrument word list
         all_words_reader = csv.DictReader(
             open(
-                os.path.join(settings.MEDIA_ROOT, instrument.words_list.path),
+                instrument.words_list.file.path,
                 encoding="utf-8-sig",
             ),
             delimiter=",",
@@ -213,9 +185,7 @@ def cdiRun(request, run_uuid):
         request.session["all_words"] = json.dumps(all_words)
 
         # get IRT parameters
-        item_params = pd.read_csv(
-            os.path.join(settings.MEDIA_ROOT, instrument.irt_params.path)
-        )
+        item_params = pd.read_csv(instrument.irt_params.file.path)
         item_params = item_params.iloc[:, 1:5]
         request.session["item_params"] = item_params.reset_index().to_json(
             orient="records"

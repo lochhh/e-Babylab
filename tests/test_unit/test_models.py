@@ -1,10 +1,11 @@
 """Unit tests that cover models.py behaviour and helpers.
 
 These tests exercise:
-- experiment_folder, visual_folder, audio_folder helper functions
+- visual_folder, audio_folder helper functions
 - model __str__ methods for all models
 - OuterBlockItem, BlockItem, TrialItem, ConsentQuestion ordering
 - Question.get_choices, validate_list, validate_range, and clean()
+- Instrument.clean() CSV-only file validation
 - Experiment helper methods that are model-level (subject_questions, consent_questions, get_list_item)
 - TrialResult filename property and _delete_file/delete_file receiver behavior
 """
@@ -18,16 +19,6 @@ from experiments import models as exp_models
 # ---------------------------------------------------------------------------
 # Folder helper functions
 # ---------------------------------------------------------------------------
-
-
-def test_experiment_folder():
-    """experiment_folder returns the expected upload path."""
-
-    class FakeInstance:
-        exp_name = "MyExp"
-
-    result = exp_models.experiment_folder(FakeInstance(), "logo.png")
-    assert result == "uploads/experiments/MyExp/logo.png"
 
 
 def test_visual_folder():
@@ -78,6 +69,194 @@ def test_audio_folder():
 def test_instrument_str(instrument_factory):
     inst = instrument_factory(instr_name="My Instrument")
     assert str(inst) == "My Instrument"
+
+
+# ---------------------------------------------------------------------------
+# Instrument.clean() — CSV-only validation
+# ---------------------------------------------------------------------------
+
+
+def test_instrument_clean_accepts_all_csv(instrument_factory):
+    """clean() does not raise when all file fields reference .csv files."""
+    inst = instrument_factory()
+    inst.clean()  # must not raise
+
+
+def test_instrument_clean_rejects_non_csv(db):
+    """clean() raises ValidationError naming the offending field when a non-.csv file is attached."""
+    from django.core.files.base import ContentFile
+    from filer.models.filemodels import File as FilerFile
+
+    def make_filer_file(name):
+        f = FilerFile(original_filename=name)
+        f.file.save(name, ContentFile(b""), save=True)
+        return f
+
+    csv = make_filer_file("data.csv")
+    bad = make_filer_file("data.xlsx")
+
+    inst = exp_models.Instrument.objects.create(
+        instr_name="test",
+        words_list=bad,
+        irt_params=csv,
+        f_lm_np_mean=csv,
+        f_lm_np_sd=csv,
+        f_lm_p_mean=csv,
+        f_lm_p_sd=csv,
+        f_bmin=csv,
+        f_slope=csv,
+        m_lm_np_mean=csv,
+        m_lm_np_sd=csv,
+        m_lm_p_mean=csv,
+        m_lm_p_sd=csv,
+        m_bmin=csv,
+        m_slope=csv,
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        inst.clean()
+    assert "words_list" in exc_info.value.message_dict
+    assert "irt_params" not in exc_info.value.message_dict
+
+
+def test_instrument_clean_reports_all_offending_fields(db):
+    """clean() collects errors for every non-.csv field, not just the first."""
+    from django.core.files.base import ContentFile
+    from filer.models.filemodels import File as FilerFile
+
+    def make_filer_file(name):
+        f = FilerFile(original_filename=name)
+        f.file.save(name, ContentFile(b""), save=True)
+        return f
+
+    bad = make_filer_file("bad.txt")
+
+    inst = exp_models.Instrument.objects.create(
+        instr_name="test",
+        words_list=bad,
+        irt_params=bad,
+        f_lm_np_mean=make_filer_file("a.csv"),
+        f_lm_np_sd=make_filer_file("b.csv"),
+        f_lm_p_mean=make_filer_file("c.csv"),
+        f_lm_p_sd=make_filer_file("d.csv"),
+        f_bmin=make_filer_file("e.csv"),
+        f_slope=make_filer_file("f.csv"),
+        m_lm_np_mean=make_filer_file("g.csv"),
+        m_lm_np_sd=make_filer_file("h.csv"),
+        m_lm_p_mean=make_filer_file("i.csv"),
+        m_lm_p_sd=make_filer_file("j.csv"),
+        m_bmin=make_filer_file("k.csv"),
+        m_slope=make_filer_file("l.csv"),
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        inst.clean()
+    errors = exc_info.value.message_dict
+    assert "words_list" in errors
+    assert "irt_params" in errors
+
+
+def test_instrument_clean_skips_null_fields(db):
+    """clean() does not raise for file fields that are null."""
+    inst = exp_models.Instrument.objects.create(instr_name="empty")
+    inst.clean()  # all fields null — must not raise
+
+
+# ---------------------------------------------------------------------------
+# _validate_file_extension helper
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "filename, allowed, expect_error",
+    [
+        ("data.csv",  {".csv"}, False),  # allowed extension
+        ("data.CSV",  {".csv"}, False),  # case-insensitive match
+        (None,        {".csv"}, False),  # null file skipped
+        ("data.xlsx", {".csv"}, True),   # disallowed extension
+    ],
+    ids=["allowed", "case-insensitive", "null-file", "disallowed"],
+)
+def test_validate_file_extension(filename, allowed, expect_error):
+    """_validate_file_extension adds an error only for disallowed extensions."""
+    class FakeFile:
+        def __init__(self, name):
+            self.original_filename = name
+
+    filer_file = FakeFile(filename) if filename is not None else None
+    errors = {}
+    exp_models._validate_file_extension(filer_file, allowed, "field", errors)
+    if expect_error:
+        assert "field" in errors
+    else:
+        assert errors == {}
+
+
+# ---------------------------------------------------------------------------
+# TrialItem.clean() — audio/visual file extension validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("filename", ["sound.mp3", "track.wav"])
+def test_trialitem_clean_accepts_valid_audio(
+    filename, filer_file_factory, trialitem_factory
+):
+    """clean() does not raise for allowed audio extensions."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory(filename)
+    trial.save()
+    trial.clean()
+
+
+@pytest.mark.parametrize(
+    "filename", ["image.png", "photo.jpg", "photo.jpeg", "anim.gif",
+                 "clip.mp4", "clip.ogg", "clip.webm"]
+)
+def test_trialitem_clean_accepts_valid_visual(
+    filename, filer_file_factory, trialitem_factory
+):
+    """clean() does not raise for allowed visual extensions."""
+    trial = trialitem_factory()
+    trial.visual_file = filer_file_factory(filename)
+    trial.save()
+    trial.clean()
+
+
+def test_trialitem_clean_rejects_bad_audio(filer_file_factory, trialitem_factory):
+    """clean() raises ValidationError on audio_file with disallowed extension."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory("sound.pdf")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    assert "audio_file" in exc_info.value.message_dict
+
+
+def test_trialitem_clean_rejects_bad_visual(filer_file_factory, trialitem_factory):
+    """clean() raises ValidationError on visual_file with disallowed extension."""
+    trial = trialitem_factory()
+    trial.visual_file = filer_file_factory("image.csv")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    assert "visual_file" in exc_info.value.message_dict
+
+
+def test_trialitem_clean_reports_both_bad_fields(filer_file_factory, trialitem_factory):
+    """clean() collects errors for both fields when both are invalid."""
+    trial = trialitem_factory()
+    trial.audio_file = filer_file_factory("bad.pdf")
+    trial.visual_file = filer_file_factory("bad.pdf")
+    trial.save()
+    with pytest.raises(ValidationError) as exc_info:
+        trial.clean()
+    errors = exc_info.value.message_dict
+    assert "audio_file" in errors
+    assert "visual_file" in errors
+
+
+def test_trialitem_clean_skips_null_files(trialitem_factory):
+    """clean() does not raise when audio_file and visual_file are null."""
+    trial = trialitem_factory()
+    trial.clean()  # both null — must not raise
 
 
 def test_experiment_str_and_subject_consent_questions(

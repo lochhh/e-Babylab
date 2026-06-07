@@ -1,0 +1,34 @@
+{% extends "experiments/base.html" %}
+{% load static %}
+{% block title %}e-Babylab{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-7 text-center">
+                <h1 class="display-4 fw-bold mb-2">e-Babylab</h1>
+                <p class="text-muted mb-4" style="font-size: 1.1rem;">
+                    Open-source browser-based platform for unmoderated online developmental studies
+                </p>
+                <a href="https://lochhh.github.io/e-Babylab/"
+                   class="btn btn-primary btn-lg px-5"
+                   target="_blank" rel="noopener noreferrer">
+                    Documentation
+                </a>
+                <div class="mt-5 pt-4 border-top">
+                    <p class="text-muted" style="font-size: 0.85rem; line-height: 1.6;">
+                        Lo, C. H., Hermes, J., Kartushina, N. et al. e-Babylab: An open-source browser-based tool
+                        for unmoderated online developmental studies. <em>Behav Res</em> (2023).<br>
+                        <a href="https://doi.org/10.3758/s13428-023-02200-7"
+                           class="text-muted"
+                           target="_blank" rel="noopener noreferrer">
+                            https://doi.org/10.3758/s13428-023-02200-7
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

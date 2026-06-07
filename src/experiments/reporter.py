@@ -159,19 +159,22 @@ class Reporter:
                 if answer_base.question.question_type == Question.TEXT:
                     value = str(AnswerText.objects.get(pk=answer_base.pk).body)
                 elif answer_base.question.question_type == Question.AGE:
-                    if AnswerText.objects.filter(pk=answer_base.pk).first():
-                        value = str(AnswerText.objects.get(pk=answer_base.pk).body)
-                        dob = datetime.date.fromisoformat(value)
-                        value += (
-                            " ("
-                            + str(
-                                round(
-                                    ((subject.created.date() - dob).days) / (365 / 12)
+                    answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
+                    if answer_text:
+                        if answer_text.body:
+                            value = str(answer_text.body)
+                            dob = datetime.date.fromisoformat(value)
+                            value += (
+                                " ("
+                                + str(
+                                    round(
+                                        ((subject.created.date() - dob).days)
+                                        / (365 / 12)
+                                    )
                                 )
+                                + " mo.)"
                             )
-                            + " mo.)"
-                        )
-                    else:
+                    else:  # Legacy fallback to read age provided in months
                         value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
                 elif (
                     answer_base.question.question_type == Question.INTEGER
@@ -248,8 +251,12 @@ class Reporter:
                     result.trialitem.code,
                     result.trialitem.visual_onset,
                     result.trialitem.audio_onset,
-                    result.trialitem.visual_file.filename,
-                    (audio_file.filename if audio_file else ""),
+                    (
+                        result.trialitem.visual_file.original_filename
+                        if result.trialitem.visual_file
+                        else ""
+                    ),
+                    (audio_file.original_filename if audio_file else ""),
                     result.trialitem.max_duration,
                     result.trialitem.user_input,
                     result.key_pressed,

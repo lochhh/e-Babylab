@@ -19,7 +19,6 @@ from django.contrib.auth.decorators import login_required
 from django.views.static import serve
 from django.conf import settings
 from django.conf.urls.static import static
-from filebrowser.sites import site
 from django.urls import path
 
 admin.autodiscover()
@@ -28,9 +27,9 @@ urlpatterns = [
     re_path(r'^', include('experiments.urls')),
     #re_path(r'^experiments/', include('experiments.urls')),
     path('grappelli/', include('grappelli.urls')),
-    path('admin/filebrowser/', site.urls),
     path('admin/', admin.site.urls),
     path('tinymce/', include('tinymce.urls')),
+    path('', include('filer.urls')),
 ]
 
 #admin.site.site_header = "Experiments Administration"
