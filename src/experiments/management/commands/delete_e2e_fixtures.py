@@ -2,6 +2,8 @@
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
+from filer.models import Folder
+from filer.models.filemodels import File as FilerFile
 
 from experiments.models import Experiment, SubjectData, TrialResult
 
@@ -32,5 +34,12 @@ class Command(BaseCommand):
         SubjectData.objects.filter(id__in=SUBJECT_IDS).delete()
         Experiment.objects.filter(id__in=EXP_IDS).delete()
         User.objects.filter(username="e2euser").delete()
+
+        folder = Folder.objects.filter(name="e2e-fixtures").first()
+        if folder:
+            for filer_file in FilerFile.objects.filter(folder=folder):
+                filer_file.file.delete(save=False)
+                filer_file.delete()
+            folder.delete()
 
         self.stdout.write(self.style.SUCCESS("e2e fixtures deleted"))
