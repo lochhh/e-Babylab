@@ -54,6 +54,7 @@ export let initWebgazer = function () {
                         canvas.width = window.innerWidth;
                         canvas.height = window.innerHeight;
                         canvas.style.position = 'fixed';
+                        canvas.style.zIndex = '1';
                         canvas.style.display = 'block';
 
                         // Set up video feedback
@@ -66,8 +67,11 @@ export let initWebgazer = function () {
                     };
                     setup();
 
-                    // Show calibration instructions
-                    document.getElementById('webgazer-init').style.display = 'block';
+                    // Show calibration instructions above the plotting canvas
+                    const initDiv = document.getElementById('webgazer-init');
+                    initDiv.style.position = 'relative';
+                    initDiv.style.zIndex = '2';
+                    initDiv.style.display = 'block';
 
                     // Enable continue button if face is detected
                     if (faceDetected) {
