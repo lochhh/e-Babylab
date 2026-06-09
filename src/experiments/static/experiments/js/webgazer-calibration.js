@@ -18,6 +18,22 @@ export function getGazeData() { return webgazer_data; }
 export function setTimePerPoint(ms) { timePerPoint = ms; }
 
 /**
+ * Enlarges WebGazer's internal ridge-regression DataWindows so that
+ * calibration data from all points survives in the circular buffer.
+ * WebGazer defaults to 50 click samples total, which means data from
+ * earlier calibration points is flushed before training completes.
+ * @param {number} size
+ */
+function expandRegressionWindow(size) {
+    const reg = webgazer.getRegression()[0];
+    if (!reg) return;
+    for (const key of ['eyeFeaturesClicks', 'screenXClicksArray', 'screenYClicksArray',
+                       'errorXArray', 'errorYArray', 'dataClicks']) {
+        if (reg[key]) reg[key].windowSize = size;
+    }
+}
+
+/**
  * Initialises webgazer for eye-tracking.
  */
 export let initWebgazer = function () {
@@ -132,6 +148,10 @@ let faceDetectEventObserver = function (mutationsList, observer) {
  * @param {object} trialObj
  */
 export let calibrate = async function (trialObj) {
+    // Re-expand on every calibration run: clearData() or setRegression() resets
+    // DataWindows back to the 50-sample default, silently discarding all points
+    // except the last calibration target.
+    expandRegressionWindow(700);
     for (let ptId = 0; ptId < trialObj.calibration_points.length; ptId++) {
         await showCalibrationPoint(trialObj, ptId);
         await calibrateGaze(ptId);
@@ -169,12 +189,18 @@ let calibrateGaze = function (ptId) {
         const y = br.top + br.height / 2;
         const ptStart = performance.now() + timeToSaccade;
         const ptEnd = performance.now() + timeToSaccade + timePerPoint;
+        // Record at ~5 samples/s rather than every frame so the regression
+        // data window (700 samples) isn't dominated by a single calibration point.
+        const recordInterval = 200;
+        let lastRecord = 0;
 
         requestAnimationFrame(function watchDot() {
-            if (performance.now() > ptStart) {
+            const now = performance.now();
+            if (now > ptStart && now - lastRecord >= recordInterval) {
                 webgazer.recordScreenPosition(x, y, 'click');
+                lastRecord = now;
             }
-            if (performance.now() < ptEnd) {
+            if (now < ptEnd) {
                 requestAnimationFrame(watchDot);
             } else {
                 resolve(ptId);
