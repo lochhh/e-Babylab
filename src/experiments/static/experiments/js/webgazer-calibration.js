@@ -29,6 +29,12 @@ export let initWebgazer = function () {
         const showPredictions = window.show_gaze_estimations?.toLowerCase() === 'true';
         webgazer.params.showGazeDot = showPredictions;
 
+        // webgazer's default faceMeshSolutionPath ("./mediapipe/face_mesh") resolves
+        // relative to the page URL (e.g. /{uuid}/run), causing 404s on the MediaPipe
+        // binary assets. Resolve from this module's own URL so Django serves them from
+        // the correct static path. Assets are installed via `npm run build` at the root.
+        webgazer.params.faceMeshSolutionPath = new URL('./mediapipe/face_mesh', import.meta.url).href;
+
         webgazer.setRegression('ridge')
                 .setGazeListener((data, clock) => {
                   //console.log(data); /* data is an object containing an x and y key which are the x and y prediction coordinates (no bounds limiting) */

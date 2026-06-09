@@ -22,8 +22,8 @@ ENV PATH="/usr/src/.venv/bin:$PATH"
 
 # WORKDIR copy is used by uv sync in both dev and prod.
 COPY pyproject.toml uv.lock ./
-# etc/ copy survives the dev volume mount (./src:/usr/src/app); 
-# used by coverage in dev. 
+# etc/ copy survives the dev volume mount (./src:/usr/src/app);
+# used by coverage in dev.
 COPY pyproject.toml /etc/pyproject.toml
 
 # Install the project's dependencies (no source code yet)
