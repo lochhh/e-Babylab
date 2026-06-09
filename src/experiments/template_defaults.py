@@ -210,7 +210,7 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 <!-- reCAPTCHA API -->
-<script src='https://www.google.com/recaptcha/api.js?render={{recaptcha_site_key}}'></script>
+<script src='https://www.google.com/recaptcha/enterprise.js?render={{recaptcha_site_key}}'></script>
 <script type="module" src="{% static 'experiments/js/resolution.js' %}"></script>
     <script type="module" src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
 {% endblock %}'''
