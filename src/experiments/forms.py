@@ -112,7 +112,7 @@ class SubjectDataForm(models.ModelForm):
                 self.fields["question_%d" % q.pk] = forms.DateField(
                     label=q.text,
                     initial=datetime.date.today,
-                    widget=DateInput(format=("%d-%m-%Y"), attrs={"type": "date"}),
+                    widget=DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                 )
             # if the required, give it a corresponding css class.
             if q.required:
