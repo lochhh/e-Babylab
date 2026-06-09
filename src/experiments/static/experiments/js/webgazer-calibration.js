@@ -15,6 +15,7 @@ let webgazer_data = [];
 let clockStart;
 export function resetGazeData() { webgazer_data = []; }
 export function getGazeData() { return webgazer_data; }
+export function setTimePerPoint(ms) { timePerPoint = ms; }
 
 /**
  * Initialises webgazer for eye-tracking.

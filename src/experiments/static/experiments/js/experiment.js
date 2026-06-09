@@ -7,6 +7,7 @@ import {
     calibrate,
     resetGazeData,
     getGazeData,
+    setTimePerPoint,
 } from './webgazer-calibration.js';
 
 export function init() {
@@ -408,7 +409,7 @@ export function init() {
             if (trialObj.calibration_points.length === 0) {
                 trialObj.calibration_points = defaultPoints;
             }
-            timePerPoint = trialObj.max_duration / trialObj.calibration_points.length;
+            setTimePerPoint(trialObj.max_duration / trialObj.calibration_points.length);
             trialObj.calibration_points.forEach((pt, i) => {
                 const img = document.createElement('img');
                 img.className = 'calibration-image';
