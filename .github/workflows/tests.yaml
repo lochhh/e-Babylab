@@ -16,22 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tests
+        working-directory: tests/js
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
-          cache: npm
-          cache-dependency-path: tests/package-lock.json
 
       - name: Install JS dependencies
-        # npm ci misses platform-specific optional deps in workspaces
         run: npm install
 
       - name: Run JS tests
-        run: npm run test:unit
+        run: npm test
 
   test-python:
     runs-on: ubuntu-latest
