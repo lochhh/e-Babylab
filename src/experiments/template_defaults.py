@@ -1,4 +1,6 @@
-information_page_content = '''{% extends "experiments/base.html" %}
+"""Default HTML content for experiment pages."""
+
+information_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Online Study{% endblock %}
 {% block content %}
@@ -26,7 +28,7 @@ information_page_content = '''{% extends "experiments/base.html" %}
                         - The study is only compatible with Firefox and Google Chrome browsers. Please use one of these browsers. <br />
                         - You may withdraw from the study at any time without providing a reason. During the entire study, an “Exit” button will be visible at the bottom right corner of the screen. Click on this button if in any case you wish to terminate the study. <br />
                         - You may also request for your data to be deleted at any time. To do so, please send an email to XXX and state the exact name you entered in the participant form which will be presented next. <br /><br />
-                        
+
                         If you agree to participate in this study, please click on “Next” below. Before we begin, we will ask you a few more questions and carry out some technical checks. <br /><br />
                         We look forward to your participation!
 
@@ -42,9 +44,9 @@ information_page_content = '''{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
 
-browser_check_page_content = '''{% extends "experiments/base.html" %}
+browser_check_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Browser compatibility check{% endblock %}
 {% block content %}
@@ -79,9 +81,9 @@ browser_check_page_content = '''{% extends "experiments/base.html" %}
     </div>
 </div>
 <script type="module" src="{% static 'experiments/js/browser-check.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-introduction_page_content = '''{% extends "experiments/base.html" %} {% block title %}Consent form{% endblock %} {% block content %}
+introduction_page_content = """{% extends "experiments/base.html" %} {% block title %}Consent form{% endblock %} {% block content %}
 <div class="container">
     <div class="row">
         <div class="col text-center">
@@ -122,11 +124,11 @@ introduction_page_content = '''{% extends "experiments/base.html" %} {% block ti
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
 
-consent_fail_page_content = '''{% extends "experiments/base.html" %} 
+consent_fail_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
-{% block title %}Consent not granted{% endblock %} 
+{% block title %}Consent not granted{% endblock %}
 
 {% block content %}
 <div class="container" id="consentFail">
@@ -145,15 +147,15 @@ consent_fail_page_content = '''{% extends "experiments/base.html" %}
                 </p>
             </div>
             <form action="{% url 'experiments:consentForm' experiment.id %}" method="post">
-            {% csrf_token %}        
+            {% csrf_token %}
                 <button type="submit" class="btn btn-primary" id="resumebutton">Back</button>
             </form>
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
 
-demographic_data_page_content = '''{% extends "experiments/base.html" %}
+demographic_data_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Participant form{% endblock %}
 {% block content %}
@@ -201,7 +203,7 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %}
                         {% endif %}
                         {% endfor %}
                         <!-- reCAPTCHA input -->
-                        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response"> 
+                        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
                         <button type="submit" class="btn btn-primary">Next</button>
                     </form>
                 </div>
@@ -213,9 +215,9 @@ demographic_data_page_content = '''{% extends "experiments/base.html" %}
 <script src='https://www.google.com/recaptcha/enterprise.js?render={{recaptcha_site_key}}'></script>
 <script type="module" src="{% static 'experiments/js/resolution.js' %}"></script>
     <script type="module" src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-webcam_check_page_content = '''{% extends "experiments/base.html" %}
+webcam_check_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Webcam and microphone setup{% endblock %}
 {% block content%}
@@ -244,7 +246,7 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %}
                         You will now see a window with the camera image below. Please adjust your camera so that your child is clearly visible.<br /><br />
                         We are about to make a short test recording (about 3 seconds) to test whether the video recording works. As soon as you click on "Start test recording", the test recording starts. Please say something out loud (e.g. "hello") after clicking so that you can check the audio recording.
                     </p>
-                    <div class="alert alert-danger" role="alert" style="display: none;"></div>
+                    <div class="alert alert-danger" role="alert" style="display: none;"> </div>
                     <div class="media-container ratio ratio-4x3" style="display: none;">
                         <video controls></video>
                     </div>
@@ -302,9 +304,9 @@ webcam_check_page_content = '''{% extends "experiments/base.html" %}
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
 <script type="module" src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-microphone_check_page_content = '''{% extends "experiments/base.html" %}
+microphone_check_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Microphone setup{% endblock %}
 {% block content%}
@@ -376,9 +378,9 @@ microphone_check_page_content = '''{% extends "experiments/base.html" %}
 
 <button id="exit-button" type="button" class="btn btn-secondary btn-sm">Exit</button>
 <script type="module" src="{% static 'experiments/js/webcam-calibration.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-experiment_page_content = '''{% extends "experiments/base.html" %}
+experiment_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Experiment{% endblock %}
 {% block content %}
@@ -429,7 +431,7 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
                 Media recordings are still being uploaded. If you quit the study now, these recordings will be lost. Are you sure you want to quit?
             </div>
             <div class="modal-footer">
-                <button id="confirmExitButton" class="btn btn-danger" type="button">Quit</button> 
+                <button id="confirmExitButton" class="btn btn-danger" type="button">Quit</button>
                 <button class="btn btn-primary" type="button" data-bs-dismiss="modal">Return to study</button>
             </div>
         </div>
@@ -438,11 +440,11 @@ experiment_page_content = '''{% extends "experiments/base.html" %}
 <script src="{% static 'experiments/js/webgazer.min.js' %}"></script>
     <script type="module" src="{% static 'experiments/js/experiment.js' %}"></script>
 {% endblock %}
-'''
+"""
 
-pause_page_content = '''{% extends "experiments/base.html" %} 
+pause_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
-{% block title %}Pause{% endblock %} 
+{% block title %}Pause{% endblock %}
 
 {% block content %}
 <div class="container" id="pause">
@@ -460,15 +462,15 @@ pause_page_content = '''{% extends "experiments/base.html" %}
                         If you wish to terminate the study, please click "Exit study" below. <br /><br />
                         To continue, please click "Resume study". You will then be taken back to the point in the study where you paused.
                     </p>
-                    <div id="side-by-side-left"> 
+                    <div id="side-by-side-left">
                         <form action="{% url 'experiments:webcamTest' subject_id %}" method="post">
-                            {% csrf_token %}        
+                            {% csrf_token %}
                             <button type="submit" class="btn btn-primary" id="resumebutton">Resume study</button>
                         </form>
                     </div>
-                    <div id="side-by-side-right"> 
+                    <div id="side-by-side-right">
                         <form action="{% url 'experiments:experimentEnd' subject_id %}" method="post">
-                            {% csrf_token %}        
+                            {% csrf_token %}
                             <button type="submit" class="btn btn-danger" id="exitbutton">Exit study</button>
                         </form>
                     </div>
@@ -477,9 +479,9 @@ pause_page_content = '''{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
 
-thank_you_page_content = '''{% extends "experiments/base.html" %}
+thank_you_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Thank you{% endblock %}
 {% block content %}
@@ -496,12 +498,12 @@ thank_you_page_content = '''{% extends "experiments/base.html" %}
                     <p class="card-text">
                         You have reached the end of the study. Please click "Approve processing and use of data" to confirm your participation in the study. If you wish to withdraw from the study, please click "Remove all my data".<br /><br />
                     </p>
-                    <div id="side-by-side-left"> 
+                    <div id="side-by-side-left">
                         <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
                     </div>
-                    <div id="side-by-side-right"> 
+                    <div id="side-by-side-right">
                         <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
-                            {% csrf_token %}        
+                            {% csrf_token %}
                             <button type="submit" class="btn btn-danger" id="delete-data-button">Remove all my data</button>
                         </form>
                     </div>
@@ -528,9 +530,9 @@ thank_you_page_content = '''{% extends "experiments/base.html" %}
 </div>
 
 <script type="module" src="{% static 'experiments/js/endpage.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
+thank_you_abort_page_content = """{% extends "experiments/base.html" %}
 {% load static %}
 {% block title %}Study incomplete{% endblock %}
 {% block content %}
@@ -548,12 +550,12 @@ thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
                         It is a pity that you aborted the study. The recording has ended. You may now close the browser window.<br /><br />
                         We would like to know why you aborted the study. If you wish to tell us about this, please send an email to XXX.
                     </p>
-                    <div id="side-by-side-left"> 
+                    <div id="side-by-side-left">
                         <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
                     </div>
-                    <div id="side-by-side-right"> 
+                    <div id="side-by-side-right">
                         <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
-                            {% csrf_token %}        
+                            {% csrf_token %}
                             <button type="submit" class="btn btn-danger" id="delete-data-button">Remove all my data</button>
                         </form>
                     </div>
@@ -580,9 +582,9 @@ thank_you_abort_page_content = '''{% extends "experiments/base.html" %}
 </div>
 
 <script type="module" src="{% static 'experiments/js/endpage.js' %}"></script>
-{% endblock %}'''
+{% endblock %}"""
 
-error_page_content = '''{% extends "experiments/base.html" %} {% block title %}Error{% endblock %} {% block content %}
+error_page_content = """{% extends "experiments/base.html" %} {% block title %}Error{% endblock %} {% block content %}
 <div class="container" id="information">
     <div class="row">
         <div class="col text-center">
@@ -604,9 +606,9 @@ error_page_content = '''{% extends "experiments/base.html" %} {% block title %}E
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
 
-cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Vocabulary checklist{% endblock %} {% block content %}
+cdi_page_content = """{% extends "experiments/base.html" %} {% block title %}Vocabulary checklist{% endblock %} {% block content %}
 <div class="container">
     <div class="row">
         <div class="col text-center">
@@ -637,7 +639,7 @@ cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Voc
                             <div class="field-wrapper">
                                 {{ field.errors }}
                                 {{ field }} &emsp; <label class="label-inline">{{ field.label }}</label>
-                                    
+
                                 <small class="form-text text-muted">{{ field.help_text }}</small>
                             </div>
                         </div>
@@ -651,4 +653,4 @@ cdi_page_content = '''{% extends "experiments/base.html" %} {% block title %}Voc
         </div>
     </div>
 </div>
-{% endblock %}'''
+{% endblock %}"""
