@@ -90,7 +90,7 @@ export let initWebgazer = function () {
                     initDiv.style.display = 'block';
 
                     // Enable continue button if face is detected
-                    if (faceDetected) {
+                    if (faceDetected()) {
                         document.querySelector('#webgazer-init button').disabled = false;
                     } else {
                         let observer = new MutationObserver(faceDetectEventObserver);
