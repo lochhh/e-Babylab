@@ -1,125 +1,90 @@
-import { describe, it, expect } from 'vitest'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { loadScript } from './helpers/load-script.js'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { init } from '../../src/experiments/static/experiments/js/webcam-calibration.js'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/webcam-calibration.js')
+const STEP_HTML = `
+  <div id="webcam-calibration"
+       data-subject-uuid="test-uuid"
+       data-include-pause-page="false"
+       data-recording-option="PLACEHOLDER">
+  </div>
+  <div id="webcam_step_1" class="active"></div>
+  <div id="webcam_step_2">
+    <button disabled>Continue</button>
+  </div>
+  <div id="webcam_step_3">
+    <button class="btn-primary" disabled>Continue</button>
+    <div class="alert-danger" style="display:none"></div>
+    <div class="media-container" style="display:none"><video></video></div>
+  </div>
+  <div id="webcam_step_4">
+    <div class="alert-danger" style="display:none"></div>
+    <div class="alert-success" style="display:none"></div>
+    <div class="media-container" style="display:none"><audio></audio><video></video></div>
+    <button class="btn-primary" disabled>Continue</button>
+    <button class="btn-warning" disabled>Repeat</button>
+  </div>
+  <div id="upload-progress" style="display:none"></div>
+  <div id="repeatWebcamModal"></div>
+  <button id="exit-button"></button>
+  <button id="repeat-check-button" style="display:none"></button>
+`
 
 function makeEnv({ recordingOption = 'VID', getUserMedia = () => new Promise(() => {}) } = {}) {
-  const classState = {}   // selector -> { added: Set, removed: Set }
-  const clickHandlers = {}
+  document.body.innerHTML = STEP_HTML.replace('PLACEHOLDER', recordingOption)
 
-  const el = (sel) => ({
-    data:       ()       => ({ subjectUuid: 'test-uuid', includePausePage: false, recordingOption, webcamNotFound: null }),
-    show:       ()       => {},
-    hide:       ()       => {},
-    empty:      ()       => {},
-    append:     ()       => {},
-    remove:     ()       => {},
-    attr:       ()       => {},
-    removeAttr: ()       => {},
-    prop:       ()       => {},
-    eq:         ()       => el(sel),
-    get:        ()       => ({ pause: () => {}, play: () => {}, srcObject: null, muted: false, onloadedmetadata: null }),
-    on:         ()       => el(sel),
-    one:        ()       => el(sel),
-    modal:      ()       => {},
-    click:      (fn)     => { clickHandlers[sel] = fn },
-    addClass:   (cls)    => {
-      classState[sel] ??= { added: new Set(), removed: new Set() }
-      classState[sel].added.add(cls)
-    },
-    removeClass: (cls)   => {
-      classState[sel] ??= { added: new Set(), removed: new Set() }
-      classState[sel].removed.add(cls)
-    },
+  vi.stubGlobal('MediaRecorder', class MockMediaRecorder {})
+  vi.stubGlobal('bootstrap', {
+    Modal: { getOrCreateInstance: vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() }) },
+  })
+  Object.defineProperty(navigator, 'mediaDevices', {
+    value: { getUserMedia },
+    writable: true,
+    configurable: true,
   })
 
-  const $ = (arg) => { if (typeof arg === 'function') { arg(); return } return el(arg) }
-  $.ajaxSetup = () => {}
-  $.ajax      = () => ({ done: (fn) => ({ fail: () => {} }) })
-
-  loadScript(SRC, [], {
-    $,
-    Cookies:   { get: () => 'test-csrf' },
-    window:    { MediaRecorder: class MediaRecorder {}, location: { replace: () => {} } },
-    navigator: { mediaDevices: { getUserMedia } },
-    console:   { log: () => {}, error: () => {} },
-  })
-
-  return { classState, clickHandlers }
+  init()
 }
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('webcam-calibration.js — init (checkStepTwo)', () => {
   it('removes active class from step 1', () => {
-    const { classState } = makeEnv()
-    expect(classState['#webcam_step_1']?.removed?.has('active')).toBe(true)
+    makeEnv()
+    expect(document.getElementById('webcam_step_1').classList.contains('active')).toBe(false)
   })
 
   it('adds active class to step 2', () => {
-    const { classState } = makeEnv()
-    expect(classState['#webcam_step_2']?.added?.has('active')).toBe(true)
+    makeEnv()
+    expect(document.getElementById('webcam_step_2').classList.contains('active')).toBe(true)
   })
 })
 
 describe('webcam-calibration.js — recording option routing', () => {
   it('VID mode: step 2 click activates step 3', () => {
-    const { classState, clickHandlers } = makeEnv({ recordingOption: 'VID' })
-    clickHandlers['#webcam_step_2 button']?.()
-    expect(classState['#webcam_step_2']?.removed?.has('active')).toBe(true)
-    expect(classState['#webcam_step_3']?.added?.has('active')).toBe(true)
+    makeEnv({ recordingOption: 'VID' })
+    document.querySelector('#webcam_step_2 button').click()
+    expect(document.getElementById('webcam_step_2').classList.contains('active')).toBe(false)
+    expect(document.getElementById('webcam_step_3').classList.contains('active')).toBe(true)
   })
 
   it('AUD mode: step 2 click activates step 4, skipping step 3', () => {
-    const { classState, clickHandlers } = makeEnv({ recordingOption: 'AUD' })
-    clickHandlers['#webcam_step_2 button']?.()
-    expect(classState['#webcam_step_4']?.added?.has('active')).toBe(true)
-    expect(classState['#webcam_step_3']?.added?.has('active')).toBeUndefined()
+    makeEnv({ recordingOption: 'AUD' })
+    document.querySelector('#webcam_step_2 button').click()
+    expect(document.getElementById('webcam_step_4').classList.contains('active')).toBe(true)
+    expect(document.getElementById('webcam_step_3').classList.contains('active')).toBe(false)
   })
 })
 
 describe('webcam-calibration.js — startStream error handling', () => {
   it('shows danger alert in step 3 when getUserMedia rejects', async () => {
-    const domState = {}
-    const el = (sel) => ({
-      data:       ()    => ({ subjectUuid: 'test-uuid', includePausePage: false, recordingOption: 'VID', webcamNotFound: null }),
-      show:       ()    => { domState[sel] = { ...domState[sel], shown: true } },
-      hide:       ()    => {},
-      empty:      ()    => {},
-      append:     (msg) => { domState[sel] = { ...domState[sel], appended: (domState[sel]?.appended ?? '') + msg } },
-      remove:     ()    => {},
-      attr:       ()    => {},
-      removeAttr: ()    => {},
-      prop:       ()    => {},
-      eq:         ()    => el(sel),
-      get:        ()    => ({ pause: () => {}, play: () => {}, srcObject: null, muted: false, onloadedmetadata: null }),
-      on:         (ev, fn) => { if (ev === 'click') el(sel).click(fn); return el(sel) },
-      one:        ()    => el(sel),
-      modal:      ()    => {},
-      click:      (fn)  => { clickHandlers[sel] = fn },
-      addClass:   ()    => {},
-      removeClass:()    => {},
+    makeEnv({
+      recordingOption: 'VID',
+      getUserMedia: () => Promise.reject(new Error('NotAllowedError')),
     })
-    const clickHandlers = {}
-    const $ = (arg) => { if (typeof arg === 'function') { arg(); return } return el(arg) }
-    $.ajaxSetup = () => {}
-    $.ajax      = () => ({ done: (fn) => ({ fail: () => {} }) })
-
-    loadScript(SRC, [], {
-      $,
-      Cookies:   { get: () => 'test-csrf' },
-      window:    { MediaRecorder: class MediaRecorder {}, location: { replace: () => {} } },
-      navigator: { mediaDevices: { getUserMedia: () => Promise.reject(new Error('NotAllowedError')) } },
-      console:   { log: () => {}, error: () => {} },
-    })
-
-    // Trigger step 2 button click → calls checkStepThree (VID mode)
-    clickHandlers['#webcam_step_2 button']?.()
-    // Flush the rejected promise chain
+    document.querySelector('#webcam_step_2 button').click()
     await new Promise(resolve => setTimeout(resolve, 0))
-
-    expect(domState['#webcam_step_3 .alert-danger']?.shown).toBe(true)
-    expect(domState['#webcam_step_3 .alert-danger']?.appended).toContain('NotAllowedError')
+    const alertEl = document.querySelector('#webcam_step_3 .alert-danger')
+    expect(alertEl.style.display).toBe('block')
+    expect(alertEl.innerHTML).toContain('NotAllowedError')
   })
 })

@@ -1,31 +1,40 @@
 import { describe, it, expect } from 'vitest'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { loadScript } from './helpers/load-script.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/resolution.js')
+import { setResolution } from '../../src/experiments/static/experiments/js/resolution.js'
 
 describe('resolution.js', () => {
   function run(width, height) {
-    const calls = {}
-    const jq = (sel) => ({ val: (v) => { calls[sel] = v } })
-    const $ = (arg) => { if (typeof arg === 'function') { arg(); return } return jq(arg) }
-    loadScript(SRC, [], { $, window: { screen: { width, height } } })
-    return calls
+    document.body.innerHTML = `
+      <input name="resolution_w" />
+      <input name="resolution_h" />
+    `
+    Object.defineProperty(window, 'screen', {
+      value: { width, height },
+      writable: true,
+      configurable: true,
+    })
+    setResolution()
+    return {
+      w: document.querySelector("input[name='resolution_w']").value,
+      h: document.querySelector("input[name='resolution_h']").value,
+    }
   }
 
   it('sets resolution_w input to screen.width', () => {
-    expect(run(1920, 1080)["input[name='resolution_w']"]).toBe(1920)
+    expect(run(1920, 1080).w).toBe('1920')
   })
 
   it('sets resolution_h input to screen.height', () => {
-    expect(run(1920, 1080)["input[name='resolution_h']"]).toBe(1080)
+    expect(run(1920, 1080).h).toBe('1080')
   })
 
   it('uses exact pixel values for non-standard resolution', () => {
-    const calls = run(800, 600)
-    expect(calls["input[name='resolution_w']"]).toBe(800)
-    expect(calls["input[name='resolution_h']"]).toBe(600)
+    const { w, h } = run(800, 600)
+    expect(w).toBe('800')
+    expect(h).toBe('600')
+  })
+
+  it('does not throw when inputs are absent', () => {
+    document.body.innerHTML = ''
+    expect(() => setResolution()).not.toThrow()
   })
 })

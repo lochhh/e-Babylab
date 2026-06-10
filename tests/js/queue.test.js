@@ -1,16 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { loadScript } from './helpers/load-script.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(__dirname, '../../src/experiments/static/experiments/js/queue.src.js')
-
-// Queue is a function declaration (var-hoisted), so it lands on the context object directly.
-let Queue
-beforeEach(() => {
-  Queue = loadScript(SRC).Queue
-})
+import { describe, it, expect } from 'vitest'
+import { Queue } from '../../src/experiments/static/experiments/js/queue.src.js'
 
 describe('Queue', () => {
   it('starts empty', () => {

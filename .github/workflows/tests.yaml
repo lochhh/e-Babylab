@@ -6,9 +6,8 @@ on:
   pull_request:
     branches: [ '**' ]
 
-# Cancel any in-progress runs if a new run is triggered for the same ref,
-# except for tags and main branch pushes.
-concurrency: 
+# Cancel in-progress runs on new push (except main and tags).
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref_type != 'tag' }}
 
@@ -17,21 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tests/js
+        working-directory: tests
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
-          cache: npm
-          cache-dependency-path: tests/js/package-lock.json
 
       - name: Install JS dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run JS tests
-        run: npm test
+        run: npm run test:unit
 
   test-python:
     runs-on: ubuntu-latest
@@ -78,3 +75,51 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  e2e-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create .env from template
+        run: cp .env.template .env
+
+      - name: Start dev server
+        run: docker compose -f docker-compose.dev.yml up -d --build
+
+      - name: Wait for server to be ready
+        run: |
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8080/admin/ && break
+            sleep 3
+          done
+
+      - name: Run database migrations
+        run: docker compose -f docker-compose.dev.yml exec -T web uv run python manage.py migrate
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install Playwright dependencies
+        run: cd tests && npm ci && cd e2e && npx playwright install --with-deps chromium firefox webkit msedge
+
+      - name: Run e2e tests
+        run: >
+          cd tests/e2e && npx playwright test
+          --project=chromium
+          --project=firefox
+          --project=webkit
+          --project=edge
+          --project=mobile-chrome
+          --project=mobile-safari
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 7

@@ -8,6 +8,7 @@ import requests
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import RequestContext, Template
 from django.urls import reverse
@@ -237,6 +238,7 @@ def createTrialDict(trial, block, trial_number):
     return trial_dict
 
 
+@ensure_csrf_cookie
 def experimentRun(request, run_uuid):
     """Generate the (main) experimental task of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)

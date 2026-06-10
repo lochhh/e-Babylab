@@ -1,24 +1,36 @@
-'use strict';
+import { webcam } from './webcam.js';
+import { getCsrfToken } from './utils.js';
+import {
+    initWebgazer,
+    startGazeRecording,
+    stopGazeRecording,
+    calibrate,
+    resetGazeData,
+    getGazeData,
+    setTimePerPoint,
+} from './webgazer-calibration.js';
 
-(function () {
-    const config = $('#trials').data();
-    const trials = JSON.parse($('#trials-data').text());
+export function init() {
+    const trialsEl = document.getElementById('trials');
+    if (!trialsEl) return;
+    const config = trialsEl.dataset;
+    const trials = JSON.parse(document.getElementById('trials-data').textContent);
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
-    const include_pause_page = config.includePausePage;
+    const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
     const recording_option = config.recordingOption;
     const general_onset = config.generalOnset;
-    const show_gaze_estimations = config.showGazeEstimations;
+    window.show_gaze_estimations = config.showGazeEstimations;
 
     // Subject id
-    const subjectUuid = $('#trials').data('subjectUuid');
-    const subjectId = $('#trials').data('subjectId');
+    const subjectUuid = config.subjectUuid;
+    const subjectId = config.subjectId;
 
     // Body tag reference
-    let body = $('body');
+    const body = document.body;
 
     // Key codes
-    let codes = {
+    const codes = {
         'backspace': 8,
         'tab': 9,
         'enter': 13,
@@ -42,6 +54,13 @@
     // Media stream object
     let mediaStream;
 
+    // Event handler refs for cleanup
+    let keydownHandler = null;
+    let clickHandler = null;
+    let audioCanPlayHandlerRef = null;
+    const videoCanPlayHandlerRefs = {};
+    const videoEndedHandlerRefs = {};
+
     // Populate keycode dictionary with letters
     for (let i = 97; i < 123; i++) {
         codes[String.fromCharCode(i)] = i - 32;
@@ -51,35 +70,19 @@
         codes[i - 48] = i;
     }
 
-    // Get Django CSRF token
-    const csrftoken = Cookies.get('csrftoken');
-
-    let csrfSafeMethod = function (method) {
-        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-    };
-
-    // Add CSRF to AJAX
-    $.ajaxSetup({
-        beforeSend: function (xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
-        }
-    });
-
     /**
      * Create and add an empty audio container.
-     * @returns {Promise<HTMLDivElement>} - Promise that resolves with the audio container.
+     * @returns {Promise<HTMLDivElement>}
      */
-    let createAudioContainer = function () {
-        return new Promise(function (resolve) {
-            let div = document.createElement('div');
+    const createAudioContainer = function () {
+        return new Promise(resolve => {
+            const div = document.createElement('div');
             div.className = 'trial-audio';
 
-            let audio = document.createElement('audio');
+            const audio = document.createElement('audio');
             audio.hidden = 'hidden';
 
-            let source = document.createElement('source');
+            const source = document.createElement('source');
             source.src = '';
             source.type = 'audio/mpeg';
 
@@ -93,16 +96,13 @@
     /**
      * Setup global timeout.
      */
-    let setGlobalTimer = function () {
-        globaltimer = setTimeout(function () {
-
-            // TODO: Properly stop recording
+    const setGlobalTimer = function () {
+        globaltimer = setTimeout(() => {
             webcam.stopUploading();
             if (include_pause_page) {
-                // go to pause page
-                window.location.replace('/' + subjectUuid + '/run/pause');
+                window.location.replace(`/${subjectUuid}/run/pause`);
             } else {
-                window.location.replace('/' + subjectUuid + '/run/thankyou');
+                window.location.replace(`/${subjectUuid}/run/thankyou`);
             }
         }, Number(global_timeout));
     };
@@ -110,64 +110,64 @@
     /**
      * Reset global timeout.
      */
-    let resetGlobalTimer = function () {
+    const resetGlobalTimer = function () {
         clearTimeout(globaltimer);
         setGlobalTimer();
-    }
+    };
 
     /**
      * Show next trial.
      */
-    let showNextTrial = function () {
+    const showNextTrial = function () {
         if (currentTrial >= trials.length) { // No more trials
-            // Clear global timeout
             clearTimeout(globaltimer);
 
-            // TODO: check here 
             webgazer.pause();
 
-            // Wait until webcam upload is done
-            waitForWebcamUploadToFinish().then(function () {
+            waitForWebcamUploadToFinish().then(() => {
                 webcam.stopUploading();
-                window.location.replace('/' + subjectUuid + '/run/thankyou');
+                window.location.replace(`/${subjectUuid}/run/thankyou`);
             });
 
         } else { // Start trial
-            let trialObj = trials[currentTrial];
+            const trialObj = trials[currentTrial];
 
-            // If current trial is first, preload
-            if (currentTrial == 0) {
+            // Preload first trial video
+            if (currentTrial === 0) {
                 preloadVideo(trialObj);
             }
 
-            // Preload next trial
+            // Preload next trial video
             if (currentTrial + 1 < trials.length) {
                 preloadVideo(trials[currentTrial + 1]);
             }
 
-            // Set background color
-            body.css('background-color', trialObj.background_colour);
+            body.style.backgroundColor = trialObj.background_colour;
 
-            // Setup trial
+            // Set up trial
             trialObj.webgazer_data = [];
-            webgazer_data = [];
-            let trialSetupPromises = [];
-            if (trialObj.audio_file != '') {
+            resetGazeData();
+            const trialSetupPromises = [];
+            if (trialObj.audio_file !== '') {
                 trialSetupPromises.push(playTrialAudio(trialObj));
             }
-            if (trialObj.trial_type == 'video') {
+            if (trialObj.trial_type === 'video') {
                 trialSetupPromises.push(playTrialVideo(trialObj));
             } else {
                 trialSetupPromises.push(showTrialImage(trialObj));
             }
 
-            // Start webcam recording when recording_option == aud, vid, all 
-            if (recording_option != 'NON' && recording_option != 'EYE' && trialObj.record_media) {
-                trialSetupPromises.push(webcam.startRecording(subjectId + "_trial" + String(trialObj.trial_number) + "_" + trialObj.label + "_" + subjectUuid, recording_option, mediaStream));
+            // Start webcam recording if recording_option is aud, vid, or all
+            if (recording_option !== 'NON' && recording_option !== 'EYE' && trialObj.record_media) {
+                trialSetupPromises.push(webcam.startRecording(
+                    `${subjectId}_trial${trialObj.trial_number}_${trialObj.label}_${subjectUuid}`,
+                    recording_option,
+                    mediaStream
+                ));
             }
 
-            // Resume webgazer and start recording gaze
-            if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
+            // Resume webgazer and start gaze recording
+            if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
                 trialSetupPromises.push(webgazer.resume().then(() => {
                     if (trialObj.record_gaze) {
                         startGazeRecording();
@@ -175,53 +175,50 @@
                 }));
             }
 
-            // Wait before accepting responses
-            if (trialObj.require_user_input == 'YES') {
-                let waitTime = parseInt(general_onset);
+            // Wait before accepting user input
+            if (trialObj.require_user_input === 'YES') {
+                const waitTime = parseInt(general_onset);
                 trialSetupPromises.push(waitPromise(waitTime, trialObj));
             }
 
-            Promise.all(trialSetupPromises).then(function (values) {
-                let trialObj = values[0]; // Get trialObj from first promise
+            Promise.all(trialSetupPromises).then(values => {
+                const trialObj = values[0];
 
-                // Set start time
                 trialObj.start_time = performance.now();
 
                 // Register promise to determine end of trial
-                let trialDonePromises = [];
+                const trialDonePromises = [];
 
-                if (trialObj.trial_type == 'video' && trialObj.require_user_input == 'NO') {
+                if (trialObj.trial_type === 'video' && trialObj.require_user_input === 'NO') {
                     trialDonePromises.push(setupVideoEnd(trialObj));
                 }
-                if ((trialObj.trial_type == 'image' && !trialObj.is_calibration) || (trialObj.trial_type == 'video' && trialObj.require_user_input == 'YES')) {
+                if ((trialObj.trial_type === 'image' && !trialObj.is_calibration) || (trialObj.trial_type === 'video' && trialObj.require_user_input === 'YES')) {
                     trialDonePromises.push(setupMaxDuration(trialObj));
                 }
-                if (trialObj.require_user_input == 'YES' && !trialObj.is_calibration) {
+                if (trialObj.require_user_input === 'YES' && !trialObj.is_calibration) {
                     trialDonePromises.push(setupKeyPresses(trialObj));
                 }
-                if (trialObj.is_calibration && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                if (trialObj.is_calibration && (recording_option === 'EYE' || recording_option === 'ALL')) {
                     trialDonePromises.push(calibrate(trialObj));
                 }
                 return Promise.race(trialDonePromises);
 
-            }).then(function (trialObj) {
+            }).then(trialObj => {
                 console.log(trialObj);
-                $(document).off('keydown');
-                $(document).off('click');
-                // Pause webgazer
-                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+                if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
+                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
                     stopGazeRecording();
                 }
                 webgazer.pause();
 
                 trialObj.end_time = performance.now();
-                trialObj.webgazer_data = trialObj.webgazer_data.concat(webgazer_data);
+                trialObj.webgazer_data = trialObj.webgazer_data.concat(getGazeData());
 
-                // Remove trial
-                if (trialObj.audio_file != '') {
+                if (trialObj.audio_file !== '') {
                     removeTrialAudio();
                 }
-                if (trialObj.trial_type == 'video') {
+                if (trialObj.trial_type === 'video') {
                     removeTrialVideo(trialObj);
                 } else {
                     removeTrialImage();
@@ -229,33 +226,34 @@
 
                 return postResult(trialObj);
 
-            }).then(function (trialObj) {
+            }).then(trialObj => {
                 return webcam.stopRecording(trialObj.resultId);
-            }).then(function () {
+            }).then(() => {
                 currentTrial++;
                 showNextTrial();
-            }).catch(function (e) {
-                // Clear global timeout
+            }).catch(e => {
                 clearTimeout(globaltimer);
 
-                // Stop upload
                 webcam.stopUploading();
                 webcam.stopRecording("");
 
-                // Stop webgazer
-                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option == 'EYE' || recording_option == 'ALL')) {
+                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
                     stopGazeRecording();
                 }
                 webgazer.pause();
 
-                // Turn off listeners
-                $(document).off('keydown mozfullscreenchange webkitfullscreenchange fullscreenchange');
+                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+                document.removeEventListener('mozfullscreenchange', onFullscreenChange);
+                document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+                document.removeEventListener('fullscreenchange', onFullscreenChange);
                 exitFullscreen();
 
-                $.get('/' + subjectUuid + '/run/error').then(function (data) {
-                    $("body").html(data);
-                    $("div.alert").html(e);
-                });
+                fetch(`/${subjectUuid}/run/error`)
+                    .then(r => r.text())
+                    .then(data => {
+                        document.body.innerHTML = data;
+                        document.querySelector('div.alert').innerHTML = String(e);
+                    });
 
                 console.error("Error during experiment:", e);
             });
@@ -265,61 +263,82 @@
     /**
      * Returns a promise that resolves after waitTime with given param.
      */
-    let waitPromise = function (waitTime, param) {
-        return new Promise(function (resolve) {
-            setTimeout(function () {
-                resolve(param);
-            }, waitTime);
+    const waitPromise = function (waitTime, param) {
+        return new Promise(resolve => {
+            setTimeout(() => { resolve(param); }, waitTime);
         });
-    }
+    };
 
     /**
      * Preload images of all trials.
      */
-    let preloadImages = function () {
-        let p_list = [];
+    const preloadImages = function () {
+        const p_list = [];
 
         for (let t in trials) {
-            if (t.trial_type == 'image') {
-                let p = new Promise(function (resolve, reject) {
-                    let image = new Image();
-                    image.onload = function () {
-                        resolve();
-                    }
+            if (t.trial_type === 'image') {
+                const p = new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => { resolve(); };
                     image.src = t.visual_file;
                 });
                 p_list.push(p);
             }
         }
 
-        return Promise.all(p_list)
+        return Promise.all(p_list);
     };
 
     /**
      * Preload video for trial.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let preloadVideo = function (trialObj) {
-        if (trialObj.trial_type != 'video') return;
+    /**
+     * Create or upgrade a video element for the given trial.
+     * @param {object} trialObj
+     * @param {boolean} load - true: set preload=auto and call video.load() (fetch data).
+     *   false: create the element with preload=none so it can be gesture-unlocked on iOS
+     *   before any data is fetched. showNextTrial upgrades elements to load=true as trials
+     *   approach, preserving the original 1-2 trial lookahead window.
+     */
+    const preloadVideo = function (trialObj, load = true) {
+        if (trialObj.trial_type !== 'video') return;
 
-        console.log("Preload video of trial " + (trialObj.trial_id).toString());
-        let div = document.createElement('div');
+        const existing = document.getElementById(`video-container-${trialObj.trial_id}`);
+        if (existing) {
+            // Element already exists from the pre-gesture pass (load=false).
+            // If showNextTrial now wants to load data, upgrade the element.
+            if (load) {
+                const video = existing.querySelector('video');
+                if (video && video.preload !== 'auto') {
+                    video.preload = 'auto';
+                    video.load();
+                }
+            }
+            return;
+        }
+
+        console.log(`Preload video of trial ${trialObj.trial_id}`);
+        const div = document.createElement('div');
         div.className = 'trial-video';
         div.style.display = 'none';
-        div.id = 'video-container-' + trialObj.trial_id;
+        div.id = `video-container-${trialObj.trial_id}`;
 
-        let video = document.createElement('video');
-        video.preload = 'auto';
+        const video = document.createElement('video');
+        video.preload = load ? 'auto' : 'none';
+        // iOS Safari opens its native AVPlayer on video.play() unless playsinline is set,
+        // even when the experiment page is already in document fullscreen.
+        video.setAttribute('playsinline', '');
 
-        let source1 = document.createElement('source');
+        const source1 = document.createElement('source');
         source1.src = trialObj.visual_file;
         source1.type = 'video/mp4';
 
-        let source2 = document.createElement('source');
+        const source2 = document.createElement('source');
         source2.src = trialObj.visual_file;
         source2.type = 'video/ogg';
 
-        let source3 = document.createElement('source');
+        const source3 = document.createElement('source');
         source3.src = trialObj.visual_file;
         source3.type = 'video/webm';
 
@@ -328,79 +347,84 @@
         video.append(source3);
         div.append(video);
         body.append(div);
-        video.load();
+        if (load) video.load();
     };
 
     /**
      * Load and play audio trial.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let playTrialAudio = function (trialObj) {
-        return new Promise(function (resolve, reject) {
-            let audio = document.querySelector('.trial-audio audio');
+    const playTrialAudio = function (trialObj) {
+        return new Promise((resolve, reject) => {
+            const audio = document.querySelector('.trial-audio audio');
             audio.querySelector('source').src = trialObj.audio_file;
-            $(audio).on('canplay', function () {
-                setTimeout(function () {
+            const handler = function () {
+                audio.removeEventListener('canplay', handler);
+                setTimeout(() => {
                     audio.play();
                     resolve(trialObj);
                 }, Number(trialObj.audio_onset));
-            });
+            };
+            audioCanPlayHandlerRef = handler;
+            audio.addEventListener('canplay', handler);
             audio.load();
         });
     };
 
     /**
      * Load and play video trial.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let playTrialVideo = function (trialObj) {
-        return new Promise(function (resolve, reject) {
-            // Get video element that was created by preloadVideo()
-            let video = document.querySelector('#video-container-' + trialObj.trial_id + ' > video');
-            let displayVideo = function () {
-                setTimeout(function () {
-                    document.querySelector('#video-container-' + trialObj.trial_id).style.display = 'block';
-                    video.play();
+    const playTrialVideo = function (trialObj) {
+        return new Promise((resolve, reject) => {
+            const video = document.querySelector(`#video-container-${trialObj.trial_id} > video`);
+            const displayVideo = function () {
+                setTimeout(() => {
+                    document.querySelector(`#video-container-${trialObj.trial_id}`).style.display = 'block';
+                    video.play().catch(err => {
+                        if (err.name !== 'NotAllowedError') throw err;
+                        console.warn('video.play() blocked by autoplay policy:', err.message);
+                    });
                     resolve(trialObj);
                 }, Number(trialObj.visual_onset));
             };
 
-            // Video is already fully loaded
             if (video.readyState > 3) {
                 console.log("Video is fully loaded.");
                 displayVideo();
-            } else { // Video is still loading
+            } else {
                 console.log("Video is still loading.");
-                $(video).on('canplay', displayVideo);
+                videoCanPlayHandlerRefs[trialObj.trial_id] = displayVideo;
+                video.addEventListener('canplay', displayVideo);
             }
         });
     };
 
     /**
      * Load and show image.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let showTrialImage = function (trialObj) {
-        if (trialObj.is_calibration && (recording_option == 'EYE' || recording_option == 'ALL')) {
-            if (trialObj.calibration_points.length == 0) {
+    const showTrialImage = function (trialObj) {
+        if (trialObj.is_calibration && (recording_option === 'EYE' || recording_option === 'ALL')) {
+            if (trialObj.calibration_points.length === 0) {
                 trialObj.calibration_points = defaultPoints;
             }
-            timePerPoint = trialObj.max_duration / trialObj.calibration_points.length;
-            trialObj.calibration_points.forEach(function (pt, i) {
-                let img = document.createElement('img');
+            setTimePerPoint(trialObj.max_duration / trialObj.calibration_points.length);
+            trialObj.calibration_points.forEach((pt, i) => {
+                const img = document.createElement('img');
                 img.className = 'calibration-image';
                 img.src = trialObj.visual_file;
-                img.id = 'Pt' + i;
+                img.id = `Pt${i}`;
                 img.style = `width: 6vw; position: absolute; transform: translate(-50%, -50%); left: ${pt[0]}%; top: ${pt[1]}%; display: none`;
                 body.append(img);
             });
             return waitPromise(Number(trialObj.visual_onset), trialObj);
         }
-        return new Promise(function (resolve, reject) {
-            let img = document.createElement('div');
+        return new Promise((resolve, reject) => {
+            const img = document.createElement('div');
             img.className = 'trial-image';
-            img.style.backgroundImage = "url('" + trialObj.visual_file + "')";
-            setTimeout(function () {
+            img.style.backgroundImage = `url('${trialObj.visual_file}')`;
+            setTimeout(() => {
                 body.append(img);
                 resolve(trialObj);
             }, Number(trialObj.visual_onset));
@@ -410,17 +434,15 @@
     /**
      * Wait for upload queue to be empty.
      */
-    let waitForWebcamUploadToFinish = function () {
-        // Show loading image
-        $('#trials').css({
-            'height': '100%', 'width': '100%',
-            'background-image': "url('" + loading_image + "')",
-            'background-position': 'center',
-            'background-repeat': 'no-repeat',
-            'background-size': 'contain'
-        });
-        //$('#trials').html('<img src="' + loading_image + '" alt="Loading..." style="display: block; max-height:100%; margin: 0 auto;"/>');
-        $('#trials').show();
+    const waitForWebcamUploadToFinish = function () {
+        const trialsEl = document.getElementById('trials');
+        trialsEl.style.height = '100%';
+        trialsEl.style.width = '100%';
+        trialsEl.style.backgroundImage = `url('${loading_image}')`;
+        trialsEl.style.backgroundPosition = 'center';
+        trialsEl.style.backgroundRepeat = 'no-repeat';
+        trialsEl.style.backgroundSize = 'contain';
+        trialsEl.style.display = 'block';
         console.log("Check queue.");
         return webcam.waitForQueue(0);
     };
@@ -428,9 +450,9 @@
     /**
      * Remove trial image from page.
      */
-    let removeTrialImage = function () {
+    const removeTrialImage = function () {
         if (document.querySelectorAll('.calibration-image')) {
-            document.querySelectorAll('.calibration-image').forEach(img => img.remove())
+            document.querySelectorAll('.calibration-image').forEach(img => img.remove());
         }
         if (document.querySelector('.trial-image')) {
             document.querySelector('.trial-image').outerHTML = '';
@@ -440,54 +462,74 @@
     /**
      * Remove trial audio source.
      */
-    let removeTrialAudio = function () {
-        if (document.querySelector('.trial-audio audio')) {
-            $('.trial-audio audio').off('canplay');
-            document.querySelector('.trial-audio audio').pause();
-            // set audio src to empty string
-            document.querySelector('.trial-audio audio source').src = '';
+    const removeTrialAudio = function () {
+        const audioEl = document.querySelector('.trial-audio audio');
+        if (audioEl) {
+            if (audioCanPlayHandlerRef) {
+                audioEl.removeEventListener('canplay', audioCanPlayHandlerRef);
+                audioCanPlayHandlerRef = null;
+            }
+            audioEl.pause();
+            audioEl.querySelector('source').src = '';
         }
     };
 
     /**
      * Remove trial video from page.
      */
-    let removeTrialVideo = function (trialObj) {
-        let video = document.querySelector('#video-container-' + trialObj.trial_id + ' > video');
-        $(video).off('canplay');
+    const removeTrialVideo = function (trialObj) {
+        const video = document.querySelector(`#video-container-${trialObj.trial_id} > video`);
+        if (videoCanPlayHandlerRefs[trialObj.trial_id]) {
+            video.removeEventListener('canplay', videoCanPlayHandlerRefs[trialObj.trial_id]);
+            delete videoCanPlayHandlerRefs[trialObj.trial_id];
+        }
+        if (videoEndedHandlerRefs[trialObj.trial_id]) {
+            video.removeEventListener('ended', videoEndedHandlerRefs[trialObj.trial_id]);
+            delete videoEndedHandlerRefs[trialObj.trial_id];
+        }
         video.pause();
         document.querySelector('.trial-video').outerHTML = '';
     };
 
     /**
      * Send trial results to backend.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let postResult = function (trialObj) {
-        return new Promise(function (resolve, reject) {
+    const postResult = function (trialObj) {
+        return new Promise((resolve, reject) => {
             console.log("Send results", trialObj);
             let keysPressed = trialObj.keysPressed;
             if (keysPressed instanceof Array) {
                 keysPressed = keysPressed.join(',');
             }
-            $.ajax({
-                url: '/' + subjectUuid + '/run/storeresult',
-                data: {
-                    'trialitem': trialObj.trial_id,
-                    'start_time': trialObj.start_time,
-                    'end_time': trialObj.end_time,
-                    'key_pressed': keysPressed,
-                    'trial_number': trialObj.trial_number,
-                    'resolution_w': window.screen.width,
-                    'resolution_h': window.screen.height,
-                    'webgazer_data': JSON.stringify(trialObj.webgazer_data),
+            const params = new URLSearchParams({
+                'trialitem': trialObj.trial_id,
+                'start_time': trialObj.start_time,
+                'end_time': trialObj.end_time,
+                'key_pressed': keysPressed,
+                'trial_number': trialObj.trial_number,
+                'resolution_w': window.screen.width,
+                'resolution_h': window.screen.height,
+                'webgazer_data': JSON.stringify(trialObj.webgazer_data),
+            });
+            fetch(`/${subjectUuid}/run/storeresult`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                method: 'POST'
-            }).done(function (data) {
+                body: params,
+            })
+            .then(r => {
+                if (!r.ok) throw new Error(r.statusText);
+                return r.json();
+            })
+            .then(data => {
                 trialObj.resultId = data.resultId;
                 resolve(trialObj);
-            }).fail(function () {
-                console.error('Failed to post result (ID: ' + trialObj.trial_id + ')');
+            })
+            .catch(() => {
+                console.error(`Failed to post result (ID: ${trialObj.trial_id})`);
                 reject(trialObj);
             });
         });
@@ -495,11 +537,11 @@
 
     /**
      * Configure promise to return after max duration time has expired.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let setupMaxDuration = function (trialObj) {
-        return new Promise(function (resolve, reject) {
-            setTimeout(function () {
+    const setupMaxDuration = function (trialObj) {
+        return new Promise(resolve => {
+            setTimeout(() => {
                 trialObj.keysPressed = '-';
                 console.log("Trial ended with max duration.");
                 resolve(trialObj);
@@ -509,170 +551,163 @@
 
     /**
      * Configure promise to resolve after an expected response key was pressed.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let setupKeyPresses = function (trialObj) {
-        return new Promise(function (resolve, reject) {
+    const setupKeyPresses = function (trialObj) {
+        return new Promise((resolve, reject) => {
             trialObj.keysPressed = [];
-            $(document).off('keydown');
-            $(document).on('keydown', function (event) {
+            if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); }
+            keydownHandler = function (event) {
                 // Get key and convert to code
-                let key = Object.keys(codes).find(key => codes[key] === event.which).toString();
+                const key = Object.keys(codes).find(key => codes[key] === event.which).toString();
                 trialObj.keysPressed.push(key);
-                // Correct key was pressed
+                // Check if the pressed key is in expected response keys
                 if (trialObj.response_keys.indexOf(key) !== -1) {
                     console.log("Trial ended with keypress.");
                     resetGlobalTimer();
                     resolve(trialObj);
-                };
-            });
+                }
+            };
+            document.addEventListener('keydown', keydownHandler);
             // Click response allowed
             if (trialObj.response_keys.indexOf('click') !== -1) {
-                $(document).off('click');
-                $(document).on('click', function (event) {
-                    // if area clicked is not the exit button
-                    if (!$(event.target).closest('#exit-button').length) {
-                        let key = "mouseX: " + String(event.screenX) + " - mouseY: " + String(event.screenY);
+                if (clickHandler) { document.removeEventListener('click', clickHandler); }
+                clickHandler = function (event) {
+                    // Ignore clicks on exit button
+                    if (!event.target.closest('#exit-button')) {
+                        const key = `mouseX: ${event.screenX} - mouseY: ${event.screenY}`;
                         trialObj.keysPressed.push(key);
                         console.log("Trial ended with click.");
                         resetGlobalTimer();
                         resolve(trialObj);
                     }
-                });
+                };
+                document.addEventListener('click', clickHandler);
             }
         });
     };
 
     /**
      * Configure promise to resolve after video has finished playing.
-     * @param {*} trialObj 
+     * @param {object} trialObj
      */
-    let setupVideoEnd = function (trialObj) {
-        return new Promise(function (resolve, reject) {
-            let video = document.querySelector('#video-container-' + trialObj.trial_id + ' > video');
-            $(video).on('ended', function () {
+    const setupVideoEnd = function (trialObj) {
+        return new Promise((resolve, reject) => {
+            const video = document.querySelector(`#video-container-${trialObj.trial_id} > video`);
+            const handler = function () {
                 console.log("Trial ended with video end.", trialObj);
                 trialObj.keysPressed = '-';
                 resolve(trialObj);
-            });
+            };
+            videoEndedHandlerRefs[trialObj.trial_id] = handler;
+            video.addEventListener('ended', handler);
         });
     };
 
-    //$('#webgazer-init').hide();
-
     // Insert empty audio element
-    createAudioContainer().then(function () {
-        // Preload images
+    createAudioContainer().then(() => {
         return preloadImages();
-    }).then(function () {
-        // Prompt webcam/microphone access before fullscreen
-        if (recording_option != 'NON') {
+    }).then(() => {
+        // Prompt webcam/microphone access
+        if (recording_option !== 'NON') {
             mediaStream = webcam.initStream(recording_option);
             console.log(mediaStream);
             console.log(typeof (mediaStream));
             return mediaStream;
         }
         return Promise.resolve();
-    }).then(function () {
-
-        // Ask user to click button to go into fullscreen
-        return new Promise(function (resolve, reject) {
-            $("#fullscreen-button").click(function () {
-                let docElem = document.documentElement;
-                if (docElem.requestFullscreen) {
-                    docElem.requestFullscreen();
-                } else if (docElem.mozRequestFullScreen) {
-                    docElem.mozRequestFullScreen();
-                } else if (docElem.webkitRequestFullScreen) {
-                    docElem.webkitRequestFullScreen();
-                } else if (docElem.msRequestFullscreen) {
-                    docElem.msRequestFullscreen();
-                }
-                $("#fullscreen-message").remove();
-                //$("#fullscreen-button").hide();
+    }).then(() => {
+        // Create DOM elements for all video trials (no data fetch yet) so the gesture
+        // handler can unlock each element. showNextTrial will upgrade them to load=true
+        // as trials approach, preserving the original 1-2 trial lookahead window.
+        trials.forEach(trial => preloadVideo(trial, false));
+        return new Promise((resolve, reject) => {
+            document.getElementById('fullscreen-button').addEventListener('click', function () {
+                const docElem = document.documentElement;
+                docElem.requestFullscreen?.() ?? docElem.mozRequestFullScreen?.() ??
+                    docElem.webkitRequestFullScreen?.() ?? docElem.msRequestFullscreen?.();
+                document.getElementById('fullscreen-message')?.remove();
+                // Unlock every video element for iOS: one play() inside a gesture handler
+                // allows all subsequent play() calls on the same element without a gesture.
+                trials.forEach(trial => {
+                    if (trial.trial_type !== 'video') return;
+                    const videoEl = document.querySelector(`#video-container-${trial.trial_id} > video`);
+                    if (videoEl) videoEl.play().then(() => videoEl.pause()).catch(() => {});
+                });
                 resolve();
             });
         });
-    }).then(function () {
-        // Start webcam uploading
+    }).then(() => {
         webcam.startUploading(subjectUuid);
 
-        // Check if eye-tracking is required
-        if (recording_option == 'EYE' || recording_option == 'ALL') {
-            // initialise and setup webgazer
+        if (recording_option === 'EYE' || recording_option === 'ALL') {
             return initWebgazer();
-        } else {
-            return Promise.resolve();
         }
-    }).then(function () {
-        // Start with first trial
+        return Promise.resolve();
+    }).then(() => {
+        // Start first trial
         showNextTrial();
-
-        // Set global timeout
         setGlobalTimer();
     });
 
     /**
      * Exit fullscreen mode.
      */
-    let exitFullscreen = function () {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
+    const exitFullscreen = function () {
+        document.exitFullscreen?.() ?? document.webkitExitFullscreen?.() ??
+            document.mozCancelFullScreen?.() ?? document.msExitFullscreen?.();
     };
 
     /**
      * Go to exit/pause page.
      */
-    let terminateStudy = function () {
+    const terminateStudy = function () {
         if (include_pause_page) {
-            window.location.replace('/' + subjectUuid + '/run/pause');
+            window.location.replace(`/${subjectUuid}/run/pause`);
         } else {
-            window.location.replace('/' + subjectUuid + '/run/thankyou');
+            window.location.replace(`/${subjectUuid}/run/thankyou`);
         }
     };
 
-    $(document).on('mozfullscreenchange webkitfullscreenchange fullscreenchange', function () {
-        let fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
-        // Go to pause page or end experiment immediately when leaving fullscreen
+    const onFullscreenChange = function () {
+        const fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
         if (!fullScreen) {
             terminateStudy();
         }
+    };
+    document.addEventListener('mozfullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    window.addEventListener('load', () => {
+        document.getElementById('fullscreen-button')?.removeAttribute('disabled');
     });
 
-    $(window).on('load', function () {
-        $('#fullscreen-button').prop('disabled', false); // enable fullscreen button
-    });
-
-    $('#confirmExitButton').click(function () {
+    document.getElementById('confirmExitButton')?.addEventListener('click', function () {
         terminateStudy();
     });
 
-    var exitModalElement = document.getElementById('exitStudyModal');
-    var exitModal = null;
+    const exitModalElement = document.getElementById('exitStudyModal');
+    let exitModal = null;
     if (exitModalElement) {
         exitModal = new bootstrap.Modal(exitModalElement);
         // Resolve "aria-hidden on focused element" warning by using 'inert' on background
         exitModalElement.addEventListener('show.bs.modal', function () {
-            $('.container').not('#exitStudyModal').attr('inert', '');
+            document.querySelectorAll('.container:not(#exitStudyModal)').forEach(el => el.setAttribute('inert', ''));
         });
         exitModalElement.addEventListener('hidden.bs.modal', function () {
-            $('.container').removeAttr('inert');
+            document.querySelectorAll('.container').forEach(el => el.removeAttribute('inert'));
         });
     }
 
-    $("#exit-button").click(function () {
-        if (webcam.getLength()) { // Upload queue is not empty, show confirmation dialog
-            if (exitModal) exitModal.show();
+    document.getElementById('exit-button').addEventListener('click', function () {
+        if (webcam.getLength()) { // Upload queue not empty, show warning modal
+            exitModal?.show();
         } else {
             terminateStudy();
         }
     });
 
-})();
+}
+
+init();

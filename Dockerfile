@@ -20,9 +20,13 @@ ENV UV_LINK_MODE=copy
 ENV UV_PROJECT_ENVIRONMENT=/usr/src/.venv
 ENV PATH="/usr/src/.venv/bin:$PATH"
 
-# Install the project's dependencies (no source code yet)
+# WORKDIR copy is used by uv sync in both dev and prod.
 COPY pyproject.toml uv.lock ./
+# etc/ copy survives the dev volume mount (./src:/usr/src/app);
+# used by coverage in dev.
+COPY pyproject.toml /etc/pyproject.toml
 
+# Install the project's dependencies (no source code yet)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project
 
