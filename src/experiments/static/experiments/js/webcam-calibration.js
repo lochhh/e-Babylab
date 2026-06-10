@@ -35,6 +35,9 @@ export function init() {
     // Check MediaRecorder support
     const mediaRecorderSupported = window.MediaRecorder != null;
 
+    const show = (el) => { if (el) el.style.display = 'block'; };
+    const hide = (el) => { if (el) el.style.display = 'none'; };
+
     const startStream = function () {
         return new Promise((resolve, reject) => {
             const recordingConstraints = recording_option === 'AUD' ? constraintsAudio : constraints;
@@ -85,11 +88,28 @@ export function init() {
         const button = document.querySelector('#webcam_step_3 button.btn-primary');
         const alertWindow = document.querySelector('#webcam_step_3 .alert-danger');
 
+        const showStep3Error = (e) => {
+            console.error('webcam-calibration step 3 error:', e);
+            if (alertWindow) {
+                show(alertWindow);
+                alertWindow.insertAdjacentHTML('beforeend', `${webcam_not_found}<br><strong>${e.name}:</strong> ${e.message}`);
+            }
+            const repeatButton = document.getElementById('repeat-check-button');
+            if (repeatButton) {
+                show(repeatButton);
+                repeatButton.addEventListener('click', () => { location.reload(); });
+            }
+        };
+
         // Start webcam stream
         startStream()
             .then(() => {
-                document.querySelector('#webcam_step_3 .media-container').style.display = 'block';
+                show(document.querySelector('#webcam_step_3 .media-container'));
                 const video = document.querySelector('#webcam_step_3 video');
+                if (!video) {
+                    showStep3Error(new Error('Video element not found in template.'));
+                    return;
+                }
                 video.srcObject = mediaStream;
                 video.onloadedmetadata = function () {
                     video.muted = true;
@@ -104,13 +124,7 @@ export function init() {
                     button.removeAttribute('disabled');
                 };
             })
-            .catch(e => {
-                alertWindow.style.display = 'block';
-                alertWindow.insertAdjacentHTML('beforeend', `${webcam_not_found}<br><strong>${e.name}:</strong> ${e.message}`);
-                const repeatButton = document.getElementById('repeat-check-button');
-                repeatButton.style.display = 'block';
-                repeatButton.addEventListener('click', () => { location.reload(); });
-            });
+            .catch(showStep3Error);
     };
 
     /*
@@ -125,20 +139,17 @@ export function init() {
             document.getElementById('webcam_step_2').classList.remove('active');
         }
         document.getElementById('webcam_step_4').classList.add('active');
-        document.querySelector('#webcam_step_4 .alert-danger').style.display = 'none';
-        document.querySelector('#webcam_step_4 .alert-success').style.display = 'none';
-        document.querySelector('#webcam_step_4 .media-container').style.display = 'none';
-        if (recording_option === 'AUD') {
-            document.querySelector('#webcam_step_4 .media-container audio').innerHTML = '';
-        } else {
-            document.querySelector('#webcam_step_4 .media-container video').innerHTML = '';
-        }
+        hide(document.querySelector('#webcam_step_4 .alert-danger'));
+        hide(document.querySelector('#webcam_step_4 .alert-success'));
+        hide(document.querySelector('#webcam_step_4 .media-container'));
+        const mediaContainer = document.querySelector('#webcam_step_4 .media-container');
+        if (mediaContainer) mediaContainer.innerHTML = '';
         const button = document.querySelector('#webcam_step_4 button.btn-primary');
         button.setAttribute('disabled', '');
         const repeatButton = document.querySelector('#webcam_step_4 button.btn-warning');
         repeatButton.setAttribute('disabled', '');
         const uploadProgress = document.getElementById('upload-progress');
-        uploadProgress.style.display = 'block';
+        show(uploadProgress);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('repeatWebcamModal')).hide();
         firstChunk = true;
 
@@ -146,10 +157,12 @@ export function init() {
         startStream()
             .then(() => { recordStream(); })
             .catch(e => {
-                uploadProgress.style.display = 'none';
+                hide(uploadProgress);
                 const alertWindow = document.querySelector('#webcam_step_4 .alert-danger');
-                alertWindow.style.display = 'block';
-                alertWindow.insertAdjacentHTML('beforeend', String(e));
+                if (alertWindow) {
+                    show(alertWindow);
+                    alertWindow.insertAdjacentHTML('beforeend', String(e));
+                }
                 console.log(e);
                 stopStream();
             });
@@ -159,7 +172,7 @@ export function init() {
         const repeatButton = document.querySelector('#webcam_step_4 button.btn-warning');
         repeatButton.removeAttribute('disabled');
 
-        const modelRepeatButton = document.getElementById('repeatRutton');
+        const modelRepeatButton = document.getElementById('repeatButton');
         modelRepeatButton.addEventListener('click', () => { checkStepFour(); }, { once: true });
     };
 
@@ -208,31 +221,36 @@ export function init() {
             return r.json();
         })
         .then(data => {
-            uploadProgress.style.display = 'none';
+            hide(uploadProgress);
 
             if (data.videoUrl) {
-                document.querySelector('#webcam_step_4 .media-container').innerHTML = '';
-                const source = document.createElement('source');
-                source.src = data.videoUrl;
-                source.type = data.type;
-                const videoElem = recording_option === 'AUD'
-                    ? document.createElement('audio')
-                    : document.createElement('video');
-                videoElem.controls = true;
-                videoElem.appendChild(source);
-                document.querySelector('#webcam_step_4 .media-container').appendChild(videoElem);
+                const container = document.querySelector('#webcam_step_4 .media-container');
+                if (container) {
+                    container.innerHTML = '';
+                    const source = document.createElement('source');
+                    source.src = data.videoUrl;
+                    source.type = data.type;
+                    const videoElem = recording_option === 'AUD'
+                        ? document.createElement('audio')
+                        : document.createElement('video');
+                    videoElem.controls = true;
+                    videoElem.appendChild(source);
+                    container.appendChild(videoElem);
+                    show(container);
+                }
 
                 // Show recorded media
-                successWindow.style.display = 'block';
-                document.querySelector('#webcam_step_4 .media-container').style.display = 'block';
+                show(successWindow);
 
                 enableFinalContinue();
             }
         })
         .catch(e => {
-            uploadProgress.style.display = 'none';
-            alertWindow.style.display = 'block';
-            alertWindow.insertAdjacentHTML('beforeend', String(e));
+            hide(uploadProgress);
+            if (alertWindow) {
+                show(alertWindow);
+                alertWindow.insertAdjacentHTML('beforeend', String(e));
+            }
             console.error(e);
             enableRepeat();
         });

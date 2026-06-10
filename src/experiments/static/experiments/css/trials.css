@@ -40,6 +40,11 @@ body:has(#trials-data) {
     padding: 20px;
 }
 
+#webcam-calibration .media-container {
+    max-width: 640px;
+    margin: 0 auto 1rem;
+}
+
 #pause.container {
     display: flex;
     flex-direction: column;

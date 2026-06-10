@@ -274,7 +274,7 @@ webcam_check_page_content = """{% extends "experiments/base.html" %}
                     </div>
 
                     <button type="button" class="btn btn-primary" disabled data-target="{% url 'experiments:experimentRun' subject_data.pk %}">Next (Image and sound were recorded.)</button>
-                    <button type="button" class="btn btn-warning" disabled data-toggle="modal" data-target="#repeatWebcamModal">Repeat test (There was a problem with the test recording.)</button>
+                    <button type="button" class="btn btn-warning" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test (There was a problem with the test recording.)</button>
                 </div>
             </div>
 
@@ -282,21 +282,19 @@ webcam_check_page_content = """{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<div class="modal fade" id="repeatWebcamModal" tabindex="-1" role="dialog" aria-labelledby="repeatWebcamModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="repeatWebcamModal" tabindex="-1" aria-labelledby="repeatWebcamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="repeatWebcamModalLabel">Repeat test recording</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 If you could not hear any sound or see any image: Please make sure that your webcam and speakers are on and connected to your computer. Please also check that the volume is not turned down too low.
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="repeatRutton">Repeat test</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="repeatButton">Repeat test</button>
             </div>
         </div>
     </div>
@@ -348,7 +346,7 @@ microphone_check_page_content = """{% extends "experiments/base.html" %}
                     </div>
 
                     <button type="button" class="btn btn-primary" disabled data-target="{% url 'experiments:experimentRun' subject_data.pk %}">Next (Sound was recorded.)</button>
-                    <button type="button" class="btn btn-warning" disabled data-toggle="modal" data-target="#repeatWebcamModal">Repeat test recording (There was a problem with the test recording.)</button>
+                    <button type="button" class="btn btn-warning" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test recording (There was a problem with the test recording.)</button>
                 </div>
             </div>
 
@@ -356,21 +354,19 @@ microphone_check_page_content = """{% extends "experiments/base.html" %}
     </div>
 </div>
 
-<div class="modal fade" id="repeatWebcamModal" tabindex="-1" role="dialog" aria-labelledby="repeatWebcamModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="repeatWebcamModal" tabindex="-1" aria-labelledby="repeatWebcamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="repeatWebcamModalLabel">Repeat test recording</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 If you could not hear any sound: Please make sure that your speakers are on and connected to your computer. Please also check that the volume is not turned down too low.
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="repeatRutton">Repeat test recording</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="repeatButton">Repeat test recording</button>
             </div>
         </div>
     </div>
@@ -420,8 +416,8 @@ experiment_page_content = """{% extends "experiments/base.html" %}
 <div id="trials-data" style="display: none;">{{ trials }}</div>
 <div id="trials" style="display: none;" data-subject-uuid="{{ subject_data.id }}" data-subject-id="{{ subject_data.participant_id }}" data-loading-image="{{ loading_image.url }}" data-global-timeout="{{ global_timeout }}" data-include-pause-page="{{ include_pause_page|lower }}" data-recording-option="{{ recording_option }}" data-general-onset="{{ general_onset }}" data-show-gaze-estimations="{{ show_gaze_estimations|lower }}"></div>
 
-<div id="exitStudyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exitStudyModalLabel">
-    <div class="modal-dialog" role="document">
+<div id="exitStudyModal" class="modal fade" tabindex="-1" aria-labelledby="exitStudyModalLabel">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 id="exitStudyModalLabel" class="modal-title">Terminate the study</h5>
