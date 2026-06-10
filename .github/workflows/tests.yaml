@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tests/js
+        working-directory: tests
     steps:
       - uses: actions/checkout@v6
 
@@ -25,10 +25,10 @@ jobs:
           node-version: lts/*
 
       - name: Install JS dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run JS tests
-        run: npm test
+        run: npm run test:unit
 
   test-python:
     runs-on: ubuntu-latest
