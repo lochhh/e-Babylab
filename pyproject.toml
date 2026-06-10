@@ -43,6 +43,7 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D205"] # missing-blank-line-after-summary
+"**/template_defaults.py" = ["E501"] # line-too-long (HTML template strings)
 
 [tool.ruff.format]
 quote-style = "double"
