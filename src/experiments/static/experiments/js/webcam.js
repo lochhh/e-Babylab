@@ -248,7 +248,7 @@ export function createWebcam() {
 			body: formData,
 		}).then(response => {
 			if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-			return response.json();
+			return response.status === 204 ? null : response.json();
 		}).then(data => {
 			console.log(`Upload of ${chunkFileName} was successful.`);
 			uploadErrors = 0;
