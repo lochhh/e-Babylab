@@ -1,3 +1,5 @@
+"""Result export utilities for generating subject data downloads."""
+
 import contextlib
 import datetime
 import json
@@ -38,6 +40,7 @@ class Reporter:
     """Utility for generating results as a zip file to be downloaded."""
 
     def __init__(self, experiment):
+        """Initialise the reporter with the experiment to export."""
         self.experiment = experiment
 
         # Trial columns
@@ -88,13 +91,13 @@ class Reporter:
             os.makedirs("webcam")
 
     def calc_trial_duration(self, t1, t2):
-        """Calculates trial duration based on the start and end times."""
+        """Calculate trial duration based on the start and end times."""
         if t1 and t2:
             return str(t2 - t1)
         return ""
 
     def calc_roi_response(self, result, coords):
-        """Determines row and col responded to (click/gaze) based on grid size defined for the trial."""
+        """Determine the row and column of a click or gaze within the trial's grid."""
         width = result.resolution_w
         height = result.resolution_h
         boundaries_r = list(range(0, height, int(height / result.trialitem.grid_row)))
@@ -121,9 +124,7 @@ class Reporter:
         return self.gcd(b, a % b)
 
     def create_subject_worksheet(self, subject):
-        """Create a dataframe for each participant containing the data
-        obtained from the consent form and the demographic/participant data form.
-        """
+        """Create a dataframe per subject containing consent and subject form data."""
         gcd = self.gcd(subject.resolution_w, subject.resolution_h)
         if gcd == 0:
             gcd = 1
@@ -212,8 +213,9 @@ class Reporter:
         return pd.DataFrame.from_dict(subject_data, orient="index")
 
     def create_trial_worksheet(self, subject):
-        """Creates a dataframe per participant containing the trial results
-        and adds the corresponding webcam/audio files to the final zip file.
+        """Create a dataframe per subject containing the trial results.
+
+        Also adds the corresponding webcam/audio files to the final zip file.
         """
         trial_data = []
         outer_blocks_pk = list(
@@ -296,7 +298,7 @@ class Reporter:
         return pd.DataFrame(trial_data, columns=self.trial_columns)
 
     def create_webgazer_worksheet(self, subject):
-        """Creates a worksheet per participant containing the eye-tracking results."""
+        """Create a worksheet per subject containing the eye-tracking results."""
         outer_blocks_pk = list(
             OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
                 "pk", flat=True
@@ -370,9 +372,9 @@ class Reporter:
         return [webgazer_data, validation_data]
 
     def create_report(self):
-        """Create a zip file containing all participants' results and recordings.
+        """Create a zip file containing all subjects' results and recordings.
 
-        The .zip file contains an .xlsx report for each participant with their trial results
+        The .zip file contains an .xlsx report for each subject with their trial results
         and responses to consent and demographic questions, as well as their corresponding
         webcam/audio files for an experiment.
         """

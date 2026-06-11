@@ -1,7 +1,8 @@
-"""URL Configuration
+"""URL Configuration.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.11/topics/http/urls/
+
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -12,28 +13,29 @@ Class-based views
 Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  re_path(r'^blog/', include('blog.urls'))
+
 """
-from django.urls import include, re_path
-from django.contrib import admin
-from django.contrib.auth.decorators import login_required
-from django.views.static import serve
+
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 admin.autodiscover()
 
 urlpatterns = [
-    re_path(r'^', include('experiments.urls')),
-    #re_path(r'^experiments/', include('experiments.urls')),
-    path('grappelli/', include('grappelli.urls')),
-    path('admin/', admin.site.urls),
-    path('tinymce/', include('tinymce.urls')),
-    path('', include('filer.urls')),
+    re_path(r"^", include("experiments.urls")),
+    # re_path(r'^experiments/', include('experiments.urls')),
+    path("grappelli/", include("grappelli.urls")),
+    path("admin/", admin.site.urls),
+    path("tinymce/", include("tinymce.urls")),
+    path("", include("filer.urls")),
 ]
 
-#admin.site.site_header = "Experiments Administration"
-#admin.site.site_title = "e-Babylab"
+# admin.site.site_header = "Experiments Administration"
+# admin.site.site_title = "e-Babylab"
 
 # Webcam tests
 urlpatterns += static(settings.WEBCAM_TEST_URL, document_root=settings.WEBCAM_TEST_ROOT)
@@ -41,10 +43,15 @@ urlpatterns += static(settings.WEBCAM_TEST_URL, document_root=settings.WEBCAM_TE
 # Reports
 urlpatterns += static(settings.REPORTS_URL, document_root=settings.REPORTS_ROOT)
 
+
 # Webcam uploads
 @login_required
 def protected_serve(request, path, document_root=None, show_indexes=False):
+    """Serve webcam upload files only to authenticated users."""
     return serve(request, path, document_root, show_indexes)
 
-urlpatterns += static(settings.WEBCAM_URL, protected_serve, document_root=settings.WEBCAM_ROOT)
+
+urlpatterns += static(
+    settings.WEBCAM_URL, protected_serve, document_root=settings.WEBCAM_ROOT
+)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

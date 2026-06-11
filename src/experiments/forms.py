@@ -1,3 +1,5 @@
+"""Forms for participant data, consent, CDI, and experiment management."""
+
 import datetime
 import logging
 import uuid
@@ -29,10 +31,10 @@ class ConsentForm(forms.Form):
     """Generates list of Y/N questions for the consent form."""
 
     def __init__(self, *args, **kwargs):
+        """Build consent fields from the experiment's consent questions."""
         experiment = kwargs.pop("experiment")
         super().__init__(*args, **kwargs)
 
-        data = kwargs.get("data")
         for q in experiment.consent_questions():
             self.fields["question_%d" % q.pk] = forms.ChoiceField(
                 label=q.text,
@@ -53,6 +55,8 @@ class SubjectDataForm(models.ModelForm):
     """Generates the questions and answer fields for the demographic/participant data form."""
 
     class Meta:
+        """Configure model and hidden resolution fields."""
+
         model = SubjectData
         fields = ("resolution_w", "resolution_h")
         widgets = {
@@ -61,11 +65,12 @@ class SubjectDataForm(models.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """Build participant data fields from the experiment's subject questions."""
         # expects an experiment object to be passed in initially
         experiment = kwargs.pop("experiment")
         self.experiment = experiment
         super().__init__(*args, **kwargs)
-        self.uuid = random_uuid = uuid.uuid4().hex
+        self.uuid = uuid.uuid4().hex
 
         # add a field for each question, corresponding to the question
         # type as appropriate.
@@ -133,6 +138,7 @@ class SubjectDataForm(models.ModelForm):
                 )
 
     def clean(self):
+        """Validate responses and compute participant age from any date fields."""
         cleaned_data = super().clean()
 
         # find datetime object
@@ -156,7 +162,7 @@ class SubjectDataForm(models.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
-        """Save the SubjectData object"""
+        """Save the SubjectData object."""
         subjectData = super().save(commit=False)
         subjectData.experiment = self.experiment
         subjectData.id = self.uuid
@@ -213,7 +219,10 @@ class SubjectDataForm(models.ModelForm):
 
 
 class QuestionInlineFormSet(models.BaseInlineFormSet):
+    """Formset for demographic questions that pre-populates default fields on first use."""
+
     def __init__(self, *args, **kwargs):
+        """Pre-populate age/sex fields when no questions exist yet."""
         experiment = kwargs.get("instance")
         if (
             experiment
@@ -243,6 +252,8 @@ class ExperimentForm(forms.ModelForm):
     """Provides the multi-select fields containing a list of all existing groups."""
 
     class Meta:
+        """Configure model and include all fields."""
+
         model = Experiment
         fields = "__all__"
 
@@ -253,13 +264,12 @@ class ExperimentForm(forms.ModelForm):
     )
 
     def clean_sharing_groups(self):
-        """Checks that at least one group is selected when experiment is to be shared with groups."""
+        """Check that at least one group is selected for group-shared experiments."""
         sharing_option = self.cleaned_data.get("sharing_option")
         groups = self.cleaned_data.get("sharing_groups")
 
-        if sharing_option == "GRP":
-            if not groups:
-                raise ValidationError("Please select at least one group.")
+        if sharing_option == "GRP" and not groups:
+            raise ValidationError("Please select at least one group.")
         return groups
 
 
@@ -267,10 +277,10 @@ class VocabularyChecklistForm(forms.Form):
     """Generates the vocabulary checklist form."""
 
     def __init__(self, *args, **kwargs):
+        """Build a single checkbox field for the given CDI word."""
         word = kwargs.pop("word", None)
         super().__init__(*args, **kwargs)
 
-        data = kwargs.get("data")
         if word:
             self.fields["word_%s" % word] = forms.BooleanField(
                 label=word, widget=forms.CheckboxInput, required=False

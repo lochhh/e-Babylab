@@ -1,3 +1,5 @@
+"""Views for the experiment participant flow and admin actions."""
+
 import json
 import logging
 import os.path
@@ -8,10 +10,10 @@ import requests
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import RequestContext, Template
 from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .admin import ExperimentAdmin
 from .decorators import login_required
@@ -32,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def proceedToExperiment(experiment, run_uuid):
+    """Redirect to the webcam test or directly to the experiment run depending on the recording option."""
     # skip webcam/microphone test if experiment not configured to record video/audio.
     if experiment.recording_option == "NON" or experiment.recording_option == "EYE":
         return HttpResponseRedirect(
@@ -58,7 +61,7 @@ def experimentReport(request, experiment_id):
 
 
 def experimentExport(request, experiment_id):
-    """Export an experiment to a JSON file"""
+    """Export an experiment to a JSON file."""
     json_data = ExperimentAdmin.exportToJSON(experiment_id)
     response = HttpResponse(json.dumps(json_data), content_type="application/json")
     response["Content-Disposition"] = (
@@ -82,7 +85,7 @@ def experimentImport(request):
 
 
 def informationPage(request, experiment_id):
-    """Generates the first page, the welcome page of an experiment."""
+    """Generate the information/welcome page for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     t = Template(experiment.information_page_tpl)
     c = RequestContext(request, {"experiment": experiment})
@@ -90,7 +93,8 @@ def informationPage(request, experiment_id):
 
 
 def browserCheck(request, experiment_id):
-    """Generate the second page, the browser check page of an experiment.
+    """Generate the browser check page for an experiment.
+
     Only Firefox and Chrome are supported.
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
@@ -100,7 +104,7 @@ def browserCheck(request, experiment_id):
 
 
 def consentForm(request, experiment_id):
-    """Generate the third page, the consent form of an experiment."""
+    """Generate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(experiment=experiment)
     t = Template(experiment.introduction_page_tpl)
@@ -115,11 +119,10 @@ def consentFormSubmit(request, experiment_id):
     # on submit, require all answers to be yeses to proceed, else render consent fail page
     if form.is_valid():
         for key, value in request.POST.items():
-            if key.startswith("question_"):
-                if value.lower() == "no":
-                    t = Template(experiment.consent_fail_page_tpl)
-                    c = RequestContext(request, {"experiment": experiment})
-                    return HttpResponse(t.render(c))
+            if key.startswith("question_") and value.lower() == "no":
+                t = Template(experiment.consent_fail_page_tpl)
+                c = RequestContext(request, {"experiment": experiment})
+                return HttpResponse(t.render(c))
         return HttpResponseRedirect(
             reverse("experiments:subjectForm", args=(experiment_id,))
         )
@@ -129,7 +132,7 @@ def consentFormSubmit(request, experiment_id):
 
 
 def subjectForm(request, experiment_id):
-    """Generate the fourth page, the demographic/participant data form of an experiment."""
+    """Generate the demographic/participant data form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
     t = Template(experiment.demographic_data_page_tpl)
@@ -209,10 +212,7 @@ def createTrialDict(trial, block, trial_number):
     else:
         visual_file = ""
 
-    if trial.audio_file:
-        audio_file = trial.audio_file.url
-    else:
-        audio_file = ""
+    audio_file = trial.audio_file.url if trial.audio_file else ""
 
     if not trial.response_keys:
         trial.response_keys = ""
@@ -349,7 +349,7 @@ def storeResult(request, run_uuid):
 
 
 def experimentPause(request, run_uuid):
-    """Generates the pause page of an experiment."""
+    """Generate the pause page of an experiment."""
     trial_id = None
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -394,7 +394,7 @@ def experimentError(request, run_uuid):
 
 
 def experimentEnd(request, run_uuid):
-    """Generate the thank you / end page of an experiment."""
+    """Generate the thank you/end page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     t = Template(experiment.thank_you_page_tpl)

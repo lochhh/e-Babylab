@@ -8,15 +8,13 @@ To activate your index dashboard add the following to your settings.py::
 
 from django.utils.translation import gettext_lazy as _
 from grappelli.dashboard import Dashboard, modules
-from grappelli.dashboard.utils import get_admin_site_name
 
 
 class CustomIndexDashboard(Dashboard):
     """Custom index dashboard for www."""
 
     def init_with_context(self, context):
-        site_name = get_admin_site_name(context)
-
+        """Populate the dashboard with modules."""
         # append a recent actions module
         self.children.append(
             modules.RecentActions(

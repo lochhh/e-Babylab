@@ -1,3 +1,5 @@
+"""Data models for the experiments application."""
+
 import os
 import random
 import uuid
@@ -332,15 +334,15 @@ class Experiment(models.Model):
         return self.exp_name
 
     def subject_questions(self):
-        """Returns a Queryset of all questions added to the participant/demographic data form."""
+        """Return a Queryset of all questions in the participant data form."""
         return Question.objects.filter(experiment=self.pk).order_by("position")
 
     def consent_questions(self):
-        """Returns a Queryset of all questions added to the consent form."""
+        """Return a Queryset of all questions in the consent form."""
         return ConsentQuestion.objects.filter(experiment=self.pk).order_by("position")
 
     def get_list_item(self):
-        """Selects a ListItem based on the list selection strategy (least played first / sequential / random) of an experiment."""
+        """Select a ListItem according to the experiment's list selection strategy."""
         li_all = ListItem.objects.filter(experiment=self.pk).filter(exclude_list=False)
 
         if not li_all.exists():
@@ -468,6 +470,7 @@ def audio_folder(instance, filename):
 
 
 def default_calibration_points():
+    """Return default eye-tracking calibration points as percentage coordinates."""
     return [
         [50, 50],
         [50, 12],
@@ -583,8 +586,9 @@ class TrialItem(models.Model):
 
 
 class SubjectData(models.Model):
-    """A SubjectData is the participant data and is linked to trial results (TrialResult)
-    and answers given in the participant data form (AnswerBase).
+    """Participant session data linked to trial results and demographic form answers.
+
+    Stores TrialResult and AnswerBase records for a single experiment run.
     """
 
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -628,12 +632,12 @@ class TrialResult(models.Model):
 
     @property
     def filename(self):
-        """Returns webcam/audio file name"""
+        """Return the webcam/audio file name."""
         return os.path.basename(self.webcam_file.name)
 
 
 def _delete_file(path):
-    """Deletes file from filesystem."""
+    """Delete the file at the given path from the filesystem."""
     if os.path.isfile(path):
         os.remove(path)
 
@@ -644,13 +648,13 @@ def _delete_file(path):
     dispatch_uid="webcamfile_delete_signal",
 )
 def delete_file(sender, instance, *args, **kwargs):
-    """Deletes webcam file on `post_delete`"""
+    """Delete the associated webcam file when a TrialResult is deleted."""
     if instance.webcam_file.name:
         _delete_file(os.path.join(settings.WEBCAM_ROOT, instance.webcam_file.name))
 
 
 def validate_list(value):
-    """Takes a text value and verifies that there is at least 1 comma."""
+    """Verify the value contains at least two comma-separated items."""
     # split by comma and remove empty strings
     values = list(filter(None, [x.strip() for x in value.split(",")]))
     if len(values) < 2:
@@ -664,7 +668,7 @@ def validate_list(value):
 
 
 def validate_range(value):
-    """Takes a text value and verifies that the min and max values are valid."""
+    """Verify the value contains valid min and max range values."""
     try:
         # split by comma and remove empty strings
         values = list(filter(None, [x.strip() for x in value.split(",")]))
@@ -736,6 +740,7 @@ class Question(models.Model):
         ordering = ["position"]
 
     def clean(self):
+        """Validate that choice-based question types have a properly formatted choices field."""
         if (
             self.question_type == Question.RADIO
             or self.question_type == Question.SELECT
@@ -811,7 +816,10 @@ class AnswerInteger(AnswerBase):
 
 
 class ConsentQuestion(models.Model):
-    """This has no answer models as it is a Y/N question in the consent form."""
+    """A yes/no consent question.
+
+    Stores custom response labels instead of answer models.
+    """
 
     text = models.TextField()
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE)
@@ -830,7 +838,7 @@ class ConsentQuestion(models.Model):
 
 
 class CdiResult(models.Model):
-    """A CdiResult is the response for a CDI item."""
+    """The response for a CDI item."""
 
     subject = models.ForeignKey(SubjectData, on_delete=models.CASCADE)
     given_label = models.CharField("item", blank=True, null=True, max_length=255)

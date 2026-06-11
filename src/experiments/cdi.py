@@ -1,3 +1,5 @@
+"""Adaptive short CDI-IRT administration."""
+
 import csv
 import datetime
 import json
@@ -35,12 +37,12 @@ logger = logging.getLogger(__name__)
 
 
 def sort_items(item_params):
-    """Returns ndarray of indices of items sorted by maximum item information."""
+    """Return ndarray of indices of items sorted by maximum item information."""
     return (-inf_hpc(max_info_hpc(item_params), item_params)).argsort()
 
 
 def estimateCDI(run_uuid):
-    """Computes CDI estimates based on Mayor and Mani (2019)"""
+    """Compute CDI estimates based on Mayor and Mani (2019)."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
@@ -165,7 +167,7 @@ def estimateCDI(run_uuid):
 
 
 def cdiRun(request, run_uuid):
-    """Administers CDI-IRT"""
+    """Administer a CDI-IRT adaptive vocabulary checklist."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
@@ -224,7 +226,7 @@ def cdiRun(request, run_uuid):
 
 
 def cdiSubmit(request, run_uuid):
-    """Stores item response as CdiResult."""
+    """Store the submitted item response as a CdiResult."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
     irt_run = request.session.get("irt_run")
@@ -280,7 +282,7 @@ def cdiSubmit(request, run_uuid):
 
 
 def cdiGenerateNextItem(request, run_uuid):
-    """Generates subsequent test item."""
+    """Generate and render the next adaptive CDI test item."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
 
