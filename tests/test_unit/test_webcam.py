@@ -20,7 +20,6 @@ from django.urls import reverse
 
 from experiments.webcam import find_files, merge_files
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

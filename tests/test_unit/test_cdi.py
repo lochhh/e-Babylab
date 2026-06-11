@@ -1,12 +1,14 @@
-import importlib
+"""Unit tests for experiments/cdi.py — CDI adaptive administration logic."""
+
 import datetime
+import importlib
 import json
 from io import StringIO
 from types import SimpleNamespace
 
 import numpy as np
+from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory
-from django.http import HttpResponseRedirect, HttpResponse
 
 cdi = importlib.import_module("experiments.cdi")
 
@@ -16,6 +18,7 @@ RUN_UUID = "12345678-abcd-ef12-3456-789abcdef012"
 
 # ─── Shared helpers ──────────────────────────────────────────────────────────
 
+
 class FakeDF:
     """Minimal pandas DataFrame stand-in used across multiple tests.
 
@@ -24,6 +27,7 @@ class FakeDF:
     """
 
     def __init__(self, n=1, val=2.0):
+        """Initialise the fake DataFrame with n rows and a fixed column value."""
         self._val = val
         self.index = list(range(n))
 
@@ -36,19 +40,24 @@ class FakeDF:
 
     @property
     def iloc(self):
+        """Return an _ILOC accessor for integer-location based indexing."""
         return FakeDF._ILOC(self)
 
     def reset_index(self):
+        """Return self to support chaining."""
         return self
 
     def to_json(self, orient="records"):
+        """Return an empty JSON array string."""
         return "[]"
 
     def to_numpy(self):
+        """Return a single-row numpy array of dummy IRT parameters."""
         return np.array([[1.0, 0.0, 1.0, 0.0]])
 
     @property
     def at(self):
+        """Return an _At accessor for label-based scalar access."""
         val = self._val
 
         class _At:
@@ -58,15 +67,18 @@ class FakeDF:
         return _At()
 
     def __getitem__(self, key):
+        """Handle column access and boolean-mask indexing by returning self."""
         # Handles both column access (str key) and boolean-mask indexing.
         # Returns self so callers can chain .index[0] etc.
         return self
 
     def __eq__(self, other):
+        """Allow df["col"] == value to produce a mask-like object with .index."""
         # Allows `df["col"] == value` to produce a mask-like with .index.
         return self
 
     def __hash__(self):
+        """Return a stable hash based on object identity."""
         return id(self)
 
 
@@ -77,6 +89,7 @@ class Session(dict):
 
 
 def make_subject_data():
+    """Build a fake SubjectData namespace with a tracked save() stub."""
     saved = {}
 
     def fake_save():
@@ -94,6 +107,7 @@ def make_subject_data():
 
 
 def make_experiment(num_words=2):
+    """Build a fake Experiment namespace with CDI page template and num_words."""
     return SimpleNamespace(
         pk="exp-1",
         instrument=SimpleNamespace(pk="instr-1"),
@@ -103,6 +117,8 @@ def make_experiment(num_words=2):
 
 
 def make_instrument():
+    """Build a fake Instrument namespace with SimpleNamespace file paths."""
+
     def _fp(name):
         return SimpleNamespace(file=SimpleNamespace(path=name))
 
@@ -125,6 +141,8 @@ def make_instrument():
 
 
 def patch_get_object_or_404(monkeypatch, subject_data, experiment, instrument=None):
+    """Monkeypatch get_object_or_404 to return the provided test stubs."""
+
     def fake_get(model, pk=None):
         if model is cdi.SubjectData:
             return subject_data
@@ -138,6 +156,8 @@ def patch_get_object_or_404(monkeypatch, subject_data, experiment, instrument=No
 
 
 def patch_cdi_results_empty(monkeypatch):
+    """Monkeypatch CdiResult so that all queryset methods return empty iterables."""
+
     class _Q:
         def filter(self, *a, **k):
             return self
@@ -164,6 +184,8 @@ def patch_cdi_results_empty(monkeypatch):
 
 
 def patch_age_sex(monkeypatch, dob="2022-01-01", sex="female", choices="female, male"):
+    """Monkeypatch AnswerText, AnswerRadio, and Question with fixed age/sex stubs."""
+
     class _FakeQS:
         def __init__(self, result):
             self._result = result
@@ -196,6 +218,7 @@ def patch_age_sex(monkeypatch, dob="2022-01-01", sex="female", choices="female, 
 
 # ─── sort_items ──────────────────────────────────────────────────────────────
 
+
 def test_sort_items_returns_descending_info_order(monkeypatch):
     """Items are sorted descending by inf_hpc value (argmax first)."""
     monkeypatch.setattr(cdi, "max_info_hpc", lambda item_params: "ignored")
@@ -206,6 +229,7 @@ def test_sort_items_returns_descending_info_order(monkeypatch):
 
 
 # ─── estimateCDI ─────────────────────────────────────────────────────────────
+
 
 def _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female"):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
@@ -356,6 +380,7 @@ def test_estimateCDI_keyerror_returns_redirect(monkeypatch):
 
 # ─── cdiRun ──────────────────────────────────────────────────────────────────
 
+
 def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
@@ -376,7 +401,7 @@ def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
 
 
 def test_cdiRun_success_sets_all_session_keys(monkeypatch):
-    """Successful cdiRun populates all expected session keys and returns HttpResponse."""
+    """Verify successful cdiRun populates all expected session keys."""
     rf = RequestFactory()
     request = rf.get("/cdi/run/")
     request.session = Session()
@@ -389,7 +414,15 @@ def test_cdiRun_success_sets_all_session_keys(monkeypatch):
     resp = cdi.cdiRun(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
-    for key in ("all_words", "item_params", "administered_items", "irt_run", "est_theta", "words", "responses"):
+    for key in (
+        "all_words",
+        "item_params",
+        "administered_items",
+        "irt_run",
+        "est_theta",
+        "words",
+        "responses",
+    ):
         assert key in request.session, f"session missing '{key}'"
     assert request.session["irt_run"] == 0
     assert request.session["administered_items"] == [0]
@@ -415,12 +448,15 @@ def test_cdiRun_keyerror_returns_redirect(monkeypatch):
 
 # ─── cdiSubmit ───────────────────────────────────────────────────────────────
 
+
 def _make_submit_session(irt_run=0, words=None, responses=None):
-    return Session({
-        "irt_run": irt_run,
-        "words": words if words is not None else ["hello"],
-        "responses": responses if responses is not None else [],
-    })
+    return Session(
+        {
+            "irt_run": irt_run,
+            "words": words if words is not None else ["hello"],
+            "responses": responses if responses is not None else [],
+        }
+    )
 
 
 def _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count):
@@ -463,7 +499,11 @@ def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
     sd = make_subject_data()
     exp = make_experiment()
     _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count=0)
-    monkeypatch.setattr(cdi, "VocabularyChecklistForm", lambda *a, **k: SimpleNamespace(is_valid=lambda: False))
+    monkeypatch.setattr(
+        cdi,
+        "VocabularyChecklistForm",
+        lambda *a, **k: SimpleNamespace(is_valid=lambda: False),
+    )
 
     resp = cdi.cdiSubmit(request, sd.pk)
 
@@ -492,7 +532,8 @@ def test_cdiSubmit_valid_not_enough_unique_calls_generate_next(monkeypatch):
     monkeypatch.setattr(
         cdi,
         "cdiGenerateNextItem",
-        lambda req, run_uuid: generate_called.__setitem__("called", True) or HttpResponse("next"),
+        lambda req, run_uuid: generate_called.__setitem__("called", True)
+        or HttpResponse("next"),
     )
 
     resp = cdi.cdiSubmit(request, sd.pk)
@@ -519,7 +560,9 @@ def test_cdiSubmit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
         lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
     )
     monkeypatch.setattr(cdi, "estimateCDI", lambda run_uuid: 0.5)
-    monkeypatch.setattr(cdi, "ListItem", SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: [])))
+    monkeypatch.setattr(
+        cdi, "ListItem", SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: []))
+    )
 
     resp = cdi.cdiSubmit(request, sd.pk)
 
@@ -543,8 +586,14 @@ def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
         lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
     )
     monkeypatch.setattr(cdi, "estimateCDI", lambda run_uuid: 0.5)
-    monkeypatch.setattr(cdi, "ListItem", SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: [1])))
-    monkeypatch.setattr(cdi, "proceedToExperiment", lambda exp, run_uuid: HttpResponse("proceed"))
+    monkeypatch.setattr(
+        cdi,
+        "ListItem",
+        SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: [1])),
+    )
+    monkeypatch.setattr(
+        cdi, "proceedToExperiment", lambda exp, run_uuid: HttpResponse("proceed")
+    )
 
     resp = cdi.cdiSubmit(request, sd.pk)
 
@@ -554,16 +603,21 @@ def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
 
 # ─── cdiGenerateNextItem ─────────────────────────────────────────────────────
 
+
 def _make_next_item_session(est_theta=0.0):
-    return Session({
-        "irt_run": 1,
-        "item_params": json.dumps([{"index": 0, "a": 1.0, "b": 0.0, "c": 0.2, "d": 1.0}]),
-        "administered_items": [0],
-        "responses": [1],
-        "est_theta": est_theta,
-        "words": ["hello"],
-        "all_words": json.dumps(["hello", "world"]),
-    })
+    return Session(
+        {
+            "irt_run": 1,
+            "item_params": json.dumps(
+                [{"index": 0, "a": 1.0, "b": 0.0, "c": 0.2, "d": 1.0}]
+            ),
+            "administered_items": [0],
+            "responses": [1],
+            "est_theta": est_theta,
+            "words": ["hello"],
+            "all_words": json.dumps(["hello", "world"]),
+        }
+    )
 
 
 def _patch_generate_next_base(monkeypatch, sd, exp):

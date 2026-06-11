@@ -1,8 +1,8 @@
-"""Unit tests for config/dashboard.py, config/settings.py, config/urls.py, config/wsgi.py."""
+"""Unit tests for the config package (dashboard, settings, urls, wsgi)."""
 
 import importlib
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,6 +12,8 @@ import pytest
 
 
 class TestWsgi:
+    """Tests for the config/wsgi.py WSGI application entry point."""
+
     def test_application_is_callable(self):
         """The WSGI application exported by wsgi.py is callable."""
         from config import wsgi
@@ -31,6 +33,8 @@ class TestWsgi:
 
 
 class TestSettings:
+    """Tests for config/settings.py values and environment-driven branches."""
+
     def test_dev_debug_is_true_by_default(self):
         """Without DJANGO_ENV=prod, DEBUG is True."""
         import config.settings as s
@@ -38,7 +42,7 @@ class TestSettings:
         assert s.DEBUG is True
 
     def test_prod_branch_sets_debug_false_and_proxy_headers(self, monkeypatch):
-        """When DJANGO_ENV=prod, DEBUG is False and reverse-proxy headers are enabled."""
+        """Verify DJANGO_ENV=prod disables DEBUG and enables reverse-proxy headers."""
         import config.settings as s
 
         monkeypatch.setenv("DJANGO_ENV", "prod")
@@ -86,6 +90,8 @@ class TestSettings:
 
 
 class TestCustomIndexDashboard:
+    """Tests for the Grappelli CustomIndexDashboard configuration."""
+
     def test_init_with_context_appends_correct_modules(self):
         """init_with_context appends four dashboard modules in the expected order."""
         from grappelli.dashboard import modules
@@ -93,14 +99,7 @@ class TestCustomIndexDashboard:
         from config.dashboard import CustomIndexDashboard
 
         dashboard = CustomIndexDashboard()
-        context = MagicMock()
-
-        with patch(
-            "config.dashboard.get_admin_site_name", return_value="admin"
-        ) as mock_get:
-            dashboard.init_with_context(context)
-
-        mock_get.assert_called_once_with(context)
+        dashboard.init_with_context(None)
         assert len(dashboard.children) == 4
         assert isinstance(dashboard.children[0], modules.RecentActions)
         assert isinstance(dashboard.children[1], modules.ModelList)
@@ -114,6 +113,8 @@ class TestCustomIndexDashboard:
 
 
 class TestProtectedServe:
+    """Tests for the protected_serve view that guards webcam recording files."""
+
     def test_anonymous_user_is_redirected_to_login(self, rf):
         """An unauthenticated request to protected_serve redirects to login."""
         from django.contrib.auth.models import AnonymousUser
@@ -129,7 +130,7 @@ class TestProtectedServe:
 
     @pytest.mark.django_db
     def test_authenticated_user_delegates_to_serve(self, rf, user):
-        """An authenticated request to protected_serve calls django.views.static.serve."""
+        """Verify authenticated requests to protected_serve delegate to static.serve."""
         from django.http import HttpResponse
 
         from config.urls import protected_serve

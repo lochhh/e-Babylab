@@ -35,11 +35,13 @@ def _make_view():
 
 @pytest.fixture
 def factory():
+    """Return a Django RequestFactory instance."""
     return RequestFactory()
 
 
 @pytest.fixture
 def auth_user(db):
+    """Return an authenticated User fixture."""
     user = User.objects.create_user(username="alice", password="pass")
     user.is_authenticated  # pre-warm
     return user
@@ -47,6 +49,7 @@ def auth_user(db):
 
 @pytest.fixture
 def anon_user():
+    """Return an AnonymousUser instance."""
     from django.contrib.auth.models import AnonymousUser
 
     return AnonymousUser()
@@ -58,9 +61,10 @@ def anon_user():
 
 
 class TestLoginRequiredBareDecorator:
-    """login_required applied without parentheses: @login_required"""
+    """Tests for login_required applied without parentheses: @login_required."""
 
     def test_authenticated_user_can_access_view(self, factory, auth_user):
+        """Verify authenticated users can access a view protected by login_required."""
         view, sentinel = _make_view()
         protected = login_required(view)  # bare — passes function directly
         request = factory.get("/some/path/")
@@ -70,6 +74,7 @@ class TestLoginRequiredBareDecorator:
         assert sentinel["called"]
 
     def test_unauthenticated_user_is_redirected(self, factory, anon_user, settings):
+        """Verify unauthenticated users are redirected to the login URL."""
         settings.LOGIN_URL = "/accounts/login/"
         view, sentinel = _make_view()
         protected = login_required(view)
@@ -87,9 +92,10 @@ class TestLoginRequiredBareDecorator:
 
 
 class TestLoginRequiredWithArguments:
-    """login_required applied with parentheses: @login_required(next_url=...)"""
+    """Tests for login_required applied with explicit arguments, e.g. next_url."""
 
     def test_authenticated_user_can_access_view(self, factory, auth_user):
+        """Verify authenticated users can access a view protected by login_required."""
         view, sentinel = _make_view()
         protected = login_required(next_url="/admin/experiments/experiment")(view)
         request = factory.get("/some/path/")
@@ -101,6 +107,7 @@ class TestLoginRequiredWithArguments:
     def test_unauthenticated_user_redirected_to_hardcoded_next(
         self, factory, anon_user, settings
     ):
+        """Verify unauthenticated users are redirected to the hardcoded next_url."""
         settings.LOGIN_URL = "/accounts/login/"
         view, sentinel = _make_view()
         protected = login_required(next_url="/admin/experiments/experiment")(view)
@@ -118,7 +125,10 @@ class TestLoginRequiredWithArguments:
 
 
 class TestUserPassesTest:
+    """Tests for the user_passes_test decorator."""
+
     def test_passing_predicate_allows_access(self, factory, auth_user):
+        """Verify a user satisfying the predicate is granted access."""
         view, sentinel = _make_view()
         protected = user_passes_test(lambda u: True)(view)
         request = factory.get("/")
@@ -128,6 +138,7 @@ class TestUserPassesTest:
         assert sentinel["called"]
 
     def test_failing_predicate_redirects(self, factory, auth_user, settings):
+        """Verify a user failing the predicate is redirected."""
         settings.LOGIN_URL = "/accounts/login/"
         view, sentinel = _make_view()
         protected = user_passes_test(lambda u: False)(view)

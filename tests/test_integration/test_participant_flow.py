@@ -38,6 +38,8 @@ def _post_subject_form(client, exp, mocker):
 
 
 class TestParticipantFlowNonRecording:
+    """Tests for the participant flow when no recording is enabled."""
+
     @pytest.mark.django_db
     def test_consent_to_experiment_run_redirect_chain(
         self, client, simple_experiment, consent_question_factory, mocker
@@ -63,6 +65,7 @@ class TestParticipantFlowNonRecording:
     def test_subject_data_created_after_form_submit(
         self, client, simple_experiment, mocker
     ):
+        """Verify that a SubjectData record is created after a valid form submission."""
         _post_subject_form(client, simple_experiment, mocker)
         assert (
             exp_models.SubjectData.objects.filter(experiment=simple_experiment).count()
@@ -141,10 +144,13 @@ class TestParticipantFlowNonRecording:
 
 
 class TestRecordingOptionBranching:
+    """Tests verifying redirects based on the experiment recording option."""
+
     @pytest.mark.django_db
     def test_non_recording_redirects_to_experiment_run(
         self, client, simple_experiment, mocker
     ):
+        """Verify NON recording option redirects directly to the experiment run page."""
         simple_experiment.recording_option = "NON"
         simple_experiment.save()
         resp = _post_subject_form(client, simple_experiment, mocker)
@@ -155,6 +161,7 @@ class TestRecordingOptionBranching:
     def test_eye_tracking_redirects_to_experiment_run(
         self, client, simple_experiment, mocker
     ):
+        """Verify EYE tracking option redirects directly to the experiment run page."""
         simple_experiment.recording_option = "EYE"
         simple_experiment.save()
         resp = _post_subject_form(client, simple_experiment, mocker)
@@ -163,6 +170,7 @@ class TestRecordingOptionBranching:
 
     @pytest.mark.django_db
     def test_audio_redirects_to_webcam_test(self, client, simple_experiment, mocker):
+        """Verify AUD recording option redirects to the webcam/microphone test page."""
         simple_experiment.recording_option = "AUD"
         simple_experiment.save()
         resp = _post_subject_form(client, simple_experiment, mocker)
@@ -170,6 +178,7 @@ class TestRecordingOptionBranching:
 
     @pytest.mark.django_db
     def test_video_redirects_to_webcam_test(self, client, simple_experiment, mocker):
+        """Verify VID recording option redirects to the webcam test page."""
         simple_experiment.recording_option = "VID"
         simple_experiment.save()
         resp = _post_subject_form(client, simple_experiment, mocker)
@@ -177,6 +186,7 @@ class TestRecordingOptionBranching:
 
     @pytest.mark.django_db
     def test_all_redirects_to_webcam_test(self, client, simple_experiment, mocker):
+        """Verify ALL recording option redirects to the webcam test page."""
         simple_experiment.recording_option = "ALL"
         simple_experiment.save()
         resp = _post_subject_form(client, simple_experiment, mocker)
@@ -189,6 +199,8 @@ class TestRecordingOptionBranching:
 
 
 class TestListSelectionStrategies:
+    """Tests for list selection strategies (LPF, SEQ, RAN, excluded lists)."""
+
     @pytest.mark.django_db
     def test_lpf_selects_least_played_list(
         self, client, simple_experiment, listitem_factory, subjectdata_factory, mocker
@@ -219,8 +231,8 @@ class TestListSelectionStrategies:
         """With SEQ strategy, lists are selected in round-robin order by ID."""
         simple_experiment.list_selection_strategy = "SEQ"
         simple_experiment.save()
-        l1 = listitem_factory(list_name="L1", experiment=simple_experiment)
-        l2 = listitem_factory(list_name="L2", experiment=simple_experiment)
+        _l1 = listitem_factory(list_name="L1", experiment=simple_experiment)
+        _l2 = listitem_factory(list_name="L2", experiment=simple_experiment)
 
         # Assign one previous subject to the first list (lowest ID)
         first_list = (
@@ -289,6 +301,8 @@ class TestListSelectionStrategies:
 
 
 class TestTrialOrdering:
+    """Tests for trial ordering and deduplication in the experiment run view."""
+
     @pytest.mark.django_db
     def test_fixed_order_trials_appear_in_position_order(
         self,
@@ -300,6 +314,7 @@ class TestTrialOrdering:
         blockitem_factory,
         trialitem_factory,
     ):
+        """Verify trials with randomise_trials=False appear in their defined order."""
         exp = experiment_factory()
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
         for f in [
@@ -325,9 +340,9 @@ class TestTrialOrdering:
         block.randomise_trials = False
         block.save()
 
-        t1 = trialitem_factory(blockitem=block, label="First", position=1)
-        t2 = trialitem_factory(blockitem=block, label="Second", position=2)
-        t3 = trialitem_factory(blockitem=block, label="Third", position=3)
+        _t1 = trialitem_factory(blockitem=block, label="First", position=1)
+        _t2 = trialitem_factory(blockitem=block, label="Second", position=2)
+        _t3 = trialitem_factory(blockitem=block, label="Third", position=3)
 
         sd = subjectdata_factory(experiment=exp, listitem=li)
         import json
@@ -341,6 +356,7 @@ class TestTrialOrdering:
     def test_completed_trial_not_repeated(
         self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
     ):
+        """Verify that a completed trial (has TrialResult) is excluded from the run."""
         exp, listitem, trial = experiment_with_trials
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
         exp.save()
@@ -360,10 +376,13 @@ class TestTrialOrdering:
 
 
 class TestDataDeletion:
+    """Tests for the deleteSubject endpoint and cascade behaviour."""
+
     @pytest.mark.django_db
     def test_delete_removes_subject_and_cascades_trial_results(
         self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
     ):
+        """Verify that deleting a subject also removes all associated trial results."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         trialresult_factory(subject=sd, trialitem=trial)
@@ -378,6 +397,7 @@ class TestDataDeletion:
     def test_deleted_run_uuid_returns_404(
         self, client, subjectdata_factory, simple_experiment
     ):
+        """Verify that accessing the end page for a deleted subject returns 404."""
         sd = subjectdata_factory(experiment=simple_experiment)
         pk = sd.pk
         client.post(reverse("experiments:deleteSubject", args=[pk]))

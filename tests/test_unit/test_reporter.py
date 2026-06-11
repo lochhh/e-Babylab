@@ -85,28 +85,38 @@ def _xlsx_sheet_columns(sheet_index):
 
 
 class DummyZipFile:
+    """Stub for zipfile.ZipFile that records written entries without touching the filesystem."""
+
     def __init__(self, *_, **__):
+        """Initialise with an empty list to track written entries."""
         self.written = []
 
     def write(self, *args, **kwargs):
+        """Record the write call arguments."""
         self.written.append((args, kwargs))
 
     def close(self):
+        """No-op close."""
         pass
 
 
 class DummyDF:
+    """Stub for pd.DataFrame that records to_excel calls without writing files."""
+
     def __init__(self, data=None, columns=None):
+        """Initialise with optional data and columns, tracking whether to_excel was called."""
         # store so tests can inspect
         self.data = data
         self.columns = columns
         self.saved = {"to_excel": False}
 
     def to_excel(self, *_, **__):
+        """Record that to_excel was called."""
         self.saved["to_excel"] = True
 
     @staticmethod
     def from_dict(d, **__):
+        """Return a DummyDF wrapping the given dict."""
         return DummyDF(data=d)
 
 
@@ -114,14 +124,16 @@ class DummyExcelWriter:
     """Stub for pd.ExcelWriter that discards all operations."""
 
     def __init__(self, *_, **__):
+        """Initialise with no state."""
         pass
 
     def close(self):
+        """No-op close."""
         pass
 
 
 def make_reporter(monkeypatch, tmp_path, experiment):
-    """Helper to construct a Reporter instance with heavy IO monkeypatched away."""
+    """Construct a Reporter instance with heavy IO monkeypatched away."""
     monkeypatch.setattr(
         rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
     )

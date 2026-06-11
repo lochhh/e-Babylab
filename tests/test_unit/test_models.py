@@ -6,7 +6,7 @@ These tests exercise:
 - OuterBlockItem, BlockItem, TrialItem, ConsentQuestion ordering
 - Question.get_choices, validate_list, validate_range, and clean()
 - Instrument.clean() CSV-only file validation
-- Experiment helper methods that are model-level (subject_questions, consent_questions, get_list_item)
+- Experiment helper methods that are model-level
 - TrialResult filename property and _delete_file/delete_file receiver behavior
 """
 
@@ -67,6 +67,7 @@ def test_audio_folder():
 
 
 def test_instrument_str(instrument_factory):
+    """Verify Instrument __str__ returns the instrument name."""
     inst = instrument_factory(instr_name="My Instrument")
     assert str(inst) == "My Instrument"
 
@@ -83,7 +84,7 @@ def test_instrument_clean_accepts_all_csv(instrument_factory):
 
 
 def test_instrument_clean_rejects_non_csv(db):
-    """clean() raises ValidationError naming the offending field when a non-.csv file is attached."""
+    """clean() raises ValidationError when a non-.csv file is attached."""
     from django.core.files.base import ContentFile
     from filer.models.filemodels import File as FilerFile
 
@@ -168,15 +169,16 @@ def test_instrument_clean_skips_null_fields(db):
 @pytest.mark.parametrize(
     "filename, allowed, expect_error",
     [
-        ("data.csv",  {".csv"}, False),  # allowed extension
-        ("data.CSV",  {".csv"}, False),  # case-insensitive match
-        (None,        {".csv"}, False),  # null file skipped
-        ("data.xlsx", {".csv"}, True),   # disallowed extension
+        ("data.csv", {".csv"}, False),  # allowed extension
+        ("data.CSV", {".csv"}, False),  # case-insensitive match
+        (None, {".csv"}, False),  # null file skipped
+        ("data.xlsx", {".csv"}, True),  # disallowed extension
     ],
     ids=["allowed", "case-insensitive", "null-file", "disallowed"],
 )
 def test_validate_file_extension(filename, allowed, expect_error):
     """_validate_file_extension adds an error only for disallowed extensions."""
+
     class FakeFile:
         def __init__(self, name):
             self.original_filename = name
@@ -207,8 +209,16 @@ def test_trialitem_clean_accepts_valid_audio(
 
 
 @pytest.mark.parametrize(
-    "filename", ["image.png", "photo.jpg", "photo.jpeg", "anim.gif",
-                 "clip.mp4", "clip.ogg", "clip.webm"]
+    "filename",
+    [
+        "image.png",
+        "photo.jpg",
+        "photo.jpeg",
+        "anim.gif",
+        "clip.mp4",
+        "clip.ogg",
+        "clip.webm",
+    ],
 )
 def test_trialitem_clean_accepts_valid_visual(
     filename, filer_file_factory, trialitem_factory
@@ -262,11 +272,12 @@ def test_trialitem_clean_skips_null_files(trialitem_factory):
 def test_experiment_str_and_subject_consent_questions(
     experiment_factory, question_factory, consent_question_factory
 ):
+    """Verify Experiment __str__ and subject/consent question querysets."""
     ex = experiment_factory(exp_name="ExpName")
     q = question_factory(text="Q1", experiment=ex, position=1)
     cq = consent_question_factory(text="Agree", experiment=ex, position=1)
     assert str(ex) == "ExpName"
-    # subject_questions and consent_questions should return QuerySets with our created objects
+    # Both queryset methods should return QuerySets with the created objects.
     assert q in list(ex.subject_questions())
     assert cq in list(ex.consent_questions())
 
@@ -274,6 +285,7 @@ def test_experiment_str_and_subject_consent_questions(
 def test_listitem_outerblock_blockitem_str(
     listitem_factory, outerblock_factory, blockitem_factory
 ):
+    """Verify __str__ returns the label for ListItem, OuterBlockItem, and BlockItem."""
     li = listitem_factory(list_name="MyList")
     assert str(li) == "MyList"
     ob = outerblock_factory(listitem=li, outer_block_name="O1", position=1)
@@ -283,6 +295,7 @@ def test_listitem_outerblock_blockitem_str(
 
 
 def test_trialitem_and_trialresult_and_filename(trialitem_factory, trialresult_factory):
+    """Verify TrialItem __str__ and TrialResult filename property."""
     ti = trialitem_factory(label="T1")
     tr = trialresult_factory(
         trialitem=ti, webcam_name="uploads/exp/list/visual/cam.png"
@@ -294,12 +307,13 @@ def test_trialitem_and_trialresult_and_filename(trialitem_factory, trialresult_f
 def test__delete_file_and_delete_file_signal(
     monkeypatch, trialresult_factory, tmp_path
 ):
+    """Verify _delete_file removes a file and the delete_file signal calls os.remove."""
     from experiments.models import _delete_file, delete_file
 
     dummy_path = "/tmp/somefile.to.delete"
     removed = {"ok": False}
 
-    monkeypatch.setattr("os.path.isfile", lambda p: True if p == dummy_path else False)
+    monkeypatch.setattr("os.path.isfile", lambda p: p == dummy_path)
 
     def fake_remove(p):
         removed["ok"] = True
@@ -325,6 +339,7 @@ def test__delete_file_and_delete_file_signal(
 
 
 def test_question_get_choices_and_validation(question_factory):
+    """Verify Question.get_choices, validate_list, validate_range, and clean()."""
     q = question_factory(text="What?", choices="a, b, c")
     assert q.get_choices() == (("a", "a"), ("b", "b"), ("c", "c"))
     # validate_list
