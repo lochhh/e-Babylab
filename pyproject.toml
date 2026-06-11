@@ -39,7 +39,7 @@ fix=true
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
-ignore = []
+ignore = ["D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D205"] # missing-blank-line-after-summary
