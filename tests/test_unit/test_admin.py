@@ -9,6 +9,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Group, User
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from experiments.admin import (
     AnswerTextInline,
@@ -551,11 +552,14 @@ class TestExperimentAdmin:
         request.user = new_user
 
         initial_count = Experiment.objects.count()
+        before = timezone.now()
         ExperimentAdmin.importFromJSON(request, json_bytes)
+        after = timezone.now()
 
         assert Experiment.objects.count() == initial_count + 1
         new_exp = Experiment.objects.exclude(pk=ex.pk).first()
         assert new_exp.user == new_user
+        assert before <= new_exp.created_on <= after
 
     def test_import_from_json_with_list_and_structure(
         self,

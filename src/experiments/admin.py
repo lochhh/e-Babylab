@@ -1,7 +1,6 @@
 """Admin configuration for the experiments application."""
 
 import json
-from datetime import datetime
 
 from django.conf import settings
 from django.contrib import admin
@@ -10,6 +9,7 @@ from django.db import models
 from django.db.models import Q
 from django.forms import Textarea
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .forms import ExperimentForm, QuestionInlineFormSet
@@ -502,7 +502,7 @@ class ExperimentAdmin(admin.ModelAdmin):
         ):
             old_primary_key = str(experiment.object.id)
 
-            experiment.object.created_on = datetime.now()
+            experiment.object.created_on = timezone.now()
             experiment.object.user = request.user
             experiment.object.id = None
 
