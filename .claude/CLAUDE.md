@@ -1,11 +1,19 @@
 # CLAUDE.md
 
 ## Project
-e-Babylab is a Django web application for running unmoderated online experiments. Researchers use the admin UI to design multi-stage experiments; participants run them in a browser. Features include no-code experiment authoring, multimedia stimuli, CDI (Communicative Development Inventory) assessments, and webcam-based eye tracking (WebGazer, beta).
+e-Babylab is a Django web application for running unmoderated online experiments. Researchers use the admin UI to design multi-stage experiments; participants run them in a browser. Features include no-code experiment authoring, multimedia stimuli, CDI (Communicative Development Inventory) assessments, and webcam-based eye tracking (WebGazer).
 
-## Context & Navigation Rules
-- Before running broad file searches, grep, or reading raw files, check the project map inside `graphify-out/`.
-- Use the `/graphify query "<question>"` command to understand cross-module relationships, architectural dependencies, or code logic.
+## graphify
+- **graphify** (`.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
 ## Environment Setup
 Requires Docker Desktop. 
@@ -29,7 +37,7 @@ Before writing new fixtures, check for existing ones in `tests/conftest.py`.
 
 Parametrize tests to cover multiple scenarios without duplication. Use `pytest.mark.parametrize` for this.
 
-Inside `tests/data/`, there is a sample participant .xlsx file that is the output file for each participantcontaining the results from an eye-tracking experiment. There are 4 worksheets in the file:
+Inside `tests/data/`, there is a sample participant .xlsx file that is the output file for each participant containing the results from an eye-tracking experiment. There are 4 worksheets in the file:
 - "Participant": contains participant data form and CDI form responses
 - "Trials": contains trial-level data
 - "EyeTrackingData": contains gaze data recorded by WebGazer, each row corresponds to a gaze sample with trial number, time, x/y coordinates
@@ -42,8 +50,9 @@ Requires [Node.js](https://nodejs.org/).
 
 Install dependencies once:
 ```bash
-cd tests/js && npm install
-cd tests/e2e && npm install && npx playwright install chromium firefox webkit msedge --with-deps
+cd tests
+npm install
+npx playwright install chromium firefox webkit msedge --with-deps
 ```
 
 Run tests from `tests/`:
@@ -53,14 +62,6 @@ npm run test:unit   # Vitest unit tests only (no dev server needed)
 npm run test:e2e    # Playwright e2e tests (dev server must be running)
 npm test            # both suites in sequence
 ```
-
-## Modernisation in progress
-Existing code is being modernised incrementally — don't treat current patterns as established conventions:
-
-- **Python function/method names** are being migrated to `snake_case` (many are not yet).
-- **Docstrings** are being added to all functions/classes (none exist yet, despite ruff `D` rules being active).
-
-When touching existing code, migrate names and add docstrings in the same change. New code should follow standard Python conventions from the start.
 
 ## Architecture
 ### Experiment data model
@@ -82,19 +83,7 @@ Experiments and data are shared within Django `Group`s, reflecting real research
 ### Non-obvious integrations
 - **WebGazer** is vendored JS — eye tracking runs entirely client-side.
 - **catsim + scipy** power IRT-based adaptive item selection in the CDI flow (`cdi.py`).
-- **django-filebrowser** manages media uploads in the admin; file fields on models use `FileBrowseField`.
+- **django-filer** manages media uploads in the admin; file fields on models use `FilerFileField` or `FilerImageField`.
 
 ### Settings
 All secrets and DB config come from `.env`.
-
-## graphify
-- **graphify** (`.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
