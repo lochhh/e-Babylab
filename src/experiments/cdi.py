@@ -1,6 +1,5 @@
 """Adaptive short CDI-IRT administration."""
 
-import csv
 import datetime
 import json
 import logging
@@ -57,17 +56,8 @@ def estimate_cdi(run_uuid):
 
     try:
         # parse instrument word list
-        all_words_reader = csv.DictReader(
-            open(
-                instrument.words_list.file.path,
-                encoding="utf-8-sig",
-            ),
-            delimiter=",",
-        )
-
-        all_words = {}
-        for row in all_words_reader:
-            all_words[row["word"]] = int(row["word_id"])
+        words_df = pd.read_csv(instrument.words_list.file.path, encoding="utf-8-sig")
+        all_words = dict(zip(words_df["word"], words_df["word_id"], strict=True))
 
         # get child's age and sex
         dob = datetime.date.fromisoformat(
@@ -174,16 +164,9 @@ def cdi_run(request, run_uuid):
 
     try:
         # parse instrument word list
-        all_words_reader = csv.DictReader(
-            open(
-                instrument.words_list.file.path,
-                encoding="utf-8-sig",
-            ),
-            delimiter=",",
-        )
-        all_words = []
-        for row in all_words_reader:
-            all_words.append(row["word"])
+        all_words = pd.read_csv(instrument.words_list.file.path, encoding="utf-8-sig")[
+            "word"
+        ].tolist()
         request.session["all_words"] = json.dumps(all_words)
 
         # get IRT parameters

@@ -231,7 +231,7 @@ def test_sort_items_returns_descending_info_order(monkeypatch):
 # ─── estimate_cdi ─────────────────────────────────────────────────────────────
 
 
-def _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female"):
+def _patch_estimate_cdi_base(monkeypatch, sd, exp, instr, sex="female"):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     patch_cdi_results_empty(monkeypatch)
     monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
@@ -241,12 +241,12 @@ def _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female"):
     patch_age_sex(monkeypatch, sex=sex)
 
 
-def test_estimateCDI_female_branch_saves_and_returns_estimate(monkeypatch):
+def test_estimate_cdi_female_branch_saves_and_returns_estimate(monkeypatch):
     """Female sex branch selects f_* lookup files; estimate is stored and returned."""
     sd = make_subject_data()
     exp = make_experiment()
     instr = make_instrument()
-    _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female")
+    _patch_estimate_cdi_base(monkeypatch, sd, exp, instr, sex="female")
 
     result = cdi.estimate_cdi(sd.pk)
 
@@ -255,12 +255,12 @@ def test_estimateCDI_female_branch_saves_and_returns_estimate(monkeypatch):
     assert sd._saved.get("called") is True
 
 
-def test_estimateCDI_male_branch_saves_and_returns_estimate(monkeypatch):
+def test_estimate_cdi_male_branch_saves_and_returns_estimate(monkeypatch):
     """Male sex branch (sex != choices[0]) selects m_* lookup files."""
     sd = make_subject_data()
     exp = make_experiment()
     instr = make_instrument()
-    _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="male")
+    _patch_estimate_cdi_base(monkeypatch, sd, exp, instr, sex="male")
 
     result = cdi.estimate_cdi(sd.pk)
 
@@ -268,7 +268,7 @@ def test_estimateCDI_male_branch_saves_and_returns_estimate(monkeypatch):
     assert sd.cdi_estimate is not None
 
 
-def test_estimateCDI_cdi_result_response_true_uses_lm_p_path(monkeypatch):
+def test_estimate_cdi_cdi_result_response_true_uses_lm_p_path(monkeypatch):
     """CdiResult with response=True updates basis via lm_p_mean/lm_p_sd."""
     sd = make_subject_data()
     exp = make_experiment()
@@ -312,7 +312,7 @@ def test_estimateCDI_cdi_result_response_true_uses_lm_p_path(monkeypatch):
     assert isinstance(result, (int, float))
 
 
-def test_estimateCDI_cdi_result_response_false_uses_lm_np_path(monkeypatch):
+def test_estimate_cdi_cdi_result_response_false_uses_lm_np_path(monkeypatch):
     """CdiResult with response=False updates basis via lm_np_mean/lm_np_sd."""
     sd = make_subject_data()
     exp = make_experiment()
@@ -356,7 +356,7 @@ def test_estimateCDI_cdi_result_response_false_uses_lm_np_path(monkeypatch):
     assert isinstance(result, (int, float))
 
 
-def test_estimateCDI_keyerror_returns_redirect(monkeypatch):
+def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
     """A KeyError during estimation (e.g., missing CSV column) returns a redirect."""
     sd = make_subject_data()
     exp = make_experiment()
@@ -381,7 +381,7 @@ def test_estimateCDI_keyerror_returns_redirect(monkeypatch):
 # ─── cdi_run ──────────────────────────────────────────────────────────────────
 
 
-def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
+def _patch_cdi_run(monkeypatch, sd, exp, instr, words=None):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
     word_rows = words if words is not None else [{"word": "hello"}]
@@ -400,7 +400,7 @@ def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
     monkeypatch.setattr(cdi, "VocabularyChecklistForm", lambda *a, **k: None)
 
 
-def test_cdiRun_success_sets_all_session_keys(monkeypatch):
+def test_cdi_run_success_sets_all_session_keys(monkeypatch):
     """Verify successful cdi_run populates all expected session keys."""
     rf = RequestFactory()
     request = rf.get("/cdi/run/")
@@ -409,7 +409,7 @@ def test_cdiRun_success_sets_all_session_keys(monkeypatch):
     sd = make_subject_data()
     exp = make_experiment()
     instr = make_instrument()
-    _patch_cdiRun(monkeypatch, sd, exp, instr)
+    _patch_cdi_run(monkeypatch, sd, exp, instr)
 
     resp = cdi.cdi_run(request, sd.pk)
 
@@ -429,7 +429,7 @@ def test_cdiRun_success_sets_all_session_keys(monkeypatch):
     assert request.session["responses"] == []
 
 
-def test_cdiRun_keyerror_returns_redirect(monkeypatch):
+def test_cdi_run_keyerror_returns_redirect(monkeypatch):
     """A missing CSV column in the word list returns a redirect to error page."""
     rf = RequestFactory()
     request = rf.get("/cdi/run/")
@@ -439,7 +439,7 @@ def test_cdiRun_keyerror_returns_redirect(monkeypatch):
     exp = make_experiment()
     instr = make_instrument()
     # Row without 'word' key triggers KeyError on row["word"]
-    _patch_cdiRun(monkeypatch, sd, exp, instr, words=[{"no_word": "x"}])
+    _patch_cdi_run(monkeypatch, sd, exp, instr, words=[{"no_word": "x"}])
 
     resp = cdi.cdi_run(request, sd.pk)
 
@@ -459,7 +459,7 @@ def _make_submit_session(irt_run=0, words=None, responses=None):
     )
 
 
-def _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count):
+def _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count):
     patch_get_object_or_404(monkeypatch, sd, exp)
     _uc = unique_count
 
@@ -490,7 +490,7 @@ def _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count):
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
 
 
-def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
+def test_cdi_submit_invalid_form_rerenders_template(monkeypatch):
     """When the form is invalid, cdi_submit re-renders the CDI page."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={})
@@ -498,7 +498,7 @@ def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
 
     sd = make_subject_data()
     exp = make_experiment()
-    _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count=0)
+    _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count=0)
     monkeypatch.setattr(
         cdi,
         "VocabularyChecklistForm",
@@ -511,7 +511,7 @@ def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
     assert not isinstance(resp, HttpResponseRedirect)
 
 
-def test_cdiSubmit_valid_not_enough_unique_calls_generate_next(monkeypatch):
+def test_cdi_submit_valid_not_enough_unique_calls_generate_next(monkeypatch):
     """When unique count < num_words, irt_run is incremented and next item generated."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={"word_hello": "1"})
@@ -519,7 +519,7 @@ def test_cdiSubmit_valid_not_enough_unique_calls_generate_next(monkeypatch):
 
     sd = make_subject_data()
     exp = make_experiment(num_words=2)
-    _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count=1)  # 1 < 2
+    _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count=1)  # 1 < 2
 
     cleaned = {"word_hello": "1"}
     monkeypatch.setattr(
@@ -543,7 +543,7 @@ def test_cdiSubmit_valid_not_enough_unique_calls_generate_next(monkeypatch):
     assert isinstance(resp, HttpResponse)
 
 
-def test_cdiSubmit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
+def test_cdi_submit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
     """When count >= num_words and no list items exist, redirects to experiment end."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={"word_hello": "1"})
@@ -551,7 +551,7 @@ def test_cdiSubmit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
 
     sd = make_subject_data()
     exp = make_experiment(num_words=1)
-    _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count=1)  # 1 >= 1
+    _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count=1)  # 1 >= 1
 
     cleaned = {"word_hello": "1"}
     monkeypatch.setattr(
@@ -569,7 +569,7 @@ def test_cdiSubmit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
     assert isinstance(resp, HttpResponseRedirect)
 
 
-def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
+def test_cdi_submit_valid_enough_words_with_list_items_proceeds(monkeypatch):
     """When count >= num_words and list items exist, calls proceed_to_experiment."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={"word_hello": "1"})
@@ -577,7 +577,7 @@ def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
 
     sd = make_subject_data()
     exp = make_experiment(num_words=1)
-    _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count=1)
+    _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count=1)
 
     cleaned = {"word_hello": "1"}
     monkeypatch.setattr(
@@ -627,7 +627,7 @@ def _patch_generate_next_base(monkeypatch, sd, exp):
     monkeypatch.setattr(cdi, "VocabularyChecklistForm", lambda *a, **k: None)
 
 
-def test_cdiGenerateNextItem_finite_theta_uses_maxinfoselector(monkeypatch):
+def test_cdi_generate_next_item_finite_theta_uses_maxinfoselector(monkeypatch):
     """Finite theta triggers MaxInfoSelector to pick the next item."""
     rf = RequestFactory()
     request = rf.get("/cdi/next/")
@@ -655,7 +655,7 @@ def test_cdiGenerateNextItem_finite_theta_uses_maxinfoselector(monkeypatch):
     assert 1 in request.session["administered_items"]
 
 
-def test_cdiGenerateNextItem_infinite_theta_uses_sort_items(monkeypatch):
+def test_cdi_generate_next_item_infinite_theta_uses_sort_items(monkeypatch):
     """Infinite theta skips MaxInfoSelector and falls back to sorted item ordering."""
     rf = RequestFactory()
     request = rf.get("/cdi/next/")
@@ -678,7 +678,7 @@ def test_cdiGenerateNextItem_infinite_theta_uses_sort_items(monkeypatch):
     assert not isinstance(resp, HttpResponseRedirect)
 
 
-def test_cdiGenerateNextItem_keyerror_returns_redirect(monkeypatch):
+def test_cdi_generate_next_item_keyerror_returns_redirect(monkeypatch):
     """A KeyError during item generation returns a redirect to the error page."""
     rf = RequestFactory()
     request = rf.get("/cdi/next/")
