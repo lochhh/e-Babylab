@@ -36,7 +36,7 @@ class ConsentForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         for q in experiment.consent_questions():
-            self.fields["question_%d" % q.pk] = forms.ChoiceField(
+            self.fields[f"question_{q.pk}"] = forms.ChoiceField(
                 label=q.text,
                 widget=forms.RadioSelect,
                 choices=(
@@ -46,13 +46,13 @@ class ConsentForm(forms.Form):
                     ]
                 ),
             )
-            self.fields["question_%d" % q.pk].widget.attrs["class"] = (
+            self.fields[f"question_{q.pk}"].widget.attrs["class"] = (
                 "required list-unstyled"
             )
 
 
 class SubjectDataForm(models.ModelForm):
-    """Generates the questions and answer fields for the demographic/participant data form."""
+    """Generates the questions and answer fields for the participant data form."""
 
     class Meta:
         """Configure model and hidden resolution fields."""
@@ -76,66 +76,61 @@ class SubjectDataForm(models.ModelForm):
         # type as appropriate.
         data = kwargs.get("data")
         for q in experiment.subject_questions():
+            field_name = f"question_{q.pk}"
             if q.question_type == Question.TEXT:
-                self.fields["question_%d" % q.pk] = forms.CharField(
+                self.fields[field_name] = forms.CharField(
                     label=q.text, widget=forms.Textarea(attrs={"rows": 1})
                 )
             elif q.question_type == Question.RADIO or q.question_type == Question.SEX:
                 question_choices = q.get_choices()
-                self.fields["question_%d" % q.pk] = forms.ChoiceField(
+                self.fields[field_name] = forms.ChoiceField(
                     label=q.text, widget=forms.RadioSelect, choices=question_choices
                 )
             elif q.question_type == Question.SELECT:
                 question_choices = q.get_choices()
                 # add an empty option at the top so that the user has to
                 # explicitly select one of the options
-                question_choices = tuple([("", "-------------")]) + question_choices
-                self.fields["question_%d" % q.pk] = forms.ChoiceField(
+                question_choices = (("", "-------------"), *question_choices)
+                self.fields[field_name] = forms.ChoiceField(
                     label=q.text, widget=forms.Select, choices=question_choices
                 )
             elif q.question_type == Question.SELECT_MULTIPLE:
                 question_choices = q.get_choices()
-                self.fields["question_%d" % q.pk] = forms.MultipleChoiceField(
+                self.fields[field_name] = forms.MultipleChoiceField(
                     label=q.text,
                     widget=forms.CheckboxSelectMultiple,
                     choices=question_choices,
                 )
             elif q.question_type == Question.INTEGER:
-                self.fields["question_%d" % q.pk] = forms.IntegerField(
+                self.fields[field_name] = forms.IntegerField(
                     label=q.text, localize=True
                 )
             elif q.question_type == Question.NUM_RANGE:
                 question_choices = q.get_choices()
-                self.fields["question_%d" % q.pk] = forms.IntegerField(
+                self.fields[field_name] = forms.IntegerField(
                     label=q.text,
                     min_value=int(question_choices[0][0]),
                     max_value=int(question_choices[1][0]),
                     localize=True,
                 )
-                self.fields["question_%d" % q.pk].widget.attrs["step"] = "1"
+                self.fields[field_name].widget.attrs["step"] = "1"
             elif q.question_type == Question.AGE:
-                self.fields["question_%d" % q.pk] = forms.DateField(
+                self.fields[field_name] = forms.DateField(
                     label=q.text,
                     initial=datetime.date.today,
                     widget=DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                 )
             # if the required, give it a corresponding css class.
             if q.required:
-                self.fields["question_%d" % q.pk].required = True
-                self.fields["question_%d" % q.pk].widget.attrs["class"] = (
-                    "required list-unstyled"
-                )
+                self.fields[field_name].required = True
+                self.fields[field_name].widget.attrs["class"] = "required list-unstyled"
             else:
-                self.fields["question_%d" % q.pk].required = False
-                self.fields["question_%d" % q.pk].widget.attrs["class"] = (
-                    "list-unstyled"
-                )
+                self.fields[field_name].required = False
+                self.fields[field_name].widget.attrs["class"] = "list-unstyled"
 
             # initialise the form filed with values from a POST request, if any.
             if data:
-                self.fields["question_%d" % q.pk].initial = data.get(
-                    "question_%d" % q.pk
-                )
+                self.fields[field_name].initial = data.get(field_name)
 
     def clean(self):
         """Validate responses and compute participant age from any date fields."""
@@ -210,8 +205,9 @@ class SubjectDataForm(models.ModelForm):
                     a.body = field_value
 
                 logger.info(
-                    'Creating answer to "%s" (question %d) of type %s: %s'
-                    % (a.question.text, q_id, a.question.question_type, field_value)
+                    f'Creating answer to "{a.question.text}" '
+                    f"(question {q_id}) of type "
+                    f"{a.question.question_type}: {field_value}"
                 )
                 a.subject_data = subjectData
                 a.save()
@@ -219,7 +215,7 @@ class SubjectDataForm(models.ModelForm):
 
 
 class QuestionInlineFormSet(models.BaseInlineFormSet):
-    """Formset for demographic questions that pre-populates default fields on first use."""
+    """Formset for demographic questions that pre-populates default fields."""
 
     def __init__(self, *args, **kwargs):
         """Pre-populate age/sex fields when no questions exist yet."""
@@ -282,10 +278,12 @@ class VocabularyChecklistForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if word:
-            self.fields["word_%s" % word] = forms.BooleanField(
-                label=word, widget=forms.CheckboxInput, required=False
+            field_name = f"word_{word}"
+            self.fields[field_name] = forms.BooleanField(
+                label=word,
+                required=False,
+                widget=forms.CheckboxInput(attrs={"class": "list-unstyled"}),
             )
-            self.fields["word_%s" % word].widget.attrs["class"] = "list-unstyled"
 
 
 class ImportForm(forms.Form):

@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def proceedToExperiment(experiment, run_uuid):
-    """Redirect to the webcam test or directly to the experiment run depending on the recording option."""
+    """Redirect to webcam test or experiment run based on the recording option."""
     # skip webcam/microphone test if experiment not configured to record video/audio.
     if experiment.recording_option == "NON" or experiment.recording_option == "EYE":
         return HttpResponseRedirect(
@@ -46,12 +46,12 @@ def proceedToExperiment(experiment, run_uuid):
 
 @login_required(next_url="/admin/experiments/experiment")
 def experimentReport(request, experiment_id):
-    """Generate the zip file containing the participants' results and webcam/audio data for an experiment."""
+    """Generate a zip of participant results and webcam/audio data for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
 
     r = Reporter(experiment)
     filename = r.create_report()
-    logger.info("Successfully created report with name %s." % filename)
+    logger.info(f"Successfully created report with name {filename}.")
 
     fs = FileSystemStorage(
         location=settings.REPORTS_ROOT, base_url=settings.REPORTS_URL
@@ -116,7 +116,8 @@ def consentFormSubmit(request, experiment_id):
     """Validate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(request.POST, experiment=experiment)
-    # on submit, require all answers to be yeses to proceed, else render consent fail page
+    # on submit, require all answers to be yeses to proceed,
+    # else render consent fail page
     if form.is_valid():
         for key, value in request.POST.items():
             if key.startswith("question_") and value.lower() == "no":
@@ -359,7 +360,8 @@ def experimentPause(request, run_uuid):
 
     # retrieve completed trials
     all_trial_results = TrialResult.objects.filter(subject=subject_data)
-    # retrieve the last trial result as a TrialItem is required for the creation of a TrialResult.
+    # retrieve the last trial result as a TrialItem is required
+    # for the creation of a TrialResult.
     last_trial_result = (
         all_trial_results.exclude(key_pressed="PAUSE").order_by("-id").first()
     )

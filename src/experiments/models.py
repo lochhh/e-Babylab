@@ -196,7 +196,10 @@ class Instrument(models.Model):
 
 
 class Experiment(models.Model):
-    """The first and outermost layer of an experiment where the general settings are defined."""
+    """The first and outermost layer of an experiment.
+
+    This is where the general settings are defined.
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -232,18 +235,27 @@ class Experiment(models.Model):
     )
     include_pause_page = models.BooleanField(
         default=True,
-        help_text="When global timeout is encountered / exit button is pressed, go to pause page instead of ending experiment immediately.",
+        help_text=(
+            "When global timeout is encountered / exit button is pressed,"
+            " go to pause page instead of ending experiment immediately."
+        ),
     )
     loading_image = FilerImageField(
         null=True,
         blank=True,
         related_name="experiment_loading_image",
         on_delete=models.SET_NULL,
-        help_text="Shown at the end of the experiment, if media recordings are still being uploaded.",
+        help_text=(
+            "Shown at the end of the experiment,"
+            " if media recordings are still being uploaded."
+        ),
     )
     show_gaze_estimations = models.BooleanField(
         default=False,
-        help_text="Display webgazer estimations during experiment (for debugging purposes).",
+        help_text=(
+            "Display webgazer estimations during experiment"
+            " (for debugging purposes)."
+        ),
     )
     ALL = "ALL"
     EYE = "EYE"
@@ -326,7 +338,10 @@ class Experiment(models.Model):
     typical_dev = models.BooleanField(
         "for typically-developing children",
         default=True,
-        help_text="Uncheck this box if experiment involves non-typically developing children.",
+        help_text=(
+            "Uncheck this box if experiment involves"
+            " non-typically developing children."
+        ),
     )
 
     def __str__(self):
@@ -487,7 +502,8 @@ def default_calibration_points():
 class TrialItem(models.Model):
     """The fifth and innermost layer of an experiment.
 
-    The order of trials can either be fixed or randomised, depending on the (inner) block settings.
+    The order of trials can either be fixed or randomised, depending on the (inner)
+    block settings.
     """
 
     NO = "NO"
@@ -521,31 +537,50 @@ class TrialItem(models.Model):
         max_length=200,
         blank=True,
         null=True,
-        help_text="Provide a comma-separated list if multiple response keys are allowed (e.g., click, up, down, left, right, a, b).",
+        help_text=(
+            "Provide a comma-separated list if multiple response keys are allowed "
+            "(e.g., click, up, down, left, right, a, b)."
+        ),
     )
     max_duration = models.IntegerField(
         mark_safe("maximum duration (ms)"),
-        help_text="This value will be ignored for video trials which do not require user input.",
+        help_text=(
+            "This value will be ignored for video trials"
+            " which do not require user input."
+        ),
     )
     record_media = models.BooleanField(
         default=True,
-        help_text="This value will be ignored if the experiment is set to record key/click responses only.",
+        help_text=(
+            "This value will be ignored if the experiment is set"
+            " to record key/click responses only."
+        ),
     )
     record_gaze = models.BooleanField(
         "enable eye-tracking",
         default=True,
-        help_text="This value will be ignored if the experiment is not set to record eye-tracking data.",
+        help_text=(
+            "This value will be ignored if the experiment is not set"
+            " to record eye-tracking data."
+        ),
     )
     is_calibration = models.BooleanField(
         "calibrate eye-tracker",
         default=False,
-        help_text="This value will be ignored if the experiment is not set to record eye-tracking data.",
+        help_text=(
+            "This value will be ignored if the experiment is not set"
+            " to record eye-tracking data."
+        ),
     )
     calibration_points = models.JSONField(
         default=default_calibration_points,
         null=False,
         help_text=mark_safe(
-            'These values will be ignored if "calibrate eye-tracker" is unchecked and the experiment is not set to record eye-tracking data.<br/>The duration for which each calibration point is shown is determined by dividing the <em>maximum duration</em> with the number of calibration points.'
+            'These values will be ignored if "calibrate eye-tracker" is unchecked'
+            " and the experiment is not set to record eye-tracking data.<br/>"
+            "The duration for which each calibration point is shown is determined"
+            " by dividing the <em>maximum duration</em> with the number of"
+            " calibration points."
         ),
     )
     grid_row = models.IntegerField("rows", default=1)
@@ -612,7 +647,7 @@ class SubjectData(models.Model):
 
     def __str__(self):
         """Return the participant session ID."""
-        return "%s" % (self.id)
+        return f"{self.id}"
 
 
 class TrialResult(models.Model):
@@ -661,7 +696,8 @@ def validate_list(value):
         raise ValidationError(
             {
                 "choices": (
-                    "The selected question type requires an associated list of choices. Choices must contain more than one item."
+                    "The selected question type requires an associated list of"
+                    " choices. Choices must contain more than one item."
                 )
             }
         )
@@ -676,7 +712,8 @@ def validate_range(value):
             raise ValidationError(
                 {
                     "choices": (
-                        "The selected question type requires a minimum and a maximum value."
+                        "The selected question type requires"
+                        " a minimum and a maximum value."
                     )
                 }
             )
@@ -691,8 +728,8 @@ def validate_range(value):
                     )
                 }
             )
-    except ValueError:
-        raise ValidationError({"choices": ("The values can only be integers.")})
+    except ValueError as e:
+        raise ValidationError({"choices": ("The values can only be integers.")}) from e
 
 
 class Question(models.Model):
@@ -730,7 +767,17 @@ class Question(models.Model):
     choices = models.TextField(
         blank=True,
         null=True,
-        help_text='For types "radio", "select", and "select multiple", provide a comma-separated list of options (e.g., a, b, c). For type "integer range", provide the min and max integers (e.g., 1, 10) for range check. For type "age", provide the min and max integers (in months) for age check (e.g., 12, 36 - for limiting participation to 1-to-3-year-olds). For type "sex", provide the female followed by the male display text (e.g., female, male).',
+        help_text=(
+            'For types "radio", "select", and "select multiple", provide a'
+            " comma-separated list of options (e.g., a, b, c)."
+            ' For type "integer range", provide the min and max integers'
+            " (e.g., 1, 10) for range check."
+            ' For type "age", provide the min and max integers (in months)'
+            " for age check (e.g., 12, 36 - for limiting participation to"
+            " 1-to-3-year-olds)."
+            ' For type "sex", provide the female followed by the male'
+            " display text (e.g., female, male)."
+        ),
     )
     position = models.PositiveSmallIntegerField("Position", null=True)
 
@@ -740,7 +787,7 @@ class Question(models.Model):
         ordering = ["position"]
 
     def clean(self):
-        """Validate that choice-based question types have a properly formatted choices field."""
+        """Validate choice-based question types have properly formatted choices."""
         if (
             self.question_type == Question.RADIO
             or self.question_type == Question.SELECT
@@ -755,7 +802,7 @@ class Question(models.Model):
             validate_range(self.choices)
 
     def get_choices(self):
-        """Parse the choices field and return a tuple formatted appropriately for the 'choices' argument of a form widget."""
+        """Parse choices into a tuple for the 'choices' argument of a form widget."""
         choices = self.choices.split(",")
         choices_list = []
         for c in choices:
@@ -771,7 +818,7 @@ class Question(models.Model):
 
 
 class AnswerBase(models.Model):
-    """The base class for the different answer types used in the demographic/participant data form.
+    """The base class for different answer types used in the participant data form.
 
     As with the Question model, an Answer can be 1 of 5 different types.
     """

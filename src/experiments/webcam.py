@@ -88,7 +88,7 @@ def webcam_upload(request, run_uuid):
             fs.delete(webcam_file.name)
 
         fs.save(get_valid_filename(webcam_file.name), webcam_file)
-        logger.info("Received upload request of %s." % webcam_file.name)
+        logger.info(f"Received upload request of {webcam_file.name}.")
         return HttpResponse(status=204)
 
     # Merge request
@@ -96,7 +96,7 @@ def webcam_upload(request, run_uuid):
         # Get base filename, by removing chunk number at the end
         base_filename = request.POST.get("filename")
         base_filename = get_valid_filename(base_filename)
-        logger.info("Received last file of %s, merge files." % base_filename)
+        logger.info(f"Received last file of {base_filename}, merge files.")
 
         # Find and merge individual chunks
         webcam_files = find_files(base_filename)
@@ -112,7 +112,7 @@ def webcam_upload(request, run_uuid):
             trial_result_id = int(request.POST.get("trialResultId"))
         except ValueError as e:
             logger.exception("Failed to retrieve trial result ID: " + str(e))
-            raise Http404("Invalid trialResultId.")
+            raise Http404("Invalid trialResultId.") from e
         trial_result = get_object_or_404(
             TrialResult, pk=trial_result_id, subject=run_uuid
         )
