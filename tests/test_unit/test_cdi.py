@@ -3,10 +3,10 @@
 import datetime
 import importlib
 import json
-from io import StringIO
 from types import SimpleNamespace
 
 import numpy as np
+import pandas as pd
 from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory
 
@@ -80,6 +80,14 @@ class FakeDF:
     def __hash__(self):
         """Return a stable hash based on object identity."""
         return id(self)
+
+    def __iter__(self):
+        """Support iteration (yields nothing) for dict(zip(...)) word-list parsing."""
+        return iter([])
+
+    def tolist(self):
+        """Support .tolist() calls; returns empty list."""
+        return []
 
 
 class Session(dict):
@@ -234,8 +242,6 @@ def test_sort_items_returns_descending_info_order(monkeypatch):
 def _patch_estimate_cdi_base(monkeypatch, sd, exp, instr, sex="female"):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     patch_cdi_results_empty(monkeypatch)
-    monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
-    monkeypatch.setattr(cdi.csv, "DictReader", lambda f, delimiter=",": [])
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=2.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
     patch_age_sex(monkeypatch, sex=sex)
@@ -297,12 +303,6 @@ def test_estimate_cdi_cdi_result_response_true_uses_lm_p_path(monkeypatch):
 
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
-    monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
-    monkeypatch.setattr(
-        cdi.csv,
-        "DictReader",
-        lambda f, delimiter=",": [{"word": "dog", "word_id": "1"}],
-    )
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=2.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
     patch_age_sex(monkeypatch, sex="female")
@@ -341,12 +341,6 @@ def test_estimate_cdi_cdi_result_response_false_uses_lm_np_path(monkeypatch):
 
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
-    monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
-    monkeypatch.setattr(
-        cdi.csv,
-        "DictReader",
-        lambda f, delimiter=",": [{"word": "cat", "word_id": "1"}],
-    )
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=1.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
     patch_age_sex(monkeypatch, sex="female")
@@ -364,13 +358,10 @@ def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
 
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
     patch_cdi_results_empty(monkeypatch)
-    monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
-    # Row missing 'word' key triggers KeyError on row["word"]
-    monkeypatch.setattr(
-        cdi.csv,
-        "DictReader",
-        lambda f, delimiter=",": [{"no_word_column": "x", "word_id": "1"}],
-    )
+    # Missing 'word' column in the words list CSV triggers KeyError
+    def _raising_read_csv(*_a, **_k):
+        raise KeyError("word")
+    monkeypatch.setattr(cdi.pd, "read_csv", _raising_read_csv)
     patch_age_sex(monkeypatch)
 
     result = cdi.estimate_cdi(sd.pk)
@@ -381,12 +372,17 @@ def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
 # ─── cdi_run ──────────────────────────────────────────────────────────────────
 
 
-def _patch_cdi_run(monkeypatch, sd, exp, instr, words=None):
+def _patch_cdi_run(monkeypatch, sd, exp, instr, raise_on_words=False):
     patch_get_object_or_404(monkeypatch, sd, exp, instr)
-    monkeypatch.setattr("builtins.open", lambda *a, **k: StringIO(""))
-    word_rows = words if words is not None else [{"word": "hello"}]
-    monkeypatch.setattr(cdi.csv, "DictReader", lambda f, delimiter=",": word_rows)
-    monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF())
+
+    def fake_read_csv(path, *_a, **_k):
+        if "words" in str(path):
+            if raise_on_words:
+                raise KeyError("word")
+            return pd.DataFrame({"word": ["hello"], "word_id": [1]})
+        return FakeDF()
+
+    monkeypatch.setattr(cdi.pd, "read_csv", fake_read_csv)
     monkeypatch.setattr(cdi, "sort_items", lambda arr: np.array([0]))
 
     class FakeInit:
@@ -439,7 +435,7 @@ def test_cdi_run_keyerror_returns_redirect(monkeypatch):
     exp = make_experiment()
     instr = make_instrument()
     # Row without 'word' key triggers KeyError on row["word"]
-    _patch_cdi_run(monkeypatch, sd, exp, instr, words=[{"no_word": "x"}])
+    _patch_cdi_run(monkeypatch, sd, exp, instr, raise_on_words=True)
 
     resp = cdi.cdi_run(request, sd.pk)
 
