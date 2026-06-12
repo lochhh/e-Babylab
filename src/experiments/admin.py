@@ -160,17 +160,20 @@ class QuestionInline(admin.StackedInline):
     formset = QuestionInlineFormSet
 
     def get_formset(self, request, obj=None, **kwargs):
-        """Return the formset, suppressing extra empty forms when questions already exist."""
+        """Return the formset.
+
+        Suppress extra empty forms when questions already exist.
+        """
         if obj is None:
-            return super(QuestionInline, self).get_formset(request, obj, **kwargs)
+            return super().get_formset(request, obj, **kwargs)
         kwargs["extra"] = 2
         if Question.objects.filter(experiment=obj).count():
             kwargs["extra"] = 0
-        return super(QuestionInline, self).get_formset(request, obj, **kwargs)
+        return super().get_formset(request, obj, **kwargs)
 
 
 class AnswerBaseInline(admin.StackedInline):
-    """Base read-only inline for displaying participant answers on a subject data record."""
+    """Base read-only inline for displaying participant answers on a subject data."""
 
     fields = ("question", "body")
     readonly_fields = ("question", "body")
@@ -178,7 +181,10 @@ class AnswerBaseInline(admin.StackedInline):
     inline_classes = ["grp-collapse grp-open"]
 
     def has_add_permission(self, request, obj=None):
-        """Disables adding of Answers as they should only be created during an experiment."""
+        """Disable adding Answers.
+
+        Answers should only be created during an experiment.
+        """
         return False
 
     def has_delete_permission(self, request, obj=None):
@@ -285,7 +291,7 @@ class TrialResultInline(admin.TabularInline):
     trial_maxduration.short_description = "Max duration"
 
     def response_time(self, obj):
-        """Return the elapsed response time as a string, or empty string if unavailable."""
+        """Return the elapsed response time as a string."""
         if obj.start_time and obj.end_time:
             return str(obj.end_time - obj.start_time)
         return ""
@@ -335,9 +341,7 @@ class InstrumentAdmin(admin.ModelAdmin):
             "help_text": INSTRUMENT_HELP_TEXT,
         }
         context.update(extra)
-        return super(InstrumentAdmin, self).render_change_form(
-            request, context, *args, **kwargs
-        )
+        return super().render_change_form(request, context, *args, **kwargs)
 
 
 class ExperimentAdmin(admin.ModelAdmin):
@@ -411,7 +415,7 @@ class ExperimentAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return a QuerySet of experiments the requesting user can access."""
-        qs = super(ExperimentAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(user=request.user)
         shared_to_group = Q(sharing_option="GRP")
@@ -603,7 +607,10 @@ class ExperimentAdmin(admin.ModelAdmin):
 
 
 class ListItemAdmin(admin.ModelAdmin):
-    """Admin for list items; hidden from the index and scoped to accessible experiments."""
+    """Admin for list items.
+
+    These are hidden from the index and scoped to accessible experiments.
+    """
 
     inlines = [OuterBlockItemInline]
     classes = ["grp-collapse grp-open"]
@@ -618,7 +625,7 @@ class ListItemAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return a QuerySet of list items the requesting user can access."""
-        qs = super(ListItemAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(experiment__user=request.user)
         shared_to_group = Q(experiment__sharing_option="GRP")
@@ -638,7 +645,10 @@ class ListItemAdmin(admin.ModelAdmin):
 
 
 class OuterBlockItemAdmin(admin.ModelAdmin):
-    """Admin for outer block items; hidden from the index and scoped to accessible experiments."""
+    """Admin for outer block items.
+
+    These are hidden from the index and scoped to accessible experiments.
+    """
 
     inlines = [BlockItemInline]
     classes = ["grp-collapse grp-open"]
@@ -657,7 +667,7 @@ class OuterBlockItemAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return a QuerySet of outer block items the requesting user can access."""
-        qs = super(OuterBlockItemAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(listitem__experiment__user=request.user)
         shared_to_group = Q(listitem__experiment__sharing_option="GRP")
@@ -677,7 +687,10 @@ class OuterBlockItemAdmin(admin.ModelAdmin):
 
 
 class BlockItemAdmin(admin.ModelAdmin):
-    """Admin for inner block items; hidden from the index and scoped to accessible experiments."""
+    """Admin for inner block items.
+
+    These are hidden from the index and scoped to accessible experiments.
+    """
 
     inlines = [TrialItemInline]
     list_display = ("label", "outerblockitem", "get_listitem", "get_experiment")
@@ -704,7 +717,7 @@ class BlockItemAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return a QuerySet of inner block items the requesting user can access."""
-        qs = super(BlockItemAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(outerblockitem__listitem__experiment__user=request.user)
         shared_to_group = Q(outerblockitem__listitem__experiment__sharing_option="GRP")
@@ -728,7 +741,7 @@ class BlockItemAdmin(admin.ModelAdmin):
 
 
 class SubjectDataAdmin(admin.ModelAdmin):
-    """Admin for participant session records, with all response and trial result inlines."""
+    """Admin for participant records, with all response and trial result inlines."""
 
     list_display = ("participant_id", "experiment", "listitem", "created")
     list_filter = ["experiment"]
@@ -760,7 +773,7 @@ class SubjectDataAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return a QuerySet of SubjectData the requesting user can access."""
-        qs = super(SubjectDataAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(experiment__user=request.user)
         shared_to_group = Q(experiment__sharing_option="GRP")
@@ -795,7 +808,10 @@ class SubjectDataAdmin(admin.ModelAdmin):
             return obj.experiment.user == request.user or request.user.is_superuser
 
     def has_add_permission(self, request, obj=None):
-        """Disable adding of SubjectData on the admin site as this should only be created during an experiment."""
+        """Disable adding SubjectData.
+
+        These should only be created during an experiment.
+        """
         return False
 
 
@@ -828,7 +844,7 @@ class TrialResultAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         """Exclude the raw webcam_file field; the link column is shown instead."""
         self.exclude = ("webcam_file",)
-        form = super(TrialResultAdmin, self).get_form(request, obj, **kwargs)
+        form = super().get_form(request, obj, **kwargs)
         return form
 
     webcam_file_link.allow_tags = True
@@ -836,7 +852,7 @@ class TrialResultAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Return trial results scoped to experiments the requesting user can access."""
-        qs = super(TrialResultAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         user_groups = request.user.groups.values_list("id", flat=True)
         user_owned = Q(subject__experiment__user=request.user)
         shared_to_group = Q(subject__experiment__sharing_option="GRP")
@@ -859,7 +875,7 @@ class TrialResultAdmin(admin.ModelAdmin):
         return {}
 
     def has_change_permission(self, request, obj=None):
-        """Allow changes only to trial results belonging to experiments the user can access."""
+        """Allow changes only to TrialResults of experiments the user can access."""
         user_groups = request.user.groups.values_list("id")
         if not obj or (
             obj.subject.experiment.sharing_option == "PUB"
@@ -888,4 +904,3 @@ admin.site.register(ListItem, ListItemAdmin)
 admin.site.register(OuterBlockItem, OuterBlockItemAdmin)
 admin.site.register(BlockItem, BlockItemAdmin)
 admin.site.register(SubjectData, SubjectDataAdmin)
-# admin.site.register(TrialResult, TrialResultAdmin)
