@@ -158,12 +158,12 @@ class SubjectDataForm(models.ModelForm):
 
     def save(self, commit=True):
         """Save the SubjectData object."""
-        subjectData = super().save(commit=False)
-        subjectData.experiment = self.experiment
-        subjectData.id = self.uuid
+        subject_data = super().save(commit=False)
+        subject_data.experiment = self.experiment
+        subject_data.id = self.uuid
         if SubjectData.objects.filter(experiment=self.experiment.pk):
             # get largest participant number
-            subjectData.participant_id = (
+            subject_data.participant_id = (
                 SubjectData.objects.filter(experiment=self.experiment.pk).aggregate(
                     Max("participant_id")
                 )["participant_id__max"]
@@ -171,8 +171,8 @@ class SubjectDataForm(models.ModelForm):
             )
         else:
             # first participant
-            subjectData.participant_id = 1
-        subjectData.save()
+            subject_data.participant_id = 1
+        subject_data.save()
 
         # create an answer object for each question and associate it with SubjectData.
         for field_name, field_value in self.cleaned_data.items():
@@ -209,9 +209,9 @@ class SubjectDataForm(models.ModelForm):
                     f"(question {q_id}) of type "
                     f"{a.question.question_type}: {field_value}"
                 )
-                a.subject_data = subjectData
+                a.subject_data = subject_data
                 a.save()
-        return subjectData
+        return subject_data
 
 
 class QuestionInlineFormSet(models.BaseInlineFormSet):

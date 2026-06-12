@@ -30,7 +30,7 @@ from .models import (
     Question,
     SubjectData,
 )
-from .views import proceedToExperiment
+from .views import proceed_to_experiment
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def sort_items(item_params):
     return (-inf_hpc(max_info_hpc(item_params), item_params)).argsort()
 
 
-def estimateCDI(run_uuid):
+def estimate_cdi(run_uuid):
     """Compute CDI estimates based on Mayor and Mani (2019)."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -70,7 +70,6 @@ def estimateCDI(run_uuid):
             all_words[row["word"]] = int(row["word_id"])
 
         # get child's age and sex
-        # age = (AnswerInteger.objects.filter(subject_data=subject_data, question__question_type='age').first()).body
         dob = datetime.date.fromisoformat(
             (
                 AnswerText.objects.filter(
@@ -112,7 +111,8 @@ def estimateCDI(run_uuid):
         x_values = np.arange(instr_num_words + 1)
 
         for cr in cdi_results:
-            # retrieve row number via word_id, assuming row numbers are the same across all data files
+            # retrieve row number via word_id
+            # assume row numbers are the same across all data files
             word_idx = lm_np_mean[
                 lm_np_mean["word_id"] == all_words.get(cr.given_label)
             ].index[0]
@@ -148,9 +148,9 @@ def estimateCDI(run_uuid):
             )
 
         # get index of max value in basis
-        B = np.where(basis == np.amax(basis))
-        B = int(B[0][0]) + 1
-        estimate = (B - bmin.at[0, str(age)]) / slope.at[0, str(age)]
+        b = np.where(basis == np.amax(basis))
+        b = int(b[0][0]) + 1
+        estimate = (b - bmin.at[0, str(age)]) / slope.at[0, str(age)]
 
         # store CDI estimate in subject_data
         subject_data.cdi_estimate = estimate
@@ -166,7 +166,7 @@ def estimateCDI(run_uuid):
         return estimate
 
 
-def cdiRun(request, run_uuid):
+def cdi_run(request, run_uuid):
     """Administer a CDI-IRT adaptive vocabulary checklist."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -225,7 +225,7 @@ def cdiRun(request, run_uuid):
         return HttpResponse(t.render(c))
 
 
-def cdiSubmit(request, run_uuid):
+def cdi_submit(request, run_uuid):
     """Store the submitted item response as a CdiResult."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -260,11 +260,11 @@ def cdiSubmit(request, run_uuid):
         if count_unique < experiment.num_words:
             request.session["irt_run"] = irt_run + 1
             # generate subsequent item
-            return cdiGenerateNextItem(request, run_uuid)
+            return cdi_generate_next_item(request, run_uuid)
         else:  # proceed to experiment or end page
-            estimateCDI(run_uuid)
+            estimate_cdi(run_uuid)
             if ListItem.objects.filter(experiment=experiment):
-                return proceedToExperiment(experiment, run_uuid)
+                return proceed_to_experiment(experiment, run_uuid)
             else:
                 return HttpResponseRedirect(
                     reverse("experiments:experimentEnd", args=(run_uuid,))
@@ -281,7 +281,7 @@ def cdiSubmit(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
-def cdiGenerateNextItem(request, run_uuid):
+def cdi_generate_next_item(request, run_uuid):
     """Generate and render the next adaptive CDI test item."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)

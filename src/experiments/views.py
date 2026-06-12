@@ -33,7 +33,7 @@ from .reporter import Reporter
 logger = logging.getLogger(__name__)
 
 
-def proceedToExperiment(experiment, run_uuid):
+def proceed_to_experiment(experiment, run_uuid):
     """Redirect to webcam test or experiment run based on the recording option."""
     # skip webcam/microphone test if experiment not configured to record video/audio.
     if experiment.recording_option == "NON" or experiment.recording_option == "EYE":
@@ -45,7 +45,7 @@ def proceedToExperiment(experiment, run_uuid):
 
 
 @login_required(next_url="/admin/experiments/experiment")
-def experimentReport(request, experiment_id):
+def experiment_report(request, experiment_id):
     """Generate a zip of participant results and webcam/audio data for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
 
@@ -60,9 +60,9 @@ def experimentReport(request, experiment_id):
     return redirect(fs.url(os.path.basename(filename)))
 
 
-def experimentExport(request, experiment_id):
+def experiment_export(request, experiment_id):
     """Export an experiment to a JSON file."""
-    json_data = ExperimentAdmin.exportToJSON(experiment_id)
+    json_data = ExperimentAdmin.export_to_json(experiment_id)
     response = HttpResponse(json.dumps(json_data), content_type="application/json")
     response["Content-Disposition"] = (
         'attachment; filename="'
@@ -72,19 +72,19 @@ def experimentExport(request, experiment_id):
     return response
 
 
-def experimentImport(request):
+def experiment_import(request):
     """Render the import page or the experiments list after import."""
     if request.method == "POST":
         form = ImportForm(request.POST, request.FILES)
         if form.is_valid():
             json_data = request.FILES["import_file"].read()
-            ExperimentAdmin.importFromJSON(request, json_data)
+            ExperimentAdmin.import_from_json(request, json_data)
             return redirect("/admin/experiments/experiment")
     form = ImportForm()
     return render(request, "admin/experiments/import_form.html", {"form": form})
 
 
-def informationPage(request, experiment_id):
+def information_page(request, experiment_id):
     """Generate the information/welcome page for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     t = Template(experiment.information_page_tpl)
@@ -92,7 +92,7 @@ def informationPage(request, experiment_id):
     return HttpResponse(t.render(c))
 
 
-def browserCheck(request, experiment_id):
+def browser_check(request, experiment_id):
     """Generate the browser check page for an experiment.
 
     Only Firefox and Chrome are supported.
@@ -103,7 +103,7 @@ def browserCheck(request, experiment_id):
     return HttpResponse(t.render(c))
 
 
-def consentForm(request, experiment_id):
+def consent_form(request, experiment_id):
     """Generate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(experiment=experiment)
@@ -112,7 +112,7 @@ def consentForm(request, experiment_id):
     return HttpResponse(t.render(c))
 
 
-def consentFormSubmit(request, experiment_id):
+def consent_form_submit(request, experiment_id):
     """Validate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(request.POST, experiment=experiment)
@@ -132,7 +132,7 @@ def consentFormSubmit(request, experiment_id):
     return HttpResponse(t.render(c))
 
 
-def subjectForm(request, experiment_id):
+def subject_form(request, experiment_id):
     """Generate the demographic/participant data form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
@@ -148,7 +148,7 @@ def subjectForm(request, experiment_id):
     return HttpResponse(t.render(c))
 
 
-def subjectFormSubmit(request, experiment_id):
+def subject_form_submit(request, experiment_id):
     """Validate the demographic/participant data form."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(request.POST, experiment=experiment)
@@ -191,21 +191,21 @@ def subjectFormSubmit(request, experiment_id):
                 reverse("experiments:vocabChecklist", args=(str(response.id),))
             )
         else:
-            return proceedToExperiment(experiment, str(response.id))
+            return proceed_to_experiment(experiment, str(response.id))
 
     return HttpResponse(t.render(c))
 
 
-def createTrialDict(trial, block, trial_number):
+def create_trial_dict(trial, block, trial_number):
     """Return a dictionary containing the details of a trial."""
     trial_type = ""
 
     if trial.visual_file:
         visual_file = trial.visual_file.url
-        _VIDEO_EXTS = {".mp4", ".ogg", ".webm"}
+        _video_exts = {".mp4", ".ogg", ".webm"}
         if (
             Path(trial.visual_file.original_filename or "").suffix.lower()
-            in _VIDEO_EXTS
+            in _video_exts
         ):
             trial_type = "video"
         else:
@@ -240,7 +240,7 @@ def createTrialDict(trial, block, trial_number):
 
 
 @ensure_csrf_cookie
-def experimentRun(request, run_uuid):
+def experiment_run(request, run_uuid):
     """Generate the (main) experimental task of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -294,7 +294,7 @@ def experimentRun(request, run_uuid):
             trial_items = [x for x in trial_items if x not in completed_trials]
 
             for t in trial_items:
-                trials.append(createTrialDict(t, b, trial_number))
+                trials.append(create_trial_dict(t, b, trial_number))
                 trial_number += 1
 
     except (
@@ -326,7 +326,7 @@ def experimentRun(request, run_uuid):
         return HttpResponse(t.render(c))
 
 
-def storeResult(request, run_uuid):
+def store_result(request, run_uuid):
     """Store the results of a trial to a TrialResult object."""
     if request.method == "POST":
         trialresult = TrialResult()
@@ -349,7 +349,7 @@ def storeResult(request, run_uuid):
         raise Http404("Page not found.")
 
 
-def experimentPause(request, run_uuid):
+def experiment_pause(request, run_uuid):
     """Generate the pause page of an experiment."""
     trial_id = None
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
@@ -386,7 +386,7 @@ def experimentPause(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
-def experimentError(request, run_uuid):
+def experiment_error(request, run_uuid):
     """Generate the error page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -395,7 +395,7 @@ def experimentError(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
-def experimentEnd(request, run_uuid):
+def experiment_end(request, run_uuid):
     """Generate the thank you/end page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
@@ -430,7 +430,7 @@ def experimentEnd(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
-def deleteSubject(request, run_uuid):
+def delete_subject(request, run_uuid):
     """Delete a participant's results at the end of the experiment."""
     if request.method == "POST":
         subject_data = get_object_or_404(SubjectData, pk=run_uuid)

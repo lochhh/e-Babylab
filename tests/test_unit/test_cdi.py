@@ -228,7 +228,7 @@ def test_sort_items_returns_descending_info_order(monkeypatch):
     assert ordering.tolist() == [2, 0, 1]
 
 
-# ─── estimateCDI ─────────────────────────────────────────────────────────────
+# ─── estimate_cdi ─────────────────────────────────────────────────────────────
 
 
 def _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female"):
@@ -248,7 +248,7 @@ def test_estimateCDI_female_branch_saves_and_returns_estimate(monkeypatch):
     instr = make_instrument()
     _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="female")
 
-    result = cdi.estimateCDI(sd.pk)
+    result = cdi.estimate_cdi(sd.pk)
 
     assert isinstance(result, (int, float))
     assert sd.cdi_estimate is not None
@@ -262,7 +262,7 @@ def test_estimateCDI_male_branch_saves_and_returns_estimate(monkeypatch):
     instr = make_instrument()
     _patch_estimateCDI_base(monkeypatch, sd, exp, instr, sex="male")
 
-    result = cdi.estimateCDI(sd.pk)
+    result = cdi.estimate_cdi(sd.pk)
 
     assert isinstance(result, (int, float))
     assert sd.cdi_estimate is not None
@@ -307,7 +307,7 @@ def test_estimateCDI_cdi_result_response_true_uses_lm_p_path(monkeypatch):
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
     patch_age_sex(monkeypatch, sex="female")
 
-    result = cdi.estimateCDI(sd.pk)
+    result = cdi.estimate_cdi(sd.pk)
 
     assert isinstance(result, (int, float))
 
@@ -351,7 +351,7 @@ def test_estimateCDI_cdi_result_response_false_uses_lm_np_path(monkeypatch):
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
     patch_age_sex(monkeypatch, sex="female")
 
-    result = cdi.estimateCDI(sd.pk)
+    result = cdi.estimate_cdi(sd.pk)
 
     assert isinstance(result, (int, float))
 
@@ -373,12 +373,12 @@ def test_estimateCDI_keyerror_returns_redirect(monkeypatch):
     )
     patch_age_sex(monkeypatch)
 
-    result = cdi.estimateCDI(sd.pk)
+    result = cdi.estimate_cdi(sd.pk)
 
     assert isinstance(result, HttpResponseRedirect)
 
 
-# ─── cdiRun ──────────────────────────────────────────────────────────────────
+# ─── cdi_run ──────────────────────────────────────────────────────────────────
 
 
 def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
@@ -401,7 +401,7 @@ def _patch_cdiRun(monkeypatch, sd, exp, instr, words=None):
 
 
 def test_cdiRun_success_sets_all_session_keys(monkeypatch):
-    """Verify successful cdiRun populates all expected session keys."""
+    """Verify successful cdi_run populates all expected session keys."""
     rf = RequestFactory()
     request = rf.get("/cdi/run/")
     request.session = Session()
@@ -411,7 +411,7 @@ def test_cdiRun_success_sets_all_session_keys(monkeypatch):
     instr = make_instrument()
     _patch_cdiRun(monkeypatch, sd, exp, instr)
 
-    resp = cdi.cdiRun(request, sd.pk)
+    resp = cdi.cdi_run(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
     for key in (
@@ -441,12 +441,12 @@ def test_cdiRun_keyerror_returns_redirect(monkeypatch):
     # Row without 'word' key triggers KeyError on row["word"]
     _patch_cdiRun(monkeypatch, sd, exp, instr, words=[{"no_word": "x"}])
 
-    resp = cdi.cdiRun(request, sd.pk)
+    resp = cdi.cdi_run(request, sd.pk)
 
     assert isinstance(resp, HttpResponseRedirect)
 
 
-# ─── cdiSubmit ───────────────────────────────────────────────────────────────
+# ─── cdi_submit ───────────────────────────────────────────────────────────────
 
 
 def _make_submit_session(irt_run=0, words=None, responses=None):
@@ -491,7 +491,7 @@ def _patch_cdiSubmit_common(monkeypatch, sd, exp, unique_count):
 
 
 def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
-    """When the form is invalid, cdiSubmit re-renders the CDI page."""
+    """When the form is invalid, cdi_submit re-renders the CDI page."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={})
     request.session = _make_submit_session()
@@ -505,7 +505,7 @@ def test_cdiSubmit_invalid_form_rerenders_template(monkeypatch):
         lambda *a, **k: SimpleNamespace(is_valid=lambda: False),
     )
 
-    resp = cdi.cdiSubmit(request, sd.pk)
+    resp = cdi.cdi_submit(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
     assert not isinstance(resp, HttpResponseRedirect)
@@ -531,12 +531,12 @@ def test_cdiSubmit_valid_not_enough_unique_calls_generate_next(monkeypatch):
     generate_called = {}
     monkeypatch.setattr(
         cdi,
-        "cdiGenerateNextItem",
+        "cdi_generate_next_item",
         lambda req, run_uuid: generate_called.__setitem__("called", True)
         or HttpResponse("next"),
     )
 
-    resp = cdi.cdiSubmit(request, sd.pk)
+    resp = cdi.cdi_submit(request, sd.pk)
 
     assert generate_called.get("called") is True
     assert request.session["irt_run"] == 1
@@ -559,18 +559,18 @@ def test_cdiSubmit_valid_enough_words_no_list_items_redirects_end(monkeypatch):
         "VocabularyChecklistForm",
         lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
     )
-    monkeypatch.setattr(cdi, "estimateCDI", lambda run_uuid: 0.5)
+    monkeypatch.setattr(cdi, "estimate_cdi", lambda run_uuid: 0.5)
     monkeypatch.setattr(
         cdi, "ListItem", SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: []))
     )
 
-    resp = cdi.cdiSubmit(request, sd.pk)
+    resp = cdi.cdi_submit(request, sd.pk)
 
     assert isinstance(resp, HttpResponseRedirect)
 
 
 def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
-    """When count >= num_words and list items exist, calls proceedToExperiment."""
+    """When count >= num_words and list items exist, calls proceed_to_experiment."""
     rf = RequestFactory()
     request = rf.post("/cdi/submit/", data={"word_hello": "1"})
     request.session = _make_submit_session()
@@ -585,23 +585,23 @@ def test_cdiSubmit_valid_enough_words_with_list_items_proceeds(monkeypatch):
         "VocabularyChecklistForm",
         lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
     )
-    monkeypatch.setattr(cdi, "estimateCDI", lambda run_uuid: 0.5)
+    monkeypatch.setattr(cdi, "estimate_cdi", lambda run_uuid: 0.5)
     monkeypatch.setattr(
         cdi,
         "ListItem",
         SimpleNamespace(objects=SimpleNamespace(filter=lambda **k: [1])),
     )
     monkeypatch.setattr(
-        cdi, "proceedToExperiment", lambda exp, run_uuid: HttpResponse("proceed")
+        cdi, "proceed_to_experiment", lambda exp, run_uuid: HttpResponse("proceed")
     )
 
-    resp = cdi.cdiSubmit(request, sd.pk)
+    resp = cdi.cdi_submit(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
     assert resp.content == b"proceed"
 
 
-# ─── cdiGenerateNextItem ─────────────────────────────────────────────────────
+# ─── cdi_generate_next_item ─────────────────────────────────────────────────────
 
 
 def _make_next_item_session(est_theta=0.0):
@@ -648,7 +648,7 @@ def test_cdiGenerateNextItem_finite_theta_uses_maxinfoselector(monkeypatch):
         lambda: SimpleNamespace(select=lambda **k: np.array(1)),
     )
 
-    resp = cdi.cdiGenerateNextItem(request, sd.pk)
+    resp = cdi.cdi_generate_next_item(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
     assert not isinstance(resp, HttpResponseRedirect)
@@ -672,7 +672,7 @@ def test_cdiGenerateNextItem_infinite_theta_uses_sort_items(monkeypatch):
     )
     monkeypatch.setattr(cdi, "sort_items", lambda arr: np.array([0, 1]))
 
-    resp = cdi.cdiGenerateNextItem(request, sd.pk)
+    resp = cdi.cdi_generate_next_item(request, sd.pk)
 
     assert isinstance(resp, HttpResponse)
     assert not isinstance(resp, HttpResponseRedirect)
@@ -693,6 +693,6 @@ def test_cdiGenerateNextItem_keyerror_returns_redirect(monkeypatch):
 
     monkeypatch.setattr(cdi.pd, "read_json", raise_key_error)
 
-    resp = cdi.cdiGenerateNextItem(request, sd.pk)
+    resp = cdi.cdi_generate_next_item(request, sd.pk)
 
     assert isinstance(resp, HttpResponseRedirect)

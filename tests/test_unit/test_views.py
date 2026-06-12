@@ -1,11 +1,4 @@
-"""Unit tests for experiments/views.py.
-
-Covers: proceedToExperiment, createTrialDict, experimentReport, experimentExport,
-        experimentImport, informationPage, browserCheck, consentForm,
-        consentFormSubmit, subjectForm, subjectFormSubmit, experimentRun,
-        storeResult, experimentPause, experimentError, experimentEnd,
-        deleteSubject, index.
-"""
+"""Unit tests for experiments/views.py."""
 
 import json
 import uuid
@@ -14,7 +7,7 @@ import pytest
 from django.urls import reverse
 
 from experiments import models as exp_models
-from experiments.views import createTrialDict, proceedToExperiment
+from experiments.views import create_trial_dict, proceed_to_experiment
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -89,12 +82,12 @@ def _mock_block(background_colour="#FFFFFF"):
 
 
 # ---------------------------------------------------------------------------
-# proceedToExperiment
+# proceed_to_experiment
 # ---------------------------------------------------------------------------
 
 
 class TestProceedToExperiment:
-    """Tests for the proceedToExperiment helper function."""
+    """Tests for the proceed_to_experiment helper function."""
 
     @pytest.mark.parametrize("recording_option", ["NON", "EYE"])
     def test_non_or_eye_redirects_to_experiment_run(self, recording_option):
@@ -103,7 +96,7 @@ class TestProceedToExperiment:
 
         experiment = MagicMock(recording_option=recording_option)
         run_uuid = str(uuid.uuid4())
-        response = proceedToExperiment(experiment, run_uuid)
+        response = proceed_to_experiment(experiment, run_uuid)
         assert response.status_code == 302
         assert response["Location"] == reverse(
             "experiments:experimentRun", args=(run_uuid,)
@@ -116,7 +109,7 @@ class TestProceedToExperiment:
 
         experiment = MagicMock(recording_option=recording_option)
         run_uuid = str(uuid.uuid4())
-        response = proceedToExperiment(experiment, run_uuid)
+        response = proceed_to_experiment(experiment, run_uuid)
         assert response.status_code == 302
         assert response["Location"] == reverse(
             "experiments:webcamTest", args=(run_uuid,)
@@ -124,16 +117,16 @@ class TestProceedToExperiment:
 
 
 # ---------------------------------------------------------------------------
-# createTrialDict
+# create_trial_dict
 # ---------------------------------------------------------------------------
 
 
 class TestCreateTrialDict:
-    """Tests for the createTrialDict helper function."""
+    """Tests for the create_trial_dict helper function."""
 
     def test_no_media_files_returns_empty_strings_and_blank_type(self):
         """Verify empty strings and blank trial_type when no media files are set."""
-        result = createTrialDict(
+        result = create_trial_dict(
             _mock_trial(visual_file=None, audio_file=None), _mock_block(), 1
         )
         assert result["visual_file"] == ""
@@ -145,7 +138,7 @@ class TestCreateTrialDict:
         from unittest.mock import MagicMock
 
         vf = MagicMock(url="/media/clip.mp4", original_filename="clip.mp4")
-        result = createTrialDict(_mock_trial(visual_file=vf), _mock_block(), 1)
+        result = create_trial_dict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/clip.mp4"
         assert result["trial_type"] == "video"
 
@@ -154,7 +147,7 @@ class TestCreateTrialDict:
         from unittest.mock import MagicMock
 
         vf = MagicMock(url="/media/img.png", original_filename="img.png")
-        result = createTrialDict(_mock_trial(visual_file=vf), _mock_block(), 1)
+        result = create_trial_dict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/img.png"
         assert result["trial_type"] == "image"
 
@@ -163,24 +156,24 @@ class TestCreateTrialDict:
         from unittest.mock import MagicMock
 
         af = MagicMock(url="/media/sound.mp3")
-        result = createTrialDict(_mock_trial(audio_file=af), _mock_block(), 1)
+        result = create_trial_dict(_mock_trial(audio_file=af), _mock_block(), 1)
         assert result["audio_file"] == "/media/sound.mp3"
 
     def test_response_keys_parsed_to_lowercase_stripped_list(self):
         """Verify response_keys are lowercased and stripped into a list."""
-        result = createTrialDict(
+        result = create_trial_dict(
             _mock_trial(response_keys="Left, Right"), _mock_block(), 1
         )
         assert result["response_keys"] == ["left", "right"]
 
     def test_null_response_keys_defaults_to_list_with_empty_string(self):
         """Verify null response_keys produces a list with a single empty string."""
-        result = createTrialDict(_mock_trial(response_keys=None), _mock_block(), 1)
+        result = create_trial_dict(_mock_trial(response_keys=None), _mock_block(), 1)
         assert result["response_keys"] == [""]
 
     def test_calibration_points_included_when_is_calibration(self):
         """Verify calibration_points are included when is_calibration is True."""
-        result = createTrialDict(
+        result = create_trial_dict(
             _mock_trial(is_calibration=True, calibration_points=[[50, 50]]),
             _mock_block(),
             1,
@@ -190,7 +183,7 @@ class TestCreateTrialDict:
 
     def test_calibration_points_empty_when_not_calibration(self):
         """Verify calibration_points is empty when is_calibration is False."""
-        result = createTrialDict(
+        result = create_trial_dict(
             _mock_trial(is_calibration=False, calibration_points=[[50, 50]]),
             _mock_block(),
             1,
@@ -200,20 +193,20 @@ class TestCreateTrialDict:
 
     def test_trial_id_and_number_set_correctly(self):
         """Verify trial_id and trial_number are set from the trial and its position."""
-        result = createTrialDict(_mock_trial(tid=42), _mock_block(), 7)
+        result = create_trial_dict(_mock_trial(tid=42), _mock_block(), 7)
         assert result["trial_id"] == 42
         assert result["trial_number"] == 7
 
     def test_background_colour_comes_from_block(self):
         """Verify background_colour is taken from the block, not the trial."""
-        result = createTrialDict(
+        result = create_trial_dict(
             _mock_trial(), _mock_block(background_colour="#123456"), 1
         )
         assert result["background_colour"] == "#123456"
 
     def test_all_expected_keys_present(self):
         """Verify all expected keys are present in the returned trial dict."""
-        result = createTrialDict(_mock_trial(), _mock_block(), 1)
+        result = create_trial_dict(_mock_trial(), _mock_block(), 1)
         expected_keys = {
             "trial_id",
             "trial_number",
@@ -339,9 +332,9 @@ class TestExperimentImport:
     def test_post_with_valid_file_calls_import_and_redirects(
         self, client, user, experiment_factory, mocker
     ):
-        """Verify a POST with a valid JSON file calls importFromJSON and redirects."""
+        """Verify a POST with a valid JSON file calls import_from_json and redirects."""
         exp = _simple_experiment(experiment_factory)
-        mock_import = mocker.patch("experiments.views.ExperimentAdmin.importFromJSON")
+        mock_import = mocker.patch("experiments.views.ExperimentAdmin.import_from_json")
         url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
 

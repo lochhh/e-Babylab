@@ -507,14 +507,14 @@ class TestExperimentAdmin:
         blockitem_factory,
         trialitem_factory,
     ):
-        """Verify exportToJSON returns all expected top-level keys with correct PKs."""
+        """Verify export_to_json returns all expected top-level keys with correct PKs."""
         ex = experiment_factory()
         li = listitem_factory(experiment=ex)
         ob = outerblock_factory(listitem=li)
         bi = blockitem_factory(outerblock=ob)
         ti = trialitem_factory(blockitem=bi)
 
-        data = ExperimentAdmin.exportToJSON(ex.id)
+        data = ExperimentAdmin.export_to_json(ex.id)
 
         assert "experiment" in data
         assert "lists" in data
@@ -530,21 +530,21 @@ class TestExperimentAdmin:
     def test_export_to_json_includes_questions(
         self, experiment_factory, question_factory, consent_question_factory
     ):
-        """Verify exportToJSON separates questions into their keys."""
+        """Verify export_to_json separates questions into their keys."""
         ex = experiment_factory()
         question_factory(experiment=ex, text="Q1")
         consent_question_factory(experiment=ex, text="Consent?")
 
-        data = ExperimentAdmin.exportToJSON(ex.id)
+        data = ExperimentAdmin.export_to_json(ex.id)
         assert len(data["questions"]) == 1
         assert len(data["consentquestions"]) == 1
 
     def test_import_from_json_creates_new_experiment(
         self, experiment_factory, user, rf
     ):
-        """Verify importFromJSON creates a new experiment owned by the request user."""
+        """Verify import_from_json creates a new experiment owned by the request user."""
         ex = experiment_factory()
-        data = ExperimentAdmin.exportToJSON(ex.id)
+        data = ExperimentAdmin.export_to_json(ex.id)
         json_bytes = json.dumps(data).encode("utf-8")
 
         new_user = User.objects.create_user(username="importer", password="pass")
@@ -553,7 +553,7 @@ class TestExperimentAdmin:
 
         initial_count = Experiment.objects.count()
         before = timezone.now()
-        ExperimentAdmin.importFromJSON(request, json_bytes)
+        ExperimentAdmin.import_from_json(request, json_bytes)
         after = timezone.now()
 
         assert Experiment.objects.count() == initial_count + 1
@@ -573,7 +573,7 @@ class TestExperimentAdmin:
         user,
         rf,
     ):
-        """Verify importFromJSON recreates the full experiment hierarchy."""
+        """Verify import_from_json recreates the full experiment hierarchy."""
         ex = experiment_factory()
         li = listitem_factory(experiment=ex)
         ob = outerblock_factory(listitem=li)
@@ -582,13 +582,13 @@ class TestExperimentAdmin:
         question_factory(experiment=ex)
         consent_question_factory(experiment=ex)
 
-        data = ExperimentAdmin.exportToJSON(ex.id)
+        data = ExperimentAdmin.export_to_json(ex.id)
         json_bytes = json.dumps(data).encode("utf-8")
 
         request = rf.post("/")
         request.user = user
 
-        ExperimentAdmin.importFromJSON(request, json_bytes)
+        ExperimentAdmin.import_from_json(request, json_bytes)
 
         assert Experiment.objects.count() == 2
         assert ListItem.objects.count() == 2

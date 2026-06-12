@@ -10,38 +10,38 @@ app_name = "experiments"
 urlpatterns = [
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/information/$",
-        views.informationPage,
+        views.information_page,
         name="informationPage",
     ),
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/browsercheck/$",
-        views.browserCheck,
+        views.browser_check,
         name="browserCheck",
     ),
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/consentform/$",
-        views.consentForm,
+        views.consent_form,
         name="consentForm",
     ),
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/consentform/submit$",
-        views.consentFormSubmit,
+        views.consent_form_submit,
         name="consentFormSubmit",
     ),
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/form/$",
-        views.subjectForm,
+        views.subject_form,
         name="subjectForm",
     ),
     re_path(
         r"^(?P<experiment_id>[0-9A-Fa-f-]+)/form/submit$",
-        views.subjectFormSubmit,
+        views.subject_form_submit,
         name="subjectFormSubmit",
     ),
-    re_path(r"^(?P<run_uuid>[0-9A-Fa-f-]+)/vocab$", cdi.cdiRun, name="vocabChecklist"),
+    re_path(r"^(?P<run_uuid>[0-9A-Fa-f-]+)/vocab$", cdi.cdi_run, name="vocabChecklist"),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/vocab/submit$",
-        cdi.cdiSubmit,
+        cdi.cdi_submit,
         name="vocabChecklistSubmit",
     ),
     re_path(
@@ -53,7 +53,7 @@ urlpatterns = [
         name="webcamUpload",
     ),
     re_path(
-        r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run$", views.experimentRun, name="experimentRun"
+        r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run$", views.experiment_run, name="experimentRun"
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/upload$",
@@ -62,42 +62,42 @@ urlpatterns = [
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/storeresult$",
-        views.storeResult,
+        views.store_result,
         name="storeResult",
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/pause$",
-        views.experimentPause,
+        views.experiment_pause,
         name="experimentPause",
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/thankyou$",
-        views.experimentEnd,
+        views.experiment_end,
         name="experimentEnd",
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/deletesubject$",
-        views.deleteSubject,
+        views.delete_subject,
         name="deleteSubject",
     ),
     re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/error$",
-        views.experimentError,
+        views.experiment_error,
         name="experimentError",
     ),
     re_path(r"^$", views.index, name="index"),
     re_path(
         r"^admin/experiments/experiment/(?P<experiment_id>[0-9A-Fa-f-]+)/report$",
-        views.experimentReport,
+        views.experiment_report,
         name="experimentReport",
     ),
     re_path(
         r"^admin/experiments/experiment/(?P<experiment_id>[0-9A-Fa-f-]+)/export$",
-        views.experimentExport,
+        views.experiment_export,
         name="experimentExport",
     ),
     re_path(
-        r"^admin/experiments/import$", views.experimentImport, name="experimentImport"
+        r"^admin/experiments/import$", views.experiment_import, name="experimentImport"
     ),
     re_path("^accounts/", admin.site.urls),
 ]

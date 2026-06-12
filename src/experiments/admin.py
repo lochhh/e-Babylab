@@ -481,7 +481,7 @@ class ExperimentAdmin(admin.ModelAdmin):
     experiment_buttons.short_description = "Actions"
 
     @staticmethod
-    def exportToJSON(experiment_id):
+    def export_to_json(experiment_id):
         """Create a JSON object of the experiment to be exported."""
         # Get all data
         experiment = Experiment.objects.filter(pk=experiment_id)
@@ -515,7 +515,7 @@ class ExperimentAdmin(admin.ModelAdmin):
         return json_data
 
     @staticmethod
-    def importFromJSON(request, data):
+    def import_from_json(request, data):
         """Import an experiment from JSON file data."""
         json_data = data.decode("utf-8")
 
@@ -537,16 +537,16 @@ class ExperimentAdmin(admin.ModelAdmin):
             json_data = json_data.replace(old_primary_key, new_primary_key)
 
         # Import lists
-        for listItem in serializers.deserialize(
+        for list_item in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["lists"])
         ):
-            old_primary_key = str(listItem.object.id)
+            old_primary_key = str(list_item.object.id)
 
-            listItem.object.id = None
+            list_item.object.id = None
 
             # Save as new list
-            listItem.save()
-            new_primary_key = str(listItem.object.id)
+            list_item.save()
+            new_primary_key = str(list_item.object.id)
 
             # Replace all list ids
             json_data = json_data.replace(
@@ -554,16 +554,16 @@ class ExperimentAdmin(admin.ModelAdmin):
             )
 
         # Import outer blocks
-        for outerBlockItem in serializers.deserialize(
+        for outer_block_item in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["outerblocks"])
         ):
-            old_primary_key = str(outerBlockItem.object.id)
+            old_primary_key = str(outer_block_item.object.id)
 
-            outerBlockItem.object.id = None
+            outer_block_item.object.id = None
 
             # Save as new outer block
-            outerBlockItem.save()
-            new_primary_key = str(outerBlockItem.object.id)
+            outer_block_item.save()
+            new_primary_key = str(outer_block_item.object.id)
 
             # Replace all outer block ids
             json_data = json_data.replace(
@@ -572,16 +572,16 @@ class ExperimentAdmin(admin.ModelAdmin):
             )
 
         # Import inner blocks
-        for innerBlockItem in serializers.deserialize(
+        for inner_block_item in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["innerblocks"])
         ):
-            old_primary_key = str(innerBlockItem.object.id)
+            old_primary_key = str(inner_block_item.object.id)
 
-            innerBlockItem.object.id = None
+            inner_block_item.object.id = None
 
             # Save as new inner block
-            innerBlockItem.save()
-            new_primary_key = str(innerBlockItem.object.id)
+            inner_block_item.save()
+            new_primary_key = str(inner_block_item.object.id)
 
             # Replace all inner block ids
             json_data = json_data.replace(
@@ -589,16 +589,16 @@ class ExperimentAdmin(admin.ModelAdmin):
             )
 
         # Import trials
-        for trialItem in serializers.deserialize(
+        for trial_item in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["trials"])
         ):
-            old_primary_key = str(trialItem.object.id)
+            old_primary_key = str(trial_item.object.id)
 
-            trialItem.object.id = None
+            trial_item.object.id = None
 
             # Save as new trial
-            trialItem.save()
-            new_primary_key = str(trialItem.object.id)
+            trial_item.save()
+            new_primary_key = str(trial_item.object.id)
 
         # Import questions
         for question in serializers.deserialize(
@@ -613,16 +613,16 @@ class ExperimentAdmin(admin.ModelAdmin):
             new_primary_key = str(question.object.id)
 
         # Import consent questions
-        for consentQuestion in serializers.deserialize(
+        for consent_question in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["consentquestions"])
         ):
-            old_primary_key = str(consentQuestion.object.id)
+            old_primary_key = str(consent_question.object.id)
 
-            consentQuestion.object.id = None
+            consent_question.object.id = None
 
             # Save as new consent question
-            consentQuestion.save()
-            new_primary_key = str(consentQuestion.object.id)
+            consent_question.save()
+            new_primary_key = str(consent_question.object.id)
 
 
 class ListItemAdmin(admin.ModelAdmin):
