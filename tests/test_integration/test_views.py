@@ -194,7 +194,7 @@ class TestSubjectFormGet:
 
 
 # ---------------------------------------------------------------------------
-# subjectFormSubmit (POST) - reCAPTCHA mocked
+# subjectFormSubmit (POST) - Turnstile mocked
 # ---------------------------------------------------------------------------
 
 
@@ -205,7 +205,7 @@ class TestSubjectFormSubmit:
     def test_valid_submission_creates_subject_data(
         self, client, simple_experiment, mocker
     ):
-        """Verify a valid form submitted with passing reCAPTCHA creates SubjectData."""
+        """Verify a valid form submitted with passing Turnstile creates SubjectData."""
         mocker.patch(
             "experiments.views.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": True}),
@@ -216,7 +216,7 @@ class TestSubjectFormSubmit:
             {
                 "resolution_w": 1920,
                 "resolution_h": 1080,
-                "g-recaptcha-response": "token",
+                "cf-turnstile-response": "token",
             },
         )
         assert response.status_code == 302
@@ -226,10 +226,10 @@ class TestSubjectFormSubmit:
         )
 
     @pytest.mark.django_db
-    def test_failed_recaptcha_does_not_create_subject(
+    def test_failed_turnstile_does_not_create_subject(
         self, client, simple_experiment, mocker
     ):
-        """Verify a failing reCAPTCHA prevents SubjectData creation."""
+        """Verify a failing Turnstile prevents SubjectData creation."""
         mocker.patch(
             "experiments.views.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": False}),
@@ -237,7 +237,7 @@ class TestSubjectFormSubmit:
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         response = client.post(
             url,
-            {"resolution_w": 1920, "resolution_h": 1080, "g-recaptcha-response": "bad"},
+            {"resolution_w": 1920, "resolution_h": 1080, "cf-turnstile-response": "bad"},
         )
         assert response.status_code == 200
         assert (
@@ -256,7 +256,7 @@ class TestSubjectFormSubmit:
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         response = client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "g-recaptcha-response": "token"}
+            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
         )
         # NON recording → direct to experimentRun
         assert response.status_code == 302
@@ -273,10 +273,10 @@ class TestSubjectFormSubmit:
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "g-recaptcha-response": "token"}
+            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
         )
         client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "g-recaptcha-response": "token"}
+            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
         )
         ids = list(
             exp_models.SubjectData.objects.filter(experiment=simple_experiment)
