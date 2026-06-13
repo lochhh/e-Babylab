@@ -381,3 +381,18 @@ class TestImportFromZip:
         ).first()
         assert imported is not None
         assert imported.loading_image is None
+
+    @pytest.mark.django_db
+    def test_import_invalid_zip_raises(self, mock_request):
+        """Non-ZIP bytes raise ValueError with a descriptive message."""
+        with pytest.raises(ValueError, match="not a valid ZIP"):
+            import_from_zip(mock_request, b"this is not a zip file")
+
+    @pytest.mark.django_db
+    def test_import_zip_missing_experiment_json_raises(self, mock_request):
+        """ZIP without experiment.json raises ValueError with a descriptive message."""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("other.txt", "irrelevant")
+        with pytest.raises(ValueError, match="experiment.json not found"):
+            import_from_zip(mock_request, buf.getvalue())

@@ -89,8 +89,12 @@ def experiment_import(request):
         form = ImportForm(request.POST, request.FILES)
         if form.is_valid():
             zip_data = request.FILES["import_file"].read()
-            import_from_zip(request, zip_data)
-            return redirect("/admin/experiments/experiment")
+            try:
+                import_from_zip(request, zip_data)
+            except ValueError as e:
+                form.add_error("import_file", str(e))
+            else:
+                return redirect("/admin/experiments/experiment")
     else:
         form = ImportForm()
     return render(request, "admin/experiments/import_form.html", {"form": form})

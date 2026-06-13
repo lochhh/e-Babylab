@@ -135,8 +135,18 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             :func:`export_to_zip`.
     """
     buf = io.BytesIO(zip_bytes)
-    with zipfile.ZipFile(buf, "r") as zf:
-        raw = json.loads(zf.read("experiment.json").decode("utf-8"))
+    try:
+        zip_file = zipfile.ZipFile(buf, "r")
+    except zipfile.BadZipFile:
+        raise ValueError("The uploaded file is not a valid ZIP archive.")
+
+    with zip_file:
+        try:
+            raw = json.loads(zip_file.read("experiment.json").decode("utf-8"))
+        except KeyError:
+            raise ValueError(
+                "Invalid experiment archive: experiment.json not found in the ZIP."
+            )
         json_str = json.dumps(raw)
 
         exp_name = raw["experiment"][0]["fields"]["exp_name"]
@@ -169,7 +179,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
                     exp_folder, _ = Folder.objects.get_or_create(
                         name=exp_name, parent=experiments_root
                     )
-                file_bytes = zf.read(meta["zip_path"])
+                file_bytes = zip_file.read(meta["zip_path"])
                 filer_obj = (
                     FilerImage(original_filename=filename, folder=exp_folder)
                     if is_image

@@ -129,3 +129,31 @@ class TestExperimentImportView:
         response = client.post(url, {})
 
         assert response.status_code == 200
+
+    @pytest.mark.django_db
+    def test_post_invalid_zip_shows_error(self, client):
+        """POST with a non-ZIP file re-renders the form with a field error."""
+        url = reverse("experiments:experimentImport")
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        bad_file = SimpleUploadedFile("bad.zip", b"not a zip", content_type="application/zip")
+        response = client.post(url, {"import_file": bad_file})
+
+        assert response.status_code == 200
+        assert b"not a valid ZIP" in response.content
+
+    @pytest.mark.django_db
+    def test_post_zip_missing_experiment_json_shows_error(self, client):
+        """POST with a ZIP lacking experiment.json re-renders with a field error."""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("other.txt", "irrelevant")
+
+        url = reverse("experiments:experimentImport")
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        bad_zip = SimpleUploadedFile("bad.zip", buf.getvalue(), content_type="application/zip")
+        response = client.post(url, {"import_file": bad_zip})
+
+        assert response.status_code == 200
+        assert b"experiment.json not found" in response.content
