@@ -280,13 +280,13 @@ class TestExperimentReport:
 class TestExperimentExport:
     """Tests for the experimentExport view."""
 
-    def test_returns_json_response(self, client, experiment_factory):
-        """Verify the export view returns a JSON response with status 200."""
+    def test_returns_zip_response(self, client, experiment_factory):
+        """Verify the export view returns a ZIP response with status 200."""
         exp = _simple_experiment(experiment_factory)
         url = reverse("experiments:experimentExport", args=(str(exp.pk),))
         response = client.get(url)
         assert response.status_code == 200
-        assert response["Content-Type"] == "application/json"
+        assert response["Content-Type"] == "application/zip"
 
     def test_content_disposition_contains_experiment_name(
         self, client, experiment_factory
@@ -298,12 +298,16 @@ class TestExperimentExport:
         assert "MyExperiment" in response["Content-Disposition"]
         assert "attachment" in response["Content-Disposition"]
 
-    def test_exported_json_contains_experiment_key(self, client, experiment_factory):
-        """Verify the exported JSON contains the experiment and lists keys."""
+    def test_exported_zip_contains_experiment_key(self, client, experiment_factory):
+        """Verify the exported ZIP's experiment.json contains experiment and lists keys."""
+        import io
+        import zipfile
+
         exp = _simple_experiment(experiment_factory)
         url = reverse("experiments:experimentExport", args=(str(exp.pk),))
         response = client.get(url)
-        data = json.loads(response.content)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            data = json.loads(zf.read("experiment.json"))
         assert "experiment" in data
         assert "lists" in data
 
@@ -338,15 +342,15 @@ class TestExperimentImport:
     def test_post_with_valid_file_calls_import_and_redirects(
         self, client, user, experiment_factory, mocker
     ):
-        """Verify a POST with a valid JSON file calls import_from_json and redirects."""
+        """Verify a POST with a valid ZIP file calls import_from_zip and redirects."""
         exp = _simple_experiment(experiment_factory)
-        mock_import = mocker.patch("experiments.views.ExperimentAdmin.import_from_json")
+        mock_import = mocker.patch("experiments.views.import_from_zip")
         url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        json_content = json.dumps({"experiment": [], "lists": []}).encode()
+        zip_content = b"PK\x05\x06" + b"\x00" * 18  # minimal ZIP end-of-central-dir
         file_obj = SimpleUploadedFile(
-            "exp.json", json_content, content_type="application/json"
+            "exp.zip", zip_content, content_type="application/zip"
         )
         response = client.post(url, {"import_file": file_obj})
         assert response.status_code == 302
