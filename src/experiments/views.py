@@ -33,10 +33,12 @@ from .reporter import Reporter
 logger = logging.getLogger(__name__)
 
 
-def _verify_recaptcha(response_token):
+def _verify_turnstile(response_token):
+    if not settings.CLOUDFLARE_TURNSTILE_SECRET_KEY:
+        return True
     result = requests.post(
-        "https://www.google.com/recaptcha/api/siteverify",
-        data={"secret": settings.GOOGLE_RECAPTCHA_SECRET_KEY, "response": response_token},
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        data={"secret": settings.CLOUDFLARE_TURNSTILE_SECRET_KEY, "response": response_token},
     ).json()
     return result["success"]
 
@@ -164,7 +166,7 @@ def subject_form(request, experiment_id):
         {
             "subject_data_form": form,
             "experiment": experiment,
-            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+            "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
         },
     )
 
@@ -175,16 +177,16 @@ def subject_form_submit(request, experiment_id):
     form = SubjectDataForm(request.POST, experiment=experiment)
 
     if form.is_valid():
-        if not _verify_recaptcha(request.POST.get("g-recaptcha-response")):
-            logger.info("Invalid reCAPTCHA for experiment %s", experiment_id)
+        if not _verify_turnstile(request.POST.get("cf-turnstile-response")):
+            logger.info("Turnstile verification failed for experiment %s", experiment_id)
             return _render_tpl(
                 request,
                 experiment.demographic_data_page_tpl,
                 {
                     "subject_data_form": form,
                     "experiment": experiment,
-                    "error_message": "Invalid reCAPTCHA. Please try again.",
-                    "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+                    "error_message": "Security check failed. Please try again.",
+                    "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
                 },
             )
         response = form.save()
@@ -202,7 +204,7 @@ def subject_form_submit(request, experiment_id):
         {
             "subject_data_form": form,
             "experiment": experiment,
-            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+            "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
         },
     )
 
