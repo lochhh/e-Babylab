@@ -92,6 +92,81 @@ INSTRUMENT_HELP_TEXT = format_html(
 )
 
 
+# ---------------------------------------------------------------------------
+# Mixins
+# ---------------------------------------------------------------------------
+
+
+class HiddenFromIndexMixin:
+    """Hides a ModelAdmin from the Django admin index page."""
+
+    def get_model_perms(self, request):
+        """Return empty perms dict thus hiding the model from admin index."""
+        return {}
+
+
+class ExperimentScopedQuerysetMixin:
+    """Scopes get_queryset to experiments visible to the requesting user.
+
+    Subclasses must set experiment_lookup_prefix to the double-underscore ORM
+    path from their model to the Experiment fields, e.g. "experiment__" or
+    "listitem__experiment__". Use "" when the model IS the Experiment.
+    """
+
+    experiment_lookup_prefix = ""
+
+    def get_queryset(self, request):
+        """Return a queryset scoped to experiments visible to the requesting user."""
+        qs = super().get_queryset(request)
+        p = self.experiment_lookup_prefix
+        user_groups = request.user.groups.values_list("id", flat=True)
+        if request.user.is_superuser:
+            return qs
+        user_owned = Q(**{f"{p}user": request.user})
+        shared_grp = Q(**{f"{p}sharing_option": "GRP"})
+        shared_user_grps = Q(**{f"{p}sharing_groups__in": user_groups})
+        shared_pub = Q(**{f"{p}sharing_option": "PUB"})
+        if request.user.groups.exists():
+            return qs.filter(user_owned | shared_pub | shared_grp & shared_user_grps)
+        return qs.filter(user_owned | shared_pub)
+
+
+class ExperimentScopedPermissionMixin:
+    """Implements has_change_permission based on experiment sharing rules.
+
+    Subclasses must set experiment_obj_path to the dot-separated attribute path
+    from the admin object to its Experiment, e.g. "" (obj is the experiment),
+    "experiment", or "subject.experiment".
+    """
+
+    experiment_obj_path = ""
+
+    def _get_experiment(self, obj):
+        exp = obj
+        for attr in self.experiment_obj_path.split("."):
+            if attr:
+                exp = getattr(exp, attr)
+        return exp
+
+    def has_change_permission(self, request, obj=None):
+        """Allow changes only when the user owns, shares, or is a superuser."""
+        user_groups = request.user.groups.values_list("id")
+        if not obj:
+            return True
+        exp = self._get_experiment(obj)
+        if exp.sharing_option == "PUB" or (
+            exp.sharing_option == "GRP"
+            and user_groups.intersection(exp.sharing_groups.values_list("id"))
+        ):
+            return True
+        return exp.user == request.user or request.user.is_superuser
+
+
+# ---------------------------------------------------------------------------
+# Inlines
+# ---------------------------------------------------------------------------
+
+
 class TrialItemInline(admin.StackedInline):
     """Inline admin for editing trial items within a block item."""
 
@@ -211,34 +286,18 @@ class AnswerBaseInline(admin.StackedInline):
         return False
 
 
-class AnswerTextInline(AnswerBaseInline):
-    """Inline for displaying free-text answers."""
-
-    model = AnswerText
-
-
-class AnswerRadioInline(AnswerBaseInline):
-    """Inline for displaying radio-button answers."""
-
-    model = AnswerRadio
+def _answer_inline(answer_model):
+    """Return a read-only StackedInline subclass for the given answer model."""
+    return type(
+        f"{answer_model.__name__}Inline", (AnswerBaseInline,), {"model": answer_model}
+    )
 
 
-class AnswerSelectInline(AnswerBaseInline):
-    """Inline for displaying single-select dropdown answers."""
-
-    model = AnswerSelect
-
-
-class AnswerSelectMultipleInline(AnswerBaseInline):
-    """Inline for displaying multi-select answers."""
-
-    model = AnswerSelectMultiple
-
-
-class AnswerIntegerInline(AnswerBaseInline):
-    """Inline for displaying integer answers."""
-
-    model = AnswerInteger
+AnswerTextInline = _answer_inline(AnswerText)
+AnswerRadioInline = _answer_inline(AnswerRadio)
+AnswerSelectInline = _answer_inline(AnswerSelect)
+AnswerSelectMultipleInline = _answer_inline(AnswerSelectMultiple)
+AnswerIntegerInline = _answer_inline(AnswerInteger)
 
 
 class CdiResultInline(admin.TabularInline):
@@ -324,7 +383,6 @@ class TrialResultInline(admin.TabularInline):
         else:
             return "-"
 
-    webcam_file_link.allow_tags = True
     webcam_file_link.short_description = "Webcam file"
 
     def has_add_permission(self, request, obj=None):
@@ -350,6 +408,11 @@ class ConsentQuestionInline(admin.StackedInline):
     )
 
 
+# ---------------------------------------------------------------------------
+# ModelAdmin classes
+# ---------------------------------------------------------------------------
+
+
 class InstrumentAdmin(admin.ModelAdmin):
     """Admin for CDI instrument definitions."""
 
@@ -363,8 +426,15 @@ class InstrumentAdmin(admin.ModelAdmin):
         return super().render_change_form(request, context, *args, **kwargs)
 
 
-class ExperimentAdmin(admin.ModelAdmin):
+class ExperimentAdmin(
+    ExperimentScopedQuerysetMixin,
+    ExperimentScopedPermissionMixin,
+    admin.ModelAdmin,
+):
     """Admin for experiments, scoped to experiments the requesting user can access."""
+
+    experiment_lookup_prefix = ""
+    experiment_obj_path = ""
 
     form = ExperimentForm
     fieldsets = [
@@ -432,40 +502,6 @@ class ExperimentAdmin(admin.ModelAdmin):
             obj.user = request.user
         obj.save()
 
-    def get_queryset(self, request):
-        """Return a QuerySet of experiments the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(user=request.user)
-        shared_to_group = Q(sharing_option="GRP")
-        shared_to_user_groups = Q(sharing_groups__in=user_groups)
-        shared_to_everyone = Q(sharing_option="PUB")
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_everyone
-                | shared_to_group & shared_to_user_groups
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-    def has_change_permission(self, request, obj=None):
-        """Check whether the requesting user has permission to change an experiment."""
-        user_groups = request.user.groups.values_list("id")
-        if not obj or (
-            obj.sharing_option == "PUB"
-            or (
-                obj.sharing_option == "GRP"
-                and user_groups.intersection(obj.sharing_groups.values_list("id"))
-            )
-        ):
-            return True
-        else:
-            return obj.user == request.user or request.user.is_superuser
-
     def experiment_buttons(self, obj):
         """Display action buttons for the Experiment admin interface."""
         return format_html(
@@ -477,7 +513,6 @@ class ExperimentAdmin(admin.ModelAdmin):
             url_export=reverse("experiments:experimentExport", args=[obj.id]),
         )
 
-    experiment_buttons.allow_tags = True
     experiment_buttons.short_description = "Actions"
 
     @staticmethod
@@ -592,44 +627,35 @@ class ExperimentAdmin(admin.ModelAdmin):
         for trial_item in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["trials"])
         ):
-            old_primary_key = str(trial_item.object.id)
-
             trial_item.object.id = None
-
-            # Save as new trial
             trial_item.save()
-            new_primary_key = str(trial_item.object.id)
 
         # Import questions
         for question in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["questions"])
         ):
-            old_primary_key = str(question.object.id)
-
             question.object.id = None
-
-            # Save as new question
             question.save()
-            new_primary_key = str(question.object.id)
 
         # Import consent questions
         for consent_question in serializers.deserialize(
             "json", json.dumps(json.loads(json_data)["consentquestions"])
         ):
-            old_primary_key = str(consent_question.object.id)
-
             consent_question.object.id = None
-
-            # Save as new consent question
             consent_question.save()
-            new_primary_key = str(consent_question.object.id)
 
 
-class ListItemAdmin(admin.ModelAdmin):
+class ListItemAdmin(
+    HiddenFromIndexMixin,
+    ExperimentScopedQuerysetMixin,
+    admin.ModelAdmin,
+):
     """Admin for list items.
 
     These are hidden from the index and scoped to accessible experiments.
     """
+
+    experiment_lookup_prefix = "experiment__"
 
     inlines = [OuterBlockItemInline]
     classes = ["grp-collapse grp-open"]
@@ -638,36 +664,18 @@ class ListItemAdmin(admin.ModelAdmin):
         "experiment",
     )
 
-    def get_model_perms(self, request):
-        """Return empty perms dict thus hiding the model from admin index."""
-        return {}
 
-    def get_queryset(self, request):
-        """Return a QuerySet of list items the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(experiment__user=request.user)
-        shared_to_group = Q(experiment__sharing_option="GRP")
-        shared_to_user_groups = Q(experiment__sharing_groups__in=user_groups)
-        shared_to_everyone = Q(experiment__sharing_option="PUB")
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_everyone
-                | shared_to_group & shared_to_user_groups
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-
-class OuterBlockItemAdmin(admin.ModelAdmin):
+class OuterBlockItemAdmin(
+    HiddenFromIndexMixin,
+    ExperimentScopedQuerysetMixin,
+    admin.ModelAdmin,
+):
     """Admin for outer block items.
 
     These are hidden from the index and scoped to accessible experiments.
     """
+
+    experiment_lookup_prefix = "listitem__experiment__"
 
     inlines = [BlockItemInline]
     classes = ["grp-collapse grp-open"]
@@ -680,36 +688,18 @@ class OuterBlockItemAdmin(admin.ModelAdmin):
     get_experiment.admin_order_field = "listitem"  # allow column order sorting
     get_experiment.short_description = "Experiment"  # rename column head
 
-    def get_model_perms(self, request):
-        """Return empty perms dict thus hiding the model from admin index."""
-        return {}
 
-    def get_queryset(self, request):
-        """Return a QuerySet of outer block items the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(listitem__experiment__user=request.user)
-        shared_to_group = Q(listitem__experiment__sharing_option="GRP")
-        shared_to_user_groups = Q(listitem__experiment__sharing_groups__in=user_groups)
-        shared_to_everyone = Q(listitem__experiment__sharing_option="PUB")
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_group & shared_to_user_groups
-                | shared_to_everyone
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-
-class BlockItemAdmin(admin.ModelAdmin):
+class BlockItemAdmin(
+    HiddenFromIndexMixin,
+    ExperimentScopedQuerysetMixin,
+    admin.ModelAdmin,
+):
     """Admin for inner block items.
 
     These are hidden from the index and scoped to accessible experiments.
     """
+
+    experiment_lookup_prefix = "outerblockitem__listitem__experiment__"
 
     inlines = [TrialItemInline]
     list_display = ("label", "outerblockitem", "get_listitem", "get_experiment")
@@ -730,37 +720,16 @@ class BlockItemAdmin(admin.ModelAdmin):
     )
     get_experiment.short_description = "Experiment"  # rename column head
 
-    def get_model_perms(self, request):
-        """Return empty perms dict thus hiding the model from admin index."""
-        return {}
 
-    def get_queryset(self, request):
-        """Return a QuerySet of inner block items the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(outerblockitem__listitem__experiment__user=request.user)
-        shared_to_group = Q(outerblockitem__listitem__experiment__sharing_option="GRP")
-        shared_to_user_groups = Q(
-            outerblockitem__listitem__experiment__sharing_groups__in=user_groups
-        )
-        shared_to_everyone = Q(
-            outerblockitem__listitem__experiment__sharing_option="PUB"
-        )
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_group & shared_to_user_groups
-                | shared_to_everyone
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-
-class SubjectDataAdmin(admin.ModelAdmin):
+class SubjectDataAdmin(
+    ExperimentScopedQuerysetMixin,
+    ExperimentScopedPermissionMixin,
+    admin.ModelAdmin,
+):
     """Admin for participant records, with all response and trial result inlines."""
+
+    experiment_lookup_prefix = "experiment__"
+    experiment_obj_path = "experiment"
 
     list_display = ("participant_id", "experiment", "listitem", "created")
     list_filter = ["experiment"]
@@ -790,42 +759,6 @@ class SubjectDataAdmin(admin.ModelAdmin):
         "participant_id",
     )
 
-    def get_queryset(self, request):
-        """Return a QuerySet of SubjectData the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(experiment__user=request.user)
-        shared_to_group = Q(experiment__sharing_option="GRP")
-        shared_to_user_groups = Q(experiment__sharing_groups__in=user_groups)
-        shared_to_everyone = Q(experiment__sharing_option="PUB")
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_group & shared_to_user_groups
-                | shared_to_everyone
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-    def has_change_permission(self, request, obj=None):
-        """Check whether the requesting user has permission to change subject data."""
-        user_groups = request.user.groups.values_list("id")
-        if not obj or (
-            obj.experiment.sharing_option == "PUB"
-            or (
-                obj.experiment.sharing_option == "GRP"
-                and user_groups.intersection(
-                    obj.experiment.sharing_groups.values_list("id")
-                )
-            )
-        ):
-            return True
-        else:
-            return obj.experiment.user == request.user or request.user.is_superuser
-
     def has_add_permission(self, request, obj=None):
         """Disable adding SubjectData.
 
@@ -834,8 +767,16 @@ class SubjectDataAdmin(admin.ModelAdmin):
         return False
 
 
-class TrialResultAdmin(admin.ModelAdmin):
+class TrialResultAdmin(
+    HiddenFromIndexMixin,
+    ExperimentScopedQuerysetMixin,
+    ExperimentScopedPermissionMixin,
+    admin.ModelAdmin,
+):
     """Admin view for TrialResult (currently unused; kept for reference)."""
+
+    experiment_lookup_prefix = "subject__experiment__"
+    experiment_obj_path = "subject.experiment"
 
     list_display = (
         "subject",
@@ -866,50 +807,7 @@ class TrialResultAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         return form
 
-    webcam_file_link.allow_tags = True
     webcam_file_link.short_description = "Webcam file"
-
-    def get_queryset(self, request):
-        """Return trial results scoped to experiments the requesting user can access."""
-        qs = super().get_queryset(request)
-        user_groups = request.user.groups.values_list("id", flat=True)
-        user_owned = Q(subject__experiment__user=request.user)
-        shared_to_group = Q(subject__experiment__sharing_option="GRP")
-        shared_to_user_groups = Q(subject__experiment__sharing_groups__in=user_groups)
-        shared_to_everyone = Q(subject__experiment__sharing_option="PUB")
-
-        if request.user.is_superuser:
-            return qs
-        elif request.user.groups.exists():  # user belongs to group(s)
-            return qs.filter(
-                user_owned
-                | shared_to_group & shared_to_user_groups
-                | shared_to_everyone
-            )
-        else:
-            return qs.filter(user_owned | shared_to_everyone)
-
-    def get_model_perms(self, request):
-        """Return empty perms dict thus hiding the model from admin index."""
-        return {}
-
-    def has_change_permission(self, request, obj=None):
-        """Allow changes only to TrialResults of experiments the user can access."""
-        user_groups = request.user.groups.values_list("id")
-        if not obj or (
-            obj.subject.experiment.sharing_option == "PUB"
-            or (
-                obj.subject.experiment.sharing_option == "GRP"
-                and user_groups.intersection(
-                    obj.subject.experiment.sharing_groups.values_list("id")
-                )
-            )
-        ):
-            return True
-        else:
-            return (
-                obj.subject.experiment.user == request.user or request.user.is_superuser
-            )
 
     def has_add_permission(self, request, obj=None):
         """Disable adding trial results; they are created during experiment runs."""
