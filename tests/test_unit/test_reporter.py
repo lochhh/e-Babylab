@@ -1,16 +1,4 @@
-"""Unit tests that cover reporter.py behaviour.
-
-These tests exercise the Reporter class and its methods
-- __init__ (ensure it creates an empty zipfile and sets up paths correctly)
-- calc_trial_duration (test numeric and missing time inputs)
-- calc_roi_response (test with various coordinate inputs and grid/resolution settings,
-  including edge cases like coordinates on the boundary, or out-of-bounds coordinates)
-- gcd (test with various pairs of integers, including edge cases)
-- create_*_worksheet methods (test that they return the expected objects containing
-  expected data, and that they handle empty datasets gracefully)
-- create_report (test that it produces a .zip file with the expected structure and
-  contents)
-"""
+"""Unit tests that cover reporter.py behaviour."""
 
 import importlib
 import pathlib
@@ -209,27 +197,6 @@ def test_calc_roi_response(reporter, result_coords, expected):
         trialitem=SimpleNamespace(grid_row=2, grid_col=2),
     )
     assert reporter.calc_roi_response(trial_result, result_coords) == expected
-
-
-# ---------------------------------------------------------------------------
-# gcd
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "a,b,expected",
-    [
-        (48, 18, 6),  # common divisor case
-        (18, 48, 6),  # gcd is commutative/symmetric
-        (7, 3, 1),  # coprime case
-        (5, 0, 5),  # base case: gcd(a, 0) == a
-        (0, 5, 5),  # base case: gcd(0, b) == b
-        (0, 0, 0),  # edge case: gcd(0, 0) is conventionally defined as 0
-    ],
-)
-def test_gcd(reporter, a, b, expected):
-    """Tests gcd with various pairs of integers, including edge cases."""
-    assert reporter.gcd(a, b) == expected
 
 
 # ---------------------------------------------------------------------------

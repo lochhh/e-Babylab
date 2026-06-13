@@ -4,6 +4,7 @@ import contextlib
 import datetime
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -127,12 +128,6 @@ class Reporter:
             return f"({row_num},{col_num})"
         return ""
 
-    def gcd(self, a, b):
-        """Calculate greatest common divisor of a and b using Euclidean algorithm."""
-        if b == 0:
-            return a
-        return self.gcd(b, a % b)
-
     def _resolve_answer_value(self, answer_base, participation_date):
         qt = answer_base.question.question_type
         if qt == Question.AGE:
@@ -150,7 +145,7 @@ class Reporter:
 
     def create_subject_worksheet(self, subject):
         """Create a dataframe per subject containing consent and subject form data."""
-        gcd = self.gcd(subject.resolution_w, subject.resolution_h) or 1
+        gcd = math.gcd(subject.resolution_w, subject.resolution_h) or 1
         aspect = f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}"
         try:
             subject_data = {
