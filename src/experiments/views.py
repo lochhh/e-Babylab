@@ -330,19 +330,17 @@ def experiment_run(request, run_uuid):
 @require_POST
 def store_result(request, run_uuid):
     """Store the results of a trial to a TrialResult object."""
-    trialresult = TrialResult()
-    trialresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
-    trialresult.trialitem = get_object_or_404(
-        TrialItem, pk=int(request.POST.get("trialitem"))
+    trialresult = TrialResult.objects.create(
+        subject=get_object_or_404(SubjectData, pk=run_uuid),
+        trialitem=get_object_or_404(TrialItem, pk=int(request.POST.get("trialitem"))),
+        start_time=request.POST.get("start_time"),
+        end_time=request.POST.get("end_time"),
+        key_pressed=request.POST.get("key_pressed"),
+        trial_number=int(request.POST.get("trial_number")),
+        resolution_w=int(request.POST.get("resolution_w")),
+        resolution_h=int(request.POST.get("resolution_h")),
+        webgazer_data=json.loads(request.POST.get("webgazer_data")),
     )
-    trialresult.start_time = request.POST.get("start_time")
-    trialresult.end_time = request.POST.get("end_time")
-    trialresult.key_pressed = request.POST.get("key_pressed")
-    trialresult.trial_number = int(request.POST.get("trial_number"))
-    trialresult.resolution_w = int(request.POST.get("resolution_w"))
-    trialresult.resolution_h = int(request.POST.get("resolution_h"))
-    trialresult.webgazer_data = json.loads(request.POST.get("webgazer_data"))
-    trialresult.save()
     return JsonResponse({"resultId": trialresult.pk})
 
 
@@ -364,12 +362,12 @@ def experiment_pause(request, run_uuid):
     )
 
     if last_trial_result:  # only store pause as trial result when not the first trial
-        trialresult = TrialResult()
-        trialresult.subject = subject_data
-        trialresult.trialitem = last_trial_result.trialitem
-        trialresult.key_pressed = "PAUSE"
-        trialresult.trial_number = all_trial_results.count() + 1
-        trialresult.save()
+        TrialResult.objects.create(
+            subject=subject_data,
+            trialitem=last_trial_result.trialitem,
+            key_pressed="PAUSE",
+            trial_number=all_trial_results.count() + 1,
+        )
 
     t = Template(experiment.pause_page_tpl)
     c = RequestContext(
