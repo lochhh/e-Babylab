@@ -610,6 +610,15 @@ class TestExperimentForm:
         form.is_valid()
         assert "sharing_groups" not in form.errors
 
+    @pytest.mark.parametrize("sharing_option", ["PUB", "OWN"])
+    def test_clean_sharing_groups_raises_when_groups_selected_without_grp_option(
+        self, group, sharing_option
+    ):
+        """Verify error when groups are selected but sharing_option is not GRP."""
+        form = self._bound_form(sharing_option, [group])
+        assert not form.is_valid()
+        assert "sharing_groups" in form.errors
+
 
 # ---------------------------------------------------------------------------
 # VocabularyChecklistForm

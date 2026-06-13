@@ -223,12 +223,17 @@ class ExperimentForm(forms.ModelForm):
     )
 
     def clean_sharing_groups(self):
-        """Check that at least one group is selected for group-shared experiments."""
+        """Validate sharing_groups is consistent with sharing_option."""
         sharing_option = self.cleaned_data.get("sharing_option")
         groups = self.cleaned_data.get("sharing_groups")
 
         if sharing_option == "GRP" and not groups:
             raise ValidationError("Please select at least one group.")
+        if groups and sharing_option != "GRP":
+            raise ValidationError(
+                'Groups are selected but sharing is not set to "Group members only".'
+                " Either choose that option or clear the groups."
+            )
         return groups
 
 
