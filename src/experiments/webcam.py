@@ -1,8 +1,9 @@
 """Views for webcam/microphone recording and file upload handling."""
 
 import logging
-import os.path
+import shutil
 import uuid
+from pathlib import Path
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -55,7 +56,7 @@ def webcam_test_upload(request, run_uuid):
         )
 
         # Generate random file name
-        extension = os.path.splitext(webcam_file.name)[1]
+        extension = Path(webcam_file.name).suffix
         random_file_name = str(uuid.uuid4()) + extension
         filename = fs.save(random_file_name, webcam_file)
 
@@ -125,33 +126,19 @@ def webcam_upload(request, run_uuid):
 
 def find_files(base_filename):
     """Retrieve uploaded chunk filenames matching the given base filename."""
-    result = []
-    for fname in os.listdir(settings.WEBCAM_ROOT):
-        if fname.startswith(base_filename + "-"):
-            result.append(fname)
-
-    # Sort alphabetically
-    result.sort()
-
-    return result
+    root = Path(settings.WEBCAM_ROOT)
+    return sorted(p.name for p in root.glob(f"{base_filename}-*"))
 
 
 def merge_files(target, files):
     """Merge chunk files into a single target file."""
-    fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
+    root = Path(settings.WEBCAM_ROOT)
+    destination = root / target
 
-    destination_file = os.path.join(settings.WEBCAM_ROOT, target)
+    if destination.exists():
+        destination.unlink()
 
-    # Delete any existing file
-    if fs.exists(target):
-        fs.delete(target)
-
-    # Merge
-    with open(destination_file, "wb") as outfile:
+    with destination.open("wb") as outfile:
         for fname in files:
-            with open(os.path.join(settings.WEBCAM_ROOT, fname), "rb") as infile:
-                while True:
-                    data = infile.read(65536)
-                    if not data:
-                        break
-                    outfile.write(data)
+            with (root / fname).open("rb") as infile:
+                shutil.copyfileobj(infile, outfile)
