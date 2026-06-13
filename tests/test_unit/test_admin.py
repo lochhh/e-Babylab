@@ -26,10 +26,12 @@ from experiments.admin import (
 )
 from experiments.models import (
     BlockItem,
+    ConsentQuestion,
     Experiment,
     Instrument,
     ListItem,
     OuterBlockItem,
+    Question,
     SubjectData,
     TrialItem,
     TrialResult,
@@ -595,6 +597,8 @@ class TestExperimentAdmin:
         assert OuterBlockItem.objects.count() == 2
         assert BlockItem.objects.count() == 2
         assert TrialItem.objects.count() == 2
+        assert Question.objects.count() == 2
+        assert ConsentQuestion.objects.count() == 2
 
 
 # ---------------------------------------------------------------------------

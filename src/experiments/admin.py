@@ -546,91 +546,72 @@ class ExperimentAdmin(
         json_data = data.decode("utf-8")
 
         # Import experiment
+        parsed = json.loads(json_data)
         for experiment in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["experiment"])
+            "json", json.dumps(parsed["experiment"])
         ):
-            old_primary_key = str(experiment.object.id)
-
+            old_pk = str(experiment.object.id)
             experiment.object.created_on = timezone.now()
             experiment.object.user = request.user
             experiment.object.id = None
-
-            # Save as new experiment
             experiment.save()
-            new_primary_key = str(experiment.object.id)
-
-            # Replace all experiment ids
-            json_data = json_data.replace(old_primary_key, new_primary_key)
+            json_data = json_data.replace(old_pk, str(experiment.object.id))
 
         # Import lists
+        parsed = json.loads(json_data)
         for list_item in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["lists"])
+            "json", json.dumps(parsed["lists"])
         ):
-            old_primary_key = str(list_item.object.id)
-
+            old_pk = str(list_item.object.id)
             list_item.object.id = None
-
-            # Save as new list
             list_item.save()
-            new_primary_key = str(list_item.object.id)
-
-            # Replace all list ids
+            new_pk = str(list_item.object.id)
             json_data = json_data.replace(
-                f'"listitem": {old_primary_key},', f'"listitem": {new_primary_key},'
+                f'"listitem": {old_pk},', f'"listitem": {new_pk},'
             )
 
         # Import outer blocks
+        parsed = json.loads(json_data)
         for outer_block_item in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["outerblocks"])
+            "json", json.dumps(parsed["outerblocks"])
         ):
-            old_primary_key = str(outer_block_item.object.id)
-
+            old_pk = str(outer_block_item.object.id)
             outer_block_item.object.id = None
-
-            # Save as new outer block
             outer_block_item.save()
-            new_primary_key = str(outer_block_item.object.id)
-
-            # Replace all outer block ids
+            new_pk = str(outer_block_item.object.id)
             json_data = json_data.replace(
-                f'"outerblockitem": {old_primary_key},',
-                f'"outerblockitem": {new_primary_key},',
+                f'"outerblockitem": {old_pk},', f'"outerblockitem": {new_pk},'
             )
 
         # Import inner blocks
+        parsed = json.loads(json_data)
         for inner_block_item in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["innerblocks"])
+            "json", json.dumps(parsed["innerblocks"])
         ):
-            old_primary_key = str(inner_block_item.object.id)
-
+            old_pk = str(inner_block_item.object.id)
             inner_block_item.object.id = None
-
-            # Save as new inner block
             inner_block_item.save()
-            new_primary_key = str(inner_block_item.object.id)
-
-            # Replace all inner block ids
+            new_pk = str(inner_block_item.object.id)
             json_data = json_data.replace(
-                f'"blockitem": {old_primary_key},', f'"blockitem": {new_primary_key},'
+                f'"blockitem": {old_pk},', f'"blockitem": {new_pk},'
             )
 
-        # Import trials
+        # Import trials, questions, and consent questions (no FK remapping needed)
+        parsed = json.loads(json_data)
         for trial_item in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["trials"])
+            "json", json.dumps(parsed["trials"])
         ):
             trial_item.object.id = None
             trial_item.save()
 
-        # Import questions
         for question in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["questions"])
+            "json", json.dumps(parsed["questions"])
         ):
             question.object.id = None
             question.save()
 
-        # Import consent questions
         for consent_question in serializers.deserialize(
-            "json", json.dumps(json.loads(json_data)["consentquestions"])
+            "json", json.dumps(parsed["consentquestions"])
         ):
             consent_question.object.id = None
             consent_question.save()
