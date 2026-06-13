@@ -255,6 +255,6 @@ class VocabularyChecklistForm(forms.Form):
 
 
 class ImportForm(forms.Form):
-    """Provides the form for JSON file upload when an experiment is to be imported."""
+    """Provides the form for ZIP file upload when an experiment is to be imported."""
 
-    import_file = forms.FileField(label="JSON File")
+    import_file = forms.FileField(label="ZIP File")
