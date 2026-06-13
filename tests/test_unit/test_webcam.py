@@ -139,16 +139,16 @@ class TestWebcamTestUpload:
         response = client.get(_webcam_test_upload_url(subject.id))
         assert response.status_code == 405
 
-    def test_post_without_file_returns_404(
+    def test_post_without_file_returns_400(
         self, client, subjectdata_factory, experiment_factory
     ):
-        """A POST without a file field returns 404."""
+        """A POST without a file field returns 400 Bad Request."""
         exp = _make_experiment(experiment_factory)
         subject = subjectdata_factory(experiment=exp)
         response = client.post(
             _webcam_test_upload_url(subject.id), data={"type": "video/webm"}
         )
-        assert response.status_code == 404
+        assert response.status_code == 400
 
     def test_nonexistent_run_uuid_returns_404(self, client, tmp_path, monkeypatch):
         """A run_uuid that does not exist returns 404 even with a valid file."""
@@ -227,10 +227,10 @@ class TestWebcamUpload:
         trial_result.refresh_from_db()
         assert trial_result.webcam_file.name == "trial.webm"
 
-    def test_post_merge_invalid_trial_result_id_returns_404(
+    def test_post_merge_invalid_trial_result_id_returns_400(
         self, client, subjectdata_factory, experiment_factory, tmp_path, monkeypatch
     ):
-        """A merge POST with a non-integer trialResultId returns 404."""
+        """A merge POST with a non-integer trialResultId returns 400 Bad Request."""
         monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
         exp = _make_experiment(experiment_factory)
         subject = subjectdata_factory(experiment=exp)
@@ -238,7 +238,7 @@ class TestWebcamUpload:
             _webcam_upload_url(subject.id),
             data={"filename": "trial", "trialResultId": "not-an-int"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 400
 
     def test_post_merge_nonexistent_trial_result_returns_404(
         self, client, subjectdata_factory, experiment_factory, tmp_path, monkeypatch
@@ -262,14 +262,14 @@ class TestWebcamUpload:
         response = client.get(_webcam_upload_url(subject.id))
         assert response.status_code == 405
 
-    def test_post_without_file_or_trial_result_id_returns_404(
+    def test_post_without_file_or_trial_result_id_returns_400(
         self, client, subjectdata_factory, experiment_factory
     ):
-        """A POST with neither a file nor trialResultId returns 404."""
+        """A POST with neither a file nor trialResultId returns 400 Bad Request."""
         exp = _make_experiment(experiment_factory)
         subject = subjectdata_factory(experiment=exp)
         response = client.post(_webcam_upload_url(subject.id), data={})
-        assert response.status_code == 404
+        assert response.status_code == 400
 
 
 # ---------------------------------------------------------------------------

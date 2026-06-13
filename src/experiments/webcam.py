@@ -7,7 +7,12 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404
 from django.template import RequestContext, Template
 from django.urls import reverse
@@ -51,7 +56,7 @@ def webcam_test_upload(request, run_uuid):
     webcam_file = request.FILES.get("file")
     if not webcam_file:
         logger.error("Failed to upload test media.")
-        raise Http404("Page not found.")
+        return HttpResponseBadRequest("Missing file.")
 
     get_object_or_404(SubjectData, pk=run_uuid)
     webcam_file_type = request.POST.get("type")
@@ -100,7 +105,7 @@ def _upload_merge(request, run_uuid):
         trial_result_id = int(request.POST["trialResultId"])
     except ValueError as e:
         logger.exception("Failed to retrieve trial result ID: " + str(e))
-        raise Http404("Invalid trialResultId.") from e
+        return HttpResponseBadRequest("Invalid trialResultId.")
     trial_result = get_object_or_404(TrialResult, pk=trial_result_id, subject=run_uuid)
     trial_result.webcam_file = base_filename + ".webm"
     trial_result.save()
@@ -116,7 +121,7 @@ def webcam_upload(request, run_uuid):
     if request.POST.get("trialResultId"):
         return _upload_merge(request, run_uuid)
     logger.error("Failed to upload webcam file.")
-    raise Http404("Page not found.")
+    return HttpResponseBadRequest("Missing file or trialResultId.")
 
 
 def find_files(base_filename):
