@@ -148,7 +148,7 @@ def make_instrument():
     )
 
 
-def patch_get_object_or_404(monkeypatch, subject_data, experiment, instrument=None):
+def patch_get_object_or_404(monkeypatch, subject_data, experiment):
     """Monkeypatch get_object_or_404 to return the provided test stubs."""
 
     def fake_get(model, pk=None):
@@ -156,8 +156,6 @@ def patch_get_object_or_404(monkeypatch, subject_data, experiment, instrument=No
             return subject_data
         if model is cdi.Experiment:
             return experiment
-        if instrument is not None and model is cdi.Instrument:
-            return instrument
         raise AssertionError(f"Unexpected model: {model!r}")
 
     monkeypatch.setattr(cdi, "get_object_or_404", fake_get)
@@ -240,7 +238,8 @@ def test_sort_items_returns_descending_info_order(monkeypatch):
 
 
 def _patch_estimate_cdi_base(monkeypatch, sd, exp, instr, sex="female"):
-    patch_get_object_or_404(monkeypatch, sd, exp, instr)
+    exp.instrument = instr
+    patch_get_object_or_404(monkeypatch, sd, exp)
     patch_cdi_results_empty(monkeypatch)
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=2.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
@@ -301,7 +300,8 @@ def test_estimate_cdi_cdi_result_response_true_uses_lm_p_path(monkeypatch):
         def save(self):
             pass
 
-    patch_get_object_or_404(monkeypatch, sd, exp, instr)
+    exp.instrument = instr
+    patch_get_object_or_404(monkeypatch, sd, exp)
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=2.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
@@ -339,7 +339,8 @@ def test_estimate_cdi_cdi_result_response_false_uses_lm_np_path(monkeypatch):
         def save(self):
             pass
 
-    patch_get_object_or_404(monkeypatch, sd, exp, instr)
+    exp.instrument = instr
+    patch_get_object_or_404(monkeypatch, sd, exp)
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
     monkeypatch.setattr(cdi.pd, "read_csv", lambda *a, **k: FakeDF(n=1, val=1.0))
     monkeypatch.setattr(cdi.norm, "pdf", lambda x, loc, scale: np.ones_like(x))
@@ -356,7 +357,8 @@ def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
     exp = make_experiment()
     instr = make_instrument()
 
-    patch_get_object_or_404(monkeypatch, sd, exp, instr)
+    exp.instrument = instr
+    patch_get_object_or_404(monkeypatch, sd, exp)
     patch_cdi_results_empty(monkeypatch)
     # Missing 'word' column in the words list CSV triggers KeyError
     def _raising_read_csv(*_a, **_k):
@@ -373,7 +375,8 @@ def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
 
 
 def _patch_cdi_run(monkeypatch, sd, exp, instr, raise_on_words=False):
-    patch_get_object_or_404(monkeypatch, sd, exp, instr)
+    exp.instrument = instr
+    patch_get_object_or_404(monkeypatch, sd, exp)
 
     def fake_read_csv(path, *_a, **_k):
         if "words" in str(path):

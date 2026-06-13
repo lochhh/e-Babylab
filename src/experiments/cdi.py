@@ -24,15 +24,21 @@ from .models import (
     AnswerText,
     CdiResult,
     Experiment,
-    Instrument,
     ListItem,
     Question,
     SubjectData,
 )
 from .views import proceed_to_experiment
 
-# Create a logger for this file
 logger = logging.getLogger(__name__)
+
+_SK_ALL_WORDS = "all_words"
+_SK_ITEM_PARAMS = "item_params"
+_SK_ADMINISTERED_ITEMS = "administered_items"
+_SK_IRT_RUN = "irt_run"
+_SK_EST_THETA = "est_theta"
+_SK_WORDS = "words"
+_SK_RESPONSES = "responses"
 
 
 def sort_items(item_params):
@@ -40,11 +46,25 @@ def sort_items(item_params):
     return (-inf_hpc(max_info_hpc(item_params), item_params)).argsort()
 
 
-def estimate_cdi(run_uuid):
-    """Compute CDI estimates based on Mayor and Mani (2019)."""
+def _resolve_context(run_uuid):
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
+    return subject_data, experiment
+
+
+def _render_cdi_page(request, experiment, subject_data, form):
+    t = Template(experiment.cdi_page_tpl)
+    c = RequestContext(
+        request,
+        {"subject_data": subject_data, "cdi_form": form, "experiment": experiment},
+    )
+    return HttpResponse(t.render(c))
+
+
+def estimate_cdi(run_uuid):
+    """Compute CDI estimates based on Mayor and Mani (2019)."""
+    subject_data, experiment = _resolve_context(run_uuid)
+    instrument = experiment.instrument
 
     estimate = 0
     # get the latest response for duplicate (i.e., modified) responses
@@ -156,36 +176,34 @@ def estimate_cdi(run_uuid):
 
 def cdi_run(request, run_uuid):
     """Administer a CDI-IRT adaptive vocabulary checklist."""
-    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    instrument = get_object_or_404(Instrument, pk=experiment.instrument.pk)
+    subject_data, experiment = _resolve_context(run_uuid)
+    instrument = experiment.instrument
 
     try:
         # parse instrument word list
         all_words = pd.read_csv(instrument.words_list.file.path, encoding="utf-8-sig")[
             "word"
         ].tolist()
-        request.session["all_words"] = json.dumps(all_words)
+        request.session[_SK_ALL_WORDS] = json.dumps(all_words)
 
         # get IRT parameters
         item_params = pd.read_csv(instrument.irt_params.file.path)
         item_params = item_params.iloc[:, 1:5]
-        request.session["item_params"] = item_params.reset_index().to_json(
+        request.session[_SK_ITEM_PARAMS] = item_params.reset_index().to_json(
             orient="records"
         )
 
         # administer first item
         administered_items = sort_items(item_params.to_numpy())[0:1,].tolist()
-        request.session["administered_items"] = administered_items
+        request.session[_SK_ADMINISTERED_ITEMS] = administered_items
         irt_run = 0
-        request.session["irt_run"] = irt_run
-        request.session["est_theta"] = FixedPointInitializer(
+        request.session[_SK_IRT_RUN] = irt_run
+        request.session[_SK_EST_THETA] = FixedPointInitializer(
             -5
         ).initialize()  # start low, assume all poor learners
-        words = []
-        words.append(all_words[administered_items[irt_run]])
-        request.session["words"] = words
-        request.session["responses"] = []
+        words = [all_words[administered_items[irt_run]]]
+        request.session[_SK_WORDS] = words
+        request.session[_SK_RESPONSES] = []
 
         form = VocabularyChecklistForm(word=words[irt_run])
     except KeyError as e:
@@ -194,30 +212,20 @@ def cdi_run(request, run_uuid):
             reverse("experiments:experimentError", args=(run_uuid,))
         )
     else:
-        t = Template(experiment.cdi_page_tpl)
-        c = RequestContext(
-            request,
-            {
-                "subject_data": subject_data,
-                "cdi_form": form,
-                "experiment": experiment,
-            },
-        )
-        return HttpResponse(t.render(c))
+        return _render_cdi_page(request, experiment, subject_data, form)
 
 
 def cdi_submit(request, run_uuid):
     """Store the submitted item response as a CdiResult."""
-    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    irt_run = request.session.get("irt_run")
-    words = request.session.get("words")
+    subject_data, experiment = _resolve_context(run_uuid)
+    irt_run = request.session.get(_SK_IRT_RUN)
+    words = request.session.get(_SK_WORDS)
     current_word = words[irt_run]
     form = VocabularyChecklistForm(request.POST, word=current_word)
 
     # store current response as CdiResult and add to request.responses
     if form.is_valid():
-        responses = request.session.get("responses")
+        responses = request.session.get(_SK_RESPONSES)
         logger.debug(f"form.cleaned_data: {form.cleaned_data}")
         for key, value in form.cleaned_data.items():
             if key.startswith("word_"):
@@ -225,7 +233,7 @@ def cdi_submit(request, run_uuid):
                     subject=subject_data, given_label=key[5:], response=value
                 )
                 responses.append(int(value))
-        request.session["responses"] = responses
+        request.session[_SK_RESPONSES] = responses
         request.session.modified = True
         # count unique items
         count_unique = (
@@ -236,7 +244,7 @@ def cdi_submit(request, run_uuid):
         )
         logger.info(f"unique count: {count_unique}")
         if count_unique < experiment.num_words:
-            request.session["irt_run"] = irt_run + 1
+            request.session[_SK_IRT_RUN] = irt_run + 1
             # generate subsequent item
             return cdi_generate_next_item(request, run_uuid)
         else:  # proceed to experiment or end page
@@ -247,50 +255,40 @@ def cdi_submit(request, run_uuid):
                 return HttpResponseRedirect(
                     reverse("experiments:experimentEnd", args=(run_uuid,))
                 )
-    t = Template(experiment.cdi_page_tpl)
-    c = RequestContext(
-        request,
-        {
-            "subject_data": subject_data,
-            "cdi_form": form,
-            "experiment": experiment,
-        },
-    )
-    return HttpResponse(t.render(c))
+    return _render_cdi_page(request, experiment, subject_data, form)
 
 
 def cdi_generate_next_item(request, run_uuid):
     """Generate and render the next adaptive CDI test item."""
-    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    subject_data, experiment = _resolve_context(run_uuid)
 
     try:
         # estimate and update theta
-        irt_run = request.session.get("irt_run")
-        item_params = request.session.get("item_params")
+        irt_run = request.session.get(_SK_IRT_RUN)
+        item_params = request.session.get(_SK_ITEM_PARAMS)
         item_params = (
             pd.read_json(StringIO(item_params), orient="records")
             .iloc[:, 1:5]
             .to_numpy()
         )
-        administered_items = request.session.get("administered_items")
-        responses = request.session.get("responses")
-        est_theta = request.session.get("est_theta")
+        administered_items = request.session.get(_SK_ADMINISTERED_ITEMS)
+        responses = request.session.get(_SK_RESPONSES)
+        est_theta = request.session.get(_SK_EST_THETA)
         est_theta = NumericalSearchEstimator(method="bounded").estimate(
             item_bank=ItemBank(item_params),
             administered_items=administered_items,
             response_vector=np.array(responses, dtype=bool),
             est_theta=est_theta,
         )
-        request.session["est_theta"] = est_theta
-        words = request.session.get("words")
-        all_words = json.loads(request.session.get("all_words"))
+        request.session[_SK_EST_THETA] = est_theta
+        words = request.session.get(_SK_WORDS)
+        all_words = json.loads(request.session.get(_SK_ALL_WORDS))
         logger.info(f"est theta: {est_theta}")
 
         if np.isinf(est_theta):
             # generate IRT subsequent 'initial' items
             administered_items = sort_items(item_params)[0 : 1 + irt_run,].tolist()
-            request.session["administered_items"] = administered_items
+            request.session[_SK_ADMINISTERED_ITEMS] = administered_items
         else:
             # generate new items
             item_index = MaxInfoSelector().select(
@@ -299,9 +297,9 @@ def cdi_generate_next_item(request, run_uuid):
                 est_theta=est_theta,
             )
             administered_items.append(item_index.tolist())
-            request.session["administered_items"] = administered_items
+            request.session[_SK_ADMINISTERED_ITEMS] = administered_items
         words.append(all_words[administered_items[irt_run]])
-        request.session["words"] = words
+        request.session[_SK_WORDS] = words
         form = VocabularyChecklistForm(word=words[irt_run])
     except KeyError as e:
         logger.exception("Failed to generate cdi item: " + str(e))
@@ -309,13 +307,4 @@ def cdi_generate_next_item(request, run_uuid):
             reverse("experiments:experimentError", args=(run_uuid,))
         )
     else:
-        t = Template(experiment.cdi_page_tpl)
-        c = RequestContext(
-            request,
-            {
-                "subject_data": subject_data,
-                "cdi_form": form,
-                "experiment": experiment,
-            },
-        )
-        return HttpResponse(t.render(c))
+        return _render_cdi_page(request, experiment, subject_data, form)
