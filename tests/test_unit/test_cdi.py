@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
 from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory
 
@@ -351,8 +352,8 @@ def test_estimate_cdi_cdi_result_response_false_uses_lm_np_path(monkeypatch):
     assert isinstance(result, (int, float))
 
 
-def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
-    """A KeyError during estimation (e.g., missing CSV column) returns a redirect."""
+def test_estimate_cdi_keyerror_raises(monkeypatch):
+    """A KeyError during estimation (e.g., missing CSV column) is re-raised."""
     sd = make_subject_data()
     exp = make_experiment()
     instr = make_instrument()
@@ -366,9 +367,8 @@ def test_estimate_cdi_keyerror_returns_redirect(monkeypatch):
     monkeypatch.setattr(cdi.pd, "read_csv", _raising_read_csv)
     patch_age_sex(monkeypatch)
 
-    result = cdi.estimate_cdi(sd.pk)
-
-    assert isinstance(result, HttpResponseRedirect)
+    with pytest.raises(KeyError):
+        cdi.estimate_cdi(sd.pk)
 
 
 # ─── cdi_run ──────────────────────────────────────────────────────────────────
@@ -593,6 +593,32 @@ def test_cdi_submit_valid_enough_words_with_list_items_proceeds(monkeypatch):
 
     assert isinstance(resp, HttpResponse)
     assert resp.content == b"proceed"
+
+
+def test_cdi_submit_estimate_cdi_keyerror_redirects_to_error_page(monkeypatch):
+    """When estimate_cdi raises KeyError, cdi_submit redirects to the error page."""
+    rf = RequestFactory()
+    request = rf.post("/cdi/submit/", data={"word_hello": "1"})
+    request.session = _make_submit_session()
+
+    sd = make_subject_data()
+    exp = make_experiment(num_words=1)
+    _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count=1)
+
+    cleaned = {"word_hello": "1"}
+    monkeypatch.setattr(
+        cdi,
+        "VocabularyChecklistForm",
+        lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
+    )
+    def _raise(*_):
+        raise KeyError("word")
+    monkeypatch.setattr(cdi, "estimate_cdi", _raise)
+
+    resp = cdi.cdi_submit(request, sd.pk)
+
+    assert isinstance(resp, HttpResponseRedirect)
+    assert sd.pk in resp.url and "error" in resp.url
 
 
 # ─── cdi_generate_next_item ─────────────────────────────────────────────────────

@@ -159,12 +159,9 @@ def estimate_cdi(run_uuid):
 
     except KeyError as e:
         logger.exception("Failed to estimate CDI score: " + str(e))
-        return HttpResponseRedirect(
-            reverse("experiments:experimentError", args=(run_uuid,))
-        )
-    else:
-        logger.info("CDI estimate: " + str(estimate))
-        return estimate
+        raise
+    logger.info("CDI estimate: " + str(estimate))
+    return estimate
 
 
 def cdi_run(request, run_uuid):
@@ -241,7 +238,12 @@ def cdi_submit(request, run_uuid):
             # generate subsequent item
             return cdi_generate_next_item(request, run_uuid)
         else:  # proceed to experiment or end page
-            estimate_cdi(run_uuid)
+            try:
+                estimate_cdi(run_uuid)
+            except KeyError:
+                return HttpResponseRedirect(
+                    reverse("experiments:experimentError", args=(run_uuid,))
+                )
             if ListItem.objects.filter(experiment=experiment):
                 return proceed_to_experiment(experiment, run_uuid)
             else:
