@@ -307,6 +307,12 @@ class TestExperimentExport:
         assert "experiment" in data
         assert "lists" in data
 
+    def test_returns_404_for_nonexistent_experiment(self, client):
+        """Verify a 404 is returned for an export request on a nonexistent experiment."""
+        url = reverse("experiments:experimentExport", args=(str(uuid.uuid4()),))
+        response = client.get(url)
+        assert response.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # experimentImport

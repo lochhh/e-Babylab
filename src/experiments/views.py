@@ -76,13 +76,10 @@ def experiment_report(request, experiment_id):
 
 def experiment_export(request, experiment_id):
     """Export an experiment to a JSON file."""
+    experiment = get_object_or_404(Experiment, pk=experiment_id)
     json_data = ExperimentAdmin.export_to_json(experiment_id)
     response = HttpResponse(json.dumps(json_data), content_type="application/json")
-    response["Content-Disposition"] = (
-        'attachment; filename="'
-        + Experiment.objects.get(id=experiment_id).exp_name
-        + '.json"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="{experiment.exp_name}.json"'
     return response
 
 
