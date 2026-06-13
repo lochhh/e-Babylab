@@ -24,7 +24,7 @@ The options to **import** and **export** experiment setups are also provided and
 
 **Exporting** an experiment produces a `.zip` file containing the full experiment configuration together with all referenced media files (audio stimuli, visual stimuli, and loading image). If the experiment uses a CDI instrument, the instrument definition and all its parameter files are included as well.
 
-**Importing** a `.zip` file recreates the experiment on the target e-Babylab instance. Media files are stored under `experiments/<experiment name>/` in the file manager if they do not already exist in the `experiments/` folder. If a CDI instrument with the same name already exists on the target instance it is reused; otherwise a new instrument is created. If an experiment with the same name already exists, the imported experiment is renamed with a `copy` suffix (e.g. `My Experiment copy`, `My Experiment copy 1`, etc.).
+**Importing** a `.zip` file recreates the experiment on the target e-Babylab instance. Media files are stored under `experiments/<experiment name>/` in the file manager if they do not already exist in the `experiments/` folder. If a CDI instrument with the same name already exists on the target instance it is reused; otherwise a new instrument is created, with parameter files stored under `instruments/<instrument name>/`. If an experiment with the same name already exists, the imported experiment is renamed with a `copy` suffix (e.g. `My Experiment copy`, `My Experiment copy 1`, etc.).
 
 (target-validation-measures)=
 ## Validation Measures

@@ -50,11 +50,11 @@ Currently, media recording features (requiring webcam and/or microphone) are not
 
 Participants' IP addresses are not stored anywhere.
 
-## How do I share experiments?
+## How do I share/duplicate an experiment?
 
 Use the **Export** button on the Experiment Admin page. This downloads a `.zip` file that bundles the complete experiment configuration together with all media stimuli (audio, visual, and loading image) and, if applicable, the CDI instrument and its parameter files.
 
-To recreate the experiment on another e-Babylab instance, go to that instance's Experiment Admin page and click **Import**, then upload the `.zip` file. Media files are placed under `experiments/<experiment name>/` in the file manager and the CDI instrument is created if it does not already exist.
+This `.zip` file can then be imported into e-Babylab on the same or a different instance using the **Import** button on the Experiment Admin page. During import, media files are stored under `experiments/<experiment name>/` in the file manager if they do not already exist in the `experiments/` folder. If a CDI instrument with the same name already exists on the target instance it is reused; otherwise a new instrument is created, with parameter files stored under `instruments/<instrument name>/`. If an experiment with the same name already exists, the imported experiment is renamed with a `copy` suffix (e.g. `My Experiment copy`, `My Experiment copy 1`, etc.).
 
 ## Can I modify the HTML templates to skip the participant page?
 
