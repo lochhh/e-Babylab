@@ -209,9 +209,11 @@ class TestImportFromZip:
         import_from_zip(mock_request, zip_bytes)
 
         exp_folder = Folder.objects.get(name="TestExp", parent=self.experiments_root)
-        assert FilerFile.objects.filter(
+        created_file = FilerFile.objects.filter(
             original_filename="cat.mp4", folder=exp_folder
-        ).exists()
+        ).first()
+        assert created_file is not None
+        assert created_file.owner == mock_request.user
         imported_trial = TrialItem.objects.exclude(pk=trial.pk).first()
         assert imported_trial.visual_file is not None
         assert imported_trial.visual_file.original_filename == "cat.mp4"
@@ -369,8 +371,39 @@ class TestImportFromZip:
 
         assert Instrument.objects.filter(instr_name="new-instr").exists()
         recreated = Instrument.objects.get(instr_name="new-instr")
+        instruments_root = Folder.objects.get(name="instruments", parent=None)
+        instr_folder = Folder.objects.get(name="new-instr", parent=instruments_root)
+        assert instr_folder.owner == mock_request.user
         for field in Instrument._CSV_FILE_FIELDS:
-            assert getattr(recreated, field) is not None
+            filer_file = getattr(recreated, field)
+            assert filer_file is not None
+            assert filer_file.folder == instr_folder
+            assert filer_file.owner == mock_request.user
+
+    @pytest.mark.django_db
+    def test_import_instrument_files_not_in_experiments_folder(
+        self, experiment_factory, instrument_factory, mock_request
+    ):
+        """Instrument CSV files are stored under instruments/, not experiments/."""
+        instr = instrument_factory(instr_name="folder-check")
+        exp = experiment_factory(exp_name="FolderCheck")
+        exp.instrument = instr
+        exp.save()
+
+        zip_bytes = export_to_zip(exp.pk)
+        Instrument.objects.filter(instr_name="folder-check").delete()
+
+        import_from_zip(mock_request, zip_bytes)
+
+        # No CSV files should land under experiments/
+        exp_files = FilerFile.objects.filter(
+            folder__parent=self.experiments_root
+        ) | FilerFile.objects.filter(folder=self.experiments_root)
+        csv_filenames = {f.original_filename for f in exp_files}
+        for field in Instrument._CSV_FILE_FIELDS:
+            recreated = Instrument.objects.get(instr_name="folder-check")
+            filer_file = getattr(recreated, field)
+            assert filer_file.original_filename not in csv_filenames
 
     @pytest.mark.django_db
     def test_import_reuses_existing_instrument(

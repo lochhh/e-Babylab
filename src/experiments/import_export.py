@@ -28,7 +28,11 @@ from .models import (
 # Filer fields on TrialItem and Experiment that are bundled in the ZIP.
 _TRIAL_FILE_FIELDS = ("audio_file", "visual_file")
 _EXPERIMENT_FILE_FIELDS = ("loading_image",)
-_ALL_MEDIA_FIELDS = (*_EXPERIMENT_FILE_FIELDS, *_TRIAL_FILE_FIELDS, *Instrument._CSV_FILE_FIELDS)
+_ALL_MEDIA_FIELDS = (
+    *_EXPERIMENT_FILE_FIELDS,
+    *_TRIAL_FILE_FIELDS,
+    *Instrument._CSV_FILE_FIELDS,
+)
 
 
 def export_to_zip(experiment_id: Any) -> bytes:
@@ -46,6 +50,7 @@ def export_to_zip(experiment_id: Any) -> bytes:
 
     Returns:
         ZIP archive as raw bytes.
+
     """
     experiment = Experiment.objects.get(pk=experiment_id)
     lists = ListItem.objects.filter(experiment=experiment_id)
@@ -77,11 +82,12 @@ def export_to_zip(experiment_id: Any) -> bytes:
         )
 
     # Collect unique filer objects referenced by this experiment.
-    filer_objects: dict[str, FilerFile] = {}
+    # Each entry is (filer_obj, source) where source is "experiment" or "instrument".
+    filer_objects: dict[str, tuple[FilerFile, str]] = {}
 
-    def _collect(filer_obj: FilerFile | None) -> None:
+    def _collect(filer_obj: FilerFile | None, source: str = "experiment") -> None:
         if filer_obj is not None:
-            filer_objects[str(filer_obj.pk)] = filer_obj
+            filer_objects[str(filer_obj.pk)] = (filer_obj, source)
 
     _collect(experiment.loading_image)
     for trial in trials:
@@ -89,22 +95,23 @@ def export_to_zip(experiment_id: Any) -> bytes:
         _collect(trial.visual_file)
     if instrument is not None:
         for field_name in Instrument._CSV_FILE_FIELDS:
-            _collect(getattr(instrument, field_name))
+            _collect(getattr(instrument, field_name), source="instrument")
 
     media_files = {
         pk: {
             "original_filename": obj.original_filename,
             "zip_path": f"media/{pk}_{obj.original_filename}",
             "is_image": isinstance(obj, FilerImage),
+            "source": source,
         }
-        for pk, obj in filer_objects.items()
+        for pk, (obj, source) in filer_objects.items()
     }
     json_data["media_files"] = media_files
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("experiment.json", json.dumps(json_data))
-        for pk, obj in filer_objects.items():
+        for pk, (obj, _) in filer_objects.items():
             obj.file.open("rb")
             try:
                 zf.writestr(media_files[pk]["zip_path"], obj.file.read())
@@ -119,9 +126,12 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
 
     On import:
 
-    - Filer media files are deduplicated against the ``experiments/`` root folder
-      and the ``experiments/<exp_name>/`` subfolder.  Missing files are created
-      under ``experiments/<exp_name>/``.
+    - Experiment media files (audio, visual, loading image) are deduplicated
+      against the ``experiments/`` root folder and all its direct subfolders.
+      Missing files are created under ``experiments/<exp_name>/``.
+    - CDI instrument CSV files are deduplicated against the ``instruments/``
+      root folder and all its direct subfolders.  Missing files are created
+      under ``instruments/<instr_name>/``.
     - CDI instruments are matched by ``instr_name``; an existing instrument is
       reused, otherwise a new one is created.
     - If an experiment with the same name already exists on this instance, the
@@ -134,6 +144,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             the imported experiment.
         zip_bytes: Raw bytes of a ZIP archive previously produced by
             :func:`export_to_zip`.
+
     """
     buf = io.BytesIO(zip_bytes)
     try:
@@ -153,36 +164,74 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         exp_name = raw["experiment"][0]["fields"]["exp_name"]
         media_files = raw.get("media_files", {})
 
-        # Step 1: Reconstruct filer media files, deduplicating against the
-        # experiments root folder and all its direct subfolders (files may be
-        # stored under experiments/<any_dir>/, not just experiments/<exp_name>/).
+        # Step 1: Reconstruct filer media files.
+        # Experiment media (audio, visual, loading_image) are deduplicated against
+        # the experiments/ hierarchy; CDI instrument CSV files against instruments/.
         experiments_root = Folder.objects.get(name="experiments", parent=None)
-        exp_folder = Folder.objects.filter(
+        instruments_root, _ = Folder.objects.get_or_create(
+            name="instruments", parent=None, defaults={"owner": request.user}
+        )
+
+        instr_name = (
+            raw["instrument"][0]["fields"]["instr_name"]
+            if "instrument" in raw
+            else None
+        )
+
+        exp_folder: Folder | None = Folder.objects.filter(
             name=exp_name, parent=experiments_root
         ).first()
+        instr_folder: Folder | None = (
+            Folder.objects.filter(name=instr_name, parent=instruments_root).first()
+            if instr_name
+            else None
+        )
 
         for old_pk, meta in media_files.items():
             filename = meta["original_filename"]
             is_image = meta["is_image"]
+            is_instrument_file = meta.get("source") == "instrument"
 
-            existing = FilerFile.objects.filter(
-                original_filename=filename,
-            ).filter(
-                Q(folder=experiments_root) | Q(folder__parent=experiments_root)
-            ).first()
+            search_root = instruments_root if is_instrument_file else experiments_root
+
+            existing = (
+                FilerFile.objects.filter(original_filename=filename)
+                .filter(Q(folder=search_root) | Q(folder__parent=search_root))
+                .first()
+            )
 
             if existing is not None:
                 new_pk = str(existing.pk)
             else:
-                if exp_folder is None:
-                    exp_folder, _ = Folder.objects.get_or_create(
-                        name=exp_name, parent=experiments_root
-                    )
                 file_bytes = zip_file.read(meta["zip_path"])
+                if is_instrument_file:
+                    if instr_folder is None:
+                        instr_folder, _ = Folder.objects.get_or_create(
+                            name=instr_name,
+                            parent=instruments_root,
+                            defaults={"owner": request.user},
+                        )
+                    target_folder = instr_folder
+                else:
+                    if exp_folder is None:
+                        exp_folder, _ = Folder.objects.get_or_create(
+                            name=exp_name,
+                            parent=experiments_root,
+                            defaults={"owner": request.user},
+                        )
+                    target_folder = exp_folder
                 filer_obj = (
-                    FilerImage(original_filename=filename, folder=exp_folder)
+                    FilerImage(
+                        original_filename=filename,
+                        folder=target_folder,
+                        owner=request.user,
+                    )
                     if is_image
-                    else FilerFile(original_filename=filename, folder=exp_folder)
+                    else FilerFile(
+                        original_filename=filename,
+                        folder=target_folder,
+                        owner=request.user,
+                    )
                 )
                 filer_obj.file.save(filename, ContentFile(file_bytes), save=True)
                 new_pk = str(filer_obj.pk)
@@ -242,7 +291,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         list_item.object.id = None
         list_item.save()
         json_str = json_str.replace(
-            f'"listitem": {old_pk},', f'"listitem": {str(list_item.object.id)},'
+            f'"listitem": {old_pk},', f'"listitem": {list_item.object.id!s},'
         )
 
     parsed = json.loads(json_str)
@@ -253,7 +302,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         outer.save()
         json_str = json_str.replace(
             f'"outerblockitem": {old_pk},',
-            f'"outerblockitem": {str(outer.object.id)},',
+            f'"outerblockitem": {outer.object.id!s},',
         )
 
     parsed = json.loads(json_str)
@@ -263,7 +312,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         inner.object.id = None
         inner.save()
         json_str = json_str.replace(
-            f'"blockitem": {old_pk},', f'"blockitem": {str(inner.object.id)},'
+            f'"blockitem": {old_pk},', f'"blockitem": {inner.object.id!s},'
         )
 
     parsed = json.loads(json_str)
@@ -276,8 +325,6 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         question.object.id = None
         question.save()
 
-    for cq in serializers.deserialize(
-        "json", json.dumps(parsed["consentquestions"])
-    ):
+    for cq in serializers.deserialize("json", json.dumps(parsed["consentquestions"])):
         cq.object.id = None
         cq.save()
