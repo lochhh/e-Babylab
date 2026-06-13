@@ -312,7 +312,9 @@ def _patch_create_report(monkeypatch, rep, subject):
         rep, "create_trial_worksheet", lambda _: DummyDF([], columns=rep.trial_columns)
     )
     monkeypatch.setattr(
-        rep, "create_webgazer_worksheet", lambda _: [DummyDF([]), DummyDF([])]
+        rep,
+        "create_webgazer_worksheet",
+        lambda _: rpt.WebgazerSheets(DummyDF([]), DummyDF([])),
     )
     monkeypatch.setattr(rpt.pd, "ExcelWriter", DummyExcelWriter, raising=False)
     monkeypatch.setattr(
@@ -360,7 +362,7 @@ def test_create_report_includes_eye_tracking_worksheets(
 
     def fake_webgazer(s):
         webgazer_called.append(s)
-        return [DummyDF([]), DummyDF([])]
+        return rpt.WebgazerSheets(DummyDF([]), DummyDF([]))
 
     monkeypatch.setattr(rep, "create_subject_worksheet", lambda _: DummyDF({"k": "v"}))
     monkeypatch.setattr(

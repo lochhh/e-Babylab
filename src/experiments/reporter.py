@@ -11,6 +11,7 @@ import shutil
 import uuid
 import zipfile
 from io import StringIO
+from typing import NamedTuple
 
 import pandas as pd
 from django.conf import settings
@@ -45,6 +46,13 @@ _ANSWER_MODEL = {
     Question.SELECT: AnswerSelect,
     Question.SELECT_MULTIPLE: AnswerSelectMultiple,
 }
+
+
+class WebgazerSheets(NamedTuple):
+    """Pair of DataFrames produced by create_webgazer_worksheet."""
+
+    gaze: "pd.DataFrame"
+    validation: "pd.DataFrame"
 
 
 class Reporter:
@@ -338,7 +346,7 @@ class Reporter:
                 ]
             )
 
-        return [webgazer_data, validation_data]
+        return WebgazerSheets(gaze=webgazer_data, validation=validation_data)
 
     def create_report(self):
         """Create a zip file containing all subjects' results and recordings.
@@ -381,11 +389,11 @@ class Reporter:
                 )
                 if self.experiment.recording_option in ["EYE", "ALL"]:
                     # Create webgazer worksheet
-                    webgazer_worksheets = self.create_webgazer_worksheet(subject)
-                    webgazer_worksheets[0].to_excel(
+                    sheets = self.create_webgazer_worksheet(subject)
+                    sheets.gaze.to_excel(
                         writer, sheet_name="EyeTrackingData", index=False
                     )
-                    webgazer_worksheets[1].to_excel(
+                    sheets.validation.to_excel(
                         writer, sheet_name="EyeTrackingValidation", index=False
                     )
 
