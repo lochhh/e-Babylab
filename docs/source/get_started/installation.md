@@ -50,16 +50,15 @@ To set up e-Babylab, you will need to define values specific to your own instanc
 
 4. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
-5. Register for Google reCAPTCHA v3 to obtain the site key and secret key:
+5. Register for Cloudflare Turnstile to obtain the site key and secret key:
 
-    - Go to the [reCAPTCHA admin console](https://www.google.com/recaptcha/admin/create).
-    - Log in and register a new site with:
-        - **Label**: e.g. `e-Babylab`
-        - **reCAPTCHA type**: `Score based (v3)`
-        - **Domains**: `localhost` for local development, or your own domain (e.g. `your-domain.com`) for production
-        - **Project name**: e.g. `e-Babylab`
-    - Click **Submit** to create the reCAPTCHA keys.
+    - Go to the [Cloudflare dashboard](https://dash.cloudflare.com/) and navigate to **Turnstile** in the sidebar.
+    - Click **Add site** and fill in:
+        - **Site name**: e.g. `e-Babylab`
+        - **Domain**: `localhost` for local development, or your own domain (e.g. `your-domain.com`) for production
+        - **Widget type**: `Invisible`
+    - Click **Create** to generate the keys.
 
-6. Copy the site key to `GOOGLE_RECAPTCHA_SITE_KEY` and the secret key to `GOOGLE_RECAPTCHA_SECRET_KEY` in your `.env` file.
+6. Copy the site key to `CLOUDFLARE_TURNSTILE_SITE_KEY` and the secret key to `CLOUDFLARE_TURNSTILE_SECRET_KEY` in your `.env` file.
 
 7. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
