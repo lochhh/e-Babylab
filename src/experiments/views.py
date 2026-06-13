@@ -34,6 +34,12 @@ from .reporter import Reporter
 logger = logging.getLogger(__name__)
 
 
+def _render_tpl(request, tpl_string, context=None):
+    return HttpResponse(
+        Template(tpl_string).render(RequestContext(request, context or {}))
+    )
+
+
 def proceed_to_experiment(experiment, run_uuid):
     """Redirect to webcam test or experiment run based on the recording option."""
     # skip webcam/microphone test if experiment not configured to record video/audio.
@@ -88,9 +94,9 @@ def experiment_import(request):
 def information_page(request, experiment_id):
     """Generate the information/welcome page for an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
-    t = Template(experiment.information_page_tpl)
-    c = RequestContext(request, {"experiment": experiment})
-    return HttpResponse(t.render(c))
+    return _render_tpl(
+        request, experiment.information_page_tpl, {"experiment": experiment}
+    )
 
 
 def browser_check(request, experiment_id):
@@ -99,18 +105,20 @@ def browser_check(request, experiment_id):
     Only Firefox and Chrome are supported.
     """
     experiment = get_object_or_404(Experiment, pk=experiment_id)
-    t = Template(experiment.browser_check_page_tpl)
-    c = RequestContext(request, {"experiment": experiment})
-    return HttpResponse(t.render(c))
+    return _render_tpl(
+        request, experiment.browser_check_page_tpl, {"experiment": experiment}
+    )
 
 
 def consent_form(request, experiment_id):
     """Generate the consent form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = ConsentForm(experiment=experiment)
-    t = Template(experiment.introduction_page_tpl)
-    c = RequestContext(request, {"consent_form": form, "experiment": experiment})
-    return HttpResponse(t.render(c))
+    return _render_tpl(
+        request,
+        experiment.introduction_page_tpl,
+        {"consent_form": form, "experiment": experiment},
+    )
 
 
 def consent_form_submit(request, experiment_id):
@@ -122,46 +130,40 @@ def consent_form_submit(request, experiment_id):
     if form.is_valid():
         for key, value in request.POST.items():
             if key.startswith("question_") and value.lower() == "no":
-                t = Template(experiment.consent_fail_page_tpl)
-                c = RequestContext(request, {"experiment": experiment})
-                return HttpResponse(t.render(c))
+                return _render_tpl(
+                    request,
+                    experiment.consent_fail_page_tpl,
+                    {"experiment": experiment},
+                )
         return HttpResponseRedirect(
             reverse("experiments:subjectForm", args=(experiment_id,))
         )
-    t = Template(experiment.introduction_page_tpl)
-    c = RequestContext(request, {"consent_form": form, "experiment": experiment})
-    return HttpResponse(t.render(c))
+    return _render_tpl(
+        request,
+        experiment.introduction_page_tpl,
+        {"consent_form": form, "experiment": experiment},
+    )
 
 
 def subject_form(request, experiment_id):
     """Generate the demographic/participant data form of an experiment."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(experiment=experiment)
-    t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(
+    return _render_tpl(
         request,
+        experiment.demographic_data_page_tpl,
         {
             "subject_data_form": form,
             "experiment": experiment,
             "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
         },
     )
-    return HttpResponse(t.render(c))
 
 
 def subject_form_submit(request, experiment_id):
     """Validate the demographic/participant data form."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
     form = SubjectDataForm(request.POST, experiment=experiment)
-    t = Template(experiment.demographic_data_page_tpl)
-    c = RequestContext(
-        request,
-        {
-            "subject_data_form": form,
-            "experiment": experiment,
-            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
-        },
-    )
 
     if form.is_valid():
         # validate reCAPTCHA
@@ -174,8 +176,10 @@ def subject_form_submit(request, experiment_id):
         result = r.json()
 
         if not result["success"]:
-            c = RequestContext(
+            logger.info("Invalid reCAPTCHA: " + str(result))
+            return _render_tpl(
                 request,
+                experiment.demographic_data_page_tpl,
                 {
                     "subject_data_form": form,
                     "experiment": experiment,
@@ -183,8 +187,6 @@ def subject_form_submit(request, experiment_id):
                     "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
                 },
             )
-            logger.info("Invalid reCAPTCHA: " + str(result))
-            return HttpResponse(t.render(c))
         response = form.save()
 
         if experiment.instrument:  # administer CDI if instrument is defined
@@ -194,7 +196,15 @@ def subject_form_submit(request, experiment_id):
         else:
             return proceed_to_experiment(experiment, str(response.id))
 
-    return HttpResponse(t.render(c))
+    return _render_tpl(
+        request,
+        experiment.demographic_data_page_tpl,
+        {
+            "subject_data_form": form,
+            "experiment": experiment,
+            "recaptcha_site_key": settings.GOOGLE_RECAPTCHA_SITE_KEY,
+        },
+    )
 
 
 def create_trial_dict(trial, block, trial_number):
@@ -310,9 +320,9 @@ def experiment_run(request, run_uuid):
             reverse("experiments:experimentError", args=(run_uuid,))
         )
     else:
-        t = Template(experiment.experiment_page_tpl)
-        c = RequestContext(
+        return _render_tpl(
             request,
+            experiment.experiment_page_tpl,
             {
                 "subject_data": subject_data,
                 "loading_image": loading_image,
@@ -324,7 +334,6 @@ def experiment_run(request, run_uuid):
                 "trials": json.dumps(trials),
             },
         )
-        return HttpResponse(t.render(c))
 
 
 @require_POST
@@ -369,33 +378,25 @@ def experiment_pause(request, run_uuid):
             trial_number=all_trial_results.count() + 1,
         )
 
-    t = Template(experiment.pause_page_tpl)
-    c = RequestContext(
+    return _render_tpl(
         request,
-        {
-            "subject_id": run_uuid,
-            "trial_id": trial_id,
-            "experiment": experiment,
-        },
+        experiment.pause_page_tpl,
+        {"subject_id": run_uuid, "trial_id": trial_id, "experiment": experiment},
     )
-    return HttpResponse(t.render(c))
 
 
 def experiment_error(request, run_uuid):
     """Generate the error page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    t = Template(experiment.error_page_tpl)
-    c = RequestContext(request, {})
-    return HttpResponse(t.render(c))
+    return _render_tpl(request, experiment.error_page_tpl)
 
 
 def experiment_end(request, run_uuid):
     """Generate the thank you/end page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
-    t = Template(experiment.thank_you_page_tpl)
-    c = RequestContext(request, {"experiment": experiment, "subject_id": run_uuid})
+    tpl = experiment.thank_you_page_tpl
 
     if subject_data.listitem:
         get_object_or_404(ListItem, pk=subject_data.listitem.pk)
@@ -421,8 +422,11 @@ def experiment_end(request, run_uuid):
 
         # if experiment incomplete, render end page after discontinuation
         if completed_count < tr_count:
-            t = Template(experiment.thank_you_abort_page_tpl)
-    return HttpResponse(t.render(c))
+            tpl = experiment.thank_you_abort_page_tpl
+
+    return _render_tpl(
+        request, tpl, {"experiment": experiment, "subject_id": run_uuid}
+    )
 
 
 @require_POST
