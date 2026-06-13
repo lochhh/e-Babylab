@@ -254,7 +254,7 @@ def create_trial_dict(trial, block, trial_number):
 def experiment_run(request, run_uuid):
     """Generate the (main) experimental task of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    experiment = subject_data.experiment
     trials = []
     completed_trials = []
     block_items = []
@@ -357,7 +357,7 @@ def experiment_pause(request, run_uuid):
     """Generate the pause page of an experiment."""
     trial_id = None
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    experiment = subject_data.experiment
 
     if request.method == "POST":
         trial_id = int(request.POST.get("trialitem"))
@@ -388,14 +388,14 @@ def experiment_pause(request, run_uuid):
 def experiment_error(request, run_uuid):
     """Generate the error page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    experiment = subject_data.experiment
     return _render_tpl(request, experiment.error_page_tpl)
 
 
 def experiment_end(request, run_uuid):
     """Generate the thank you/end page of an experiment."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    experiment = subject_data.experiment
     tpl = experiment.thank_you_page_tpl
 
     if subject_data.listitem:
