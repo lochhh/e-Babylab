@@ -174,7 +174,7 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
                         {{ error_message }}
                     </div>{% endif %}
 
-                    <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate data-recaptcha-site-key="{{recaptcha_site_key}}">
+                    <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate data-turnstile-site-key="{{turnstile_site_key}}">
                         {% csrf_token %}
                         <p class="card-text">
                             Please fill out the fields below. You must fill out at least all fields marked with * in order to participate in the study.
@@ -202,8 +202,7 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
                         </div><br>
                         {% endif %}
                         {% endfor %}
-                        <!-- reCAPTCHA input -->
-                        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+                        <div class="cf-turnstile" data-sitekey="{{turnstile_site_key}}" data-size="invisible" data-callback="onTurnstileVerified"></div>
                         <button type="submit" class="btn btn-primary">Next</button>
                     </form>
                 </div>
@@ -211,10 +210,9 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-<!-- reCAPTCHA API -->
-<script src='https://www.google.com/recaptcha/enterprise.js?render={{recaptcha_site_key}}'></script>
+<script src='https://challenges.cloudflare.com/turnstile/v0/api.js' async defer></script>
 <script type="module" src="{% static 'experiments/js/resolution.js' %}"></script>
-    <script type="module" src="{% static 'experiments/js/recaptcha-handler.js' %}"></script>
+    <script type="module" src="{% static 'experiments/js/turnstile-handler.js' %}"></script>
 {% endblock %}"""
 
 webcam_check_page_content = """{% extends "experiments/base.html" %}
