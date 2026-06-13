@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .models import Experiment, SubjectData, TrialResult
+from .models import SubjectData, TrialResult
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def webcam_test(request, run_uuid):
     """Generate the webcam/microphone test page."""
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-    experiment = get_object_or_404(Experiment, pk=subject_data.experiment.pk)
+    experiment = subject_data.experiment
     c = RequestContext(
         request,
         {
@@ -45,10 +45,9 @@ def webcam_test(request, run_uuid):
 
 def webcam_test_upload(request, run_uuid):
     """Upload the webcam/microphone test file and return metadata."""
-    if request.method == "POST" and request.FILES.get("file"):
+    webcam_file = request.FILES.get("file")
+    if request.method == "POST" and webcam_file:
         get_object_or_404(SubjectData, pk=run_uuid)
-
-        webcam_file = request.FILES.get("file")
         webcam_file_type = request.POST.get("type")
 
         fs = FileSystemStorage(
@@ -81,7 +80,6 @@ def webcam_upload(request, run_uuid):
     # Upload request
     if request.method == "POST" and request.FILES.get("file"):
         webcam_file = request.FILES.get("file")
-        # webcam_file_type = request.POST.get('type')
 
         # Delete existing file
         if fs.exists(webcam_file.name):
@@ -107,7 +105,6 @@ def webcam_upload(request, run_uuid):
             fs.delete(webcam_file)
 
         # Add filename to trial result
-        trial_result_id = 0
         try:
             trial_result_id = int(request.POST.get("trialResultId"))
         except ValueError as e:
