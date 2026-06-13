@@ -138,16 +138,16 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
     buf = io.BytesIO(zip_bytes)
     try:
         zip_file = zipfile.ZipFile(buf, "r")
-    except zipfile.BadZipFile:
-        raise ValueError("The uploaded file is not a valid ZIP archive.")
+    except zipfile.BadZipFile as exc:
+        raise ValueError("The uploaded file is not a valid ZIP archive.") from exc
 
     with zip_file:
         try:
             raw = json.loads(zip_file.read("experiment.json").decode("utf-8"))
-        except KeyError:
+        except KeyError as exc:
             raise ValueError(
                 "Invalid experiment archive: experiment.json not found in the ZIP."
-            )
+            ) from exc
         json_str = json.dumps(raw)
 
         exp_name = raw["experiment"][0]["fields"]["exp_name"]
