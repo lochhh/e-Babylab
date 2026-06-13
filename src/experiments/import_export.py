@@ -7,6 +7,7 @@ from typing import Any
 
 from django.core import serializers
 from django.core.files.base import ContentFile
+from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
 from filer.models import Folder
@@ -153,7 +154,8 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         media_files = raw.get("media_files", {})
 
         # Step 1: Reconstruct filer media files, deduplicating against the
-        # experiments root folder and the experiment-specific subfolder.
+        # experiments root folder and all its direct subfolders (files may be
+        # stored under experiments/<any_dir>/, not just experiments/<exp_name>/).
         experiments_root = Folder.objects.get(name="experiments", parent=None)
         exp_folder = Folder.objects.filter(
             name=exp_name, parent=experiments_root
@@ -164,13 +166,10 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             is_image = meta["is_image"]
 
             existing = FilerFile.objects.filter(
-                original_filename=filename, folder=experiments_root
+                original_filename=filename,
+            ).filter(
+                Q(folder=experiments_root) | Q(folder__parent=experiments_root)
             ).first()
-
-            if existing is None and exp_folder is not None:
-                existing = FilerFile.objects.filter(
-                    original_filename=filename, folder=exp_folder
-                ).first()
 
             if existing is not None:
                 new_pk = str(existing.pk)

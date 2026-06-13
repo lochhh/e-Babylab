@@ -222,7 +222,6 @@ class TestImportFromZip:
         blockitem_factory, trialitem_factory, mock_request
     ):
         """File already in experiments/ root is reused — no duplicate created."""
-        # Pre-place file in the root experiments folder
         existing = FilerFile(
             original_filename="dog.mp4", folder=self.experiments_root
         )
@@ -267,6 +266,33 @@ class TestImportFromZip:
         import_from_zip(mock_request, zip_bytes)
 
         assert FilerFile.objects.filter(original_filename="bird.wav").count() == before_count
+
+    @pytest.mark.django_db
+    def test_import_reuses_file_in_unrelated_subfolder(
+        self, experiment_factory, listitem_factory, outerblock_factory,
+        blockitem_factory, trialitem_factory, mock_request
+    ):
+        """File stored under experiments/<other_dir>/ on the source is reused if
+        a file with the same original_filename exists anywhere under experiments/."""
+        other_folder, _ = Folder.objects.get_or_create(
+            name="other-stimuli", parent=self.experiments_root
+        )
+        existing = FilerFile(original_filename="stim.mp4", folder=other_folder)
+        existing.file.save("stim.mp4", ContentFile(b"bytes"), save=True)
+
+        exp = experiment_factory(exp_name="UnrelatedDir")
+        li = listitem_factory(experiment=exp)
+        ob = outerblock_factory(listitem=li)
+        block = blockitem_factory(outerblock=ob)
+        trial = trialitem_factory(blockitem=block)
+        trial.visual_file = existing
+        trial.save()
+
+        zip_bytes = export_to_zip(exp.pk)
+        before_count = FilerFile.objects.filter(original_filename="stim.mp4").count()
+        import_from_zip(mock_request, zip_bytes)
+
+        assert FilerFile.objects.filter(original_filename="stim.mp4").count() == before_count
 
     @pytest.mark.django_db
     def test_import_duplicate_zip_renames_experiment(
