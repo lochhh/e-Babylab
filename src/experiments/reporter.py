@@ -35,6 +35,16 @@ from .models import (
 # Create a logger for this file
 logger = logging.getLogger(__name__)
 
+_ANSWER_MODEL = {
+    Question.TEXT: AnswerText,
+    Question.INTEGER: AnswerInteger,
+    Question.NUM_RANGE: AnswerInteger,
+    Question.RADIO: AnswerRadio,
+    Question.SEX: AnswerRadio,
+    Question.SELECT: AnswerSelect,
+    Question.SELECT_MULTIPLE: AnswerSelectMultiple,
+}
+
 
 class Reporter:
     """Utility for generating results as a zip file to be downloaded."""
@@ -123,11 +133,25 @@ class Reporter:
             return a
         return self.gcd(b, a % b)
 
+    def _resolve_answer_value(self, answer_base, participation_date):
+        qt = answer_base.question.question_type
+        if qt == Question.AGE:
+            answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
+            if answer_text and answer_text.body:
+                dob = datetime.date.fromisoformat(answer_text.body)
+                age_months = round((participation_date - dob).days / (365 / 12))
+                return f"{answer_text.body} ({age_months} mo.)"
+            if answer_text:
+                return ""
+            # Legacy fallback to read age provided in months
+            return str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+        model = _ANSWER_MODEL.get(qt)
+        return str(model.objects.get(pk=answer_base.pk).body) if model else ""
+
     def create_subject_worksheet(self, subject):
         """Create a dataframe per subject containing consent and subject form data."""
-        gcd = self.gcd(subject.resolution_w, subject.resolution_h)
-        if gcd == 0:
-            gcd = 1
+        gcd = self.gcd(subject.resolution_w, subject.resolution_h) or 1
+        aspect = f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}"
         try:
             subject_data = {
                 "Report Date": datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
@@ -139,73 +163,32 @@ class Reporter:
                 "Participant Number": subject.participant_id,
                 "Participant UUID": subject.id,
                 "Participation Date": subject.created.strftime("%d.%m.%Y %H:%M:%S"),
-                "Aspect Ratio": f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}",
+                "Aspect Ratio": aspect,
                 "Resolution": f"{subject.resolution_w}x{subject.resolution_h}",
                 "Consent Questions": "",
             }
 
-            consent_questions = ConsentQuestion.objects.filter(
+            consent_qs = ConsentQuestion.objects.filter(
                 experiment_id=subject.experiment.id
             )
-            for consent_question in consent_questions:
-                # format dictionary key with pos to ensure uniqueness
-                subject_data[
-                    f"{consent_question.position + 1}. {consent_question.text}"
-                ] = "Y"
+            for q in consent_qs:
+                subject_data[f"{q.position + 1}. {q.text}"] = "Y"
 
-            answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
             subject_data["Participant Form Responses"] = ""
-            for answer_base in answer_bases:
-                value = ""
-                if answer_base.question.question_type == Question.TEXT:
-                    value = str(AnswerText.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.AGE:
-                    answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
-                    if answer_text:
-                        if answer_text.body:
-                            value = str(answer_text.body)
-                            dob = datetime.date.fromisoformat(value)
-                            value += (
-                                " ("
-                                + str(
-                                    round(
-                                        ((subject.created.date() - dob).days)
-                                        / (365 / 12)
-                                    )
-                                )
-                                + " mo.)"
-                            )
-                    else:  # Legacy fallback to read age provided in months
-                        value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-                elif (
-                    answer_base.question.question_type == Question.INTEGER
-                    or answer_base.question.question_type == Question.NUM_RANGE
-                ):
-                    value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-                elif (
-                    answer_base.question.question_type == Question.RADIO
-                    or answer_base.question.question_type == Question.SEX
-                ):
-                    value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.SELECT:
-                    value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
-                    value = str(
-                        AnswerSelectMultiple.objects.get(pk=answer_base.pk).body
-                    )
-                # format dictionary key with pos to ensure uniqueness
-                subject_data[
-                    f"{answer_base.question.position + 1}. {answer_base.question.text}"
-                ] = value
+            for answer_base in AnswerBase.objects.filter(subject_data_id=subject.id):
+                q = answer_base.question
+                key = f"{q.position + 1}. {q.text}"
+                subject_data[key] = self._resolve_answer_value(
+                    answer_base, subject.created.date()
+                )
 
-            cdi_results = CdiResult.objects.filter(subject=subject.id)
             subject_data["CDI estimate"] = subject.cdi_estimate
             subject_data["CDI instrument"] = (
                 subject.experiment.instrument.instr_name
                 if subject.experiment.instrument
                 else ""
             )
-            for cdi_result in cdi_results:
+            for cdi_result in CdiResult.objects.filter(subject=subject.id):
                 subject_data[cdi_result.given_label] = cdi_result.response
         except ObjectDoesNotExist as e:
             logger.exception("Object does not exist: " + str(e))
@@ -375,8 +358,8 @@ class Reporter:
         """Create a zip file containing all subjects' results and recordings.
 
         The .zip file contains an .xlsx report for each subject with their trial results
-        and responses to consent and demographic questions, as well as their corresponding
-        webcam/audio files for an experiment.
+        and responses to consent and demographic questions, as well as their
+        corresponding webcam/audio files for an experiment.
         """
         # For each subject
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
