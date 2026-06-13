@@ -375,12 +375,12 @@ class TestStoreResult:
         )
 
     @pytest.mark.django_db
-    def test_get_returns_404(self, client, subjectdata_factory, simple_experiment):
-        """Verify a GET request to storeResult returns 404."""
+    def test_get_returns_405(self, client, subjectdata_factory, simple_experiment):
+        """Verify a GET request to storeResult returns 405 Method Not Allowed."""
         sd = subjectdata_factory(experiment=simple_experiment)
         url = reverse("experiments:storeResult", args=[sd.pk])
         response = client.get(url)
-        assert response.status_code == 404
+        assert response.status_code == 405
 
 
 # ---------------------------------------------------------------------------
@@ -452,12 +452,12 @@ class TestDeleteSubject:
         assert not exp_models.SubjectData.objects.filter(pk=pk).exists()
 
     @pytest.mark.django_db
-    def test_get_returns_404(self, client, subjectdata_factory, simple_experiment):
-        """Verify a GET request to deleteSubject returns 404."""
+    def test_get_returns_405(self, client, subjectdata_factory, simple_experiment):
+        """Verify a GET request to deleteSubject returns 405 Method Not Allowed."""
         sd = subjectdata_factory(experiment=simple_experiment)
         url = reverse("experiments:deleteSubject", args=[sd.pk])
         response = client.get(url)
-        assert response.status_code == 404
+        assert response.status_code == 405
 
 
 # ---------------------------------------------------------------------------

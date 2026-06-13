@@ -9,11 +9,12 @@ from random import shuffle
 import requests
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import RequestContext, Template
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 
 from .admin import ExperimentAdmin
 from .decorators import login_required
@@ -326,27 +327,23 @@ def experiment_run(request, run_uuid):
         return HttpResponse(t.render(c))
 
 
+@require_POST
 def store_result(request, run_uuid):
     """Store the results of a trial to a TrialResult object."""
-    if request.method == "POST":
-        trialresult = TrialResult()
-        trialresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
-        trialresult.trialitem = get_object_or_404(
-            TrialItem, pk=int(request.POST.get("trialitem"))
-        )
-        trialresult.start_time = request.POST.get("start_time")
-        trialresult.end_time = request.POST.get("end_time")
-        trialresult.key_pressed = request.POST.get("key_pressed")
-        # trialresult.webcam_file = request.POST.get('webcam_file')
-        trialresult.trial_number = int(request.POST.get("trial_number"))
-        trialresult.resolution_w = int(request.POST.get("resolution_w"))
-        trialresult.resolution_h = int(request.POST.get("resolution_h"))
-        trialresult.webgazer_data = json.loads(request.POST.get("webgazer_data"))
-        trialresult.save()
-        return JsonResponse({"resultId": trialresult.pk})
-    else:
-        logger.error("Failed to store result.")
-        raise Http404("Page not found.")
+    trialresult = TrialResult()
+    trialresult.subject = get_object_or_404(SubjectData, pk=run_uuid)
+    trialresult.trialitem = get_object_or_404(
+        TrialItem, pk=int(request.POST.get("trialitem"))
+    )
+    trialresult.start_time = request.POST.get("start_time")
+    trialresult.end_time = request.POST.get("end_time")
+    trialresult.key_pressed = request.POST.get("key_pressed")
+    trialresult.trial_number = int(request.POST.get("trial_number"))
+    trialresult.resolution_w = int(request.POST.get("resolution_w"))
+    trialresult.resolution_h = int(request.POST.get("resolution_h"))
+    trialresult.webgazer_data = json.loads(request.POST.get("webgazer_data"))
+    trialresult.save()
+    return JsonResponse({"resultId": trialresult.pk})
 
 
 def experiment_pause(request, run_uuid):
@@ -430,17 +427,13 @@ def experiment_end(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
+@require_POST
 def delete_subject(request, run_uuid):
     """Delete a participant's results at the end of the experiment."""
-    if request.method == "POST":
-        subject_data = get_object_or_404(SubjectData, pk=run_uuid)
-        subject_data.delete()
-        logger.info(f"Successfully deleted participant {run_uuid}.")
-        # Return success status with no content
-        return HttpResponse(status=204)
-    else:
-        logger.error("Failed to delete participant data.")
-        raise Http404("Page not found.")
+    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
+    subject_data.delete()
+    logger.info(f"Successfully deleted participant {run_uuid}.")
+    return HttpResponse(status=204)
 
 
 def index(request):

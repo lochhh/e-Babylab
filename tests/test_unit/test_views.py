@@ -857,12 +857,12 @@ class TestStoreResult:
         assert tr.resolution_w == 1920
         assert tr.resolution_h == 1080
 
-    def test_get_raises_404(self, client, subjectdata_factory):
-        """Verify a GET to storeResult returns 404."""
+    def test_get_returns_405(self, client, subjectdata_factory):
+        """Verify a GET to storeResult returns 405 Method Not Allowed."""
         sd = subjectdata_factory()
         url = reverse("experiments:storeResult", args=(sd.pk,))
         response = client.get(url)
-        assert response.status_code == 404
+        assert response.status_code == 405
 
     def test_nonexistent_subject_returns_404(self, client, trialitem_factory):
         """Verify a POST with an unknown run UUID returns 404."""
@@ -1107,12 +1107,12 @@ class TestDeleteSubject:
         assert response.status_code == 204
         assert not exp_models.SubjectData.objects.filter(pk=run_uuid).exists()
 
-    def test_get_raises_404(self, client, subjectdata_factory):
-        """Verify a GET to deleteSubject returns 404."""
+    def test_get_returns_405(self, client, subjectdata_factory):
+        """Verify a GET to deleteSubject returns 405 Method Not Allowed."""
         sd = subjectdata_factory()
         url = reverse("experiments:deleteSubject", args=(sd.pk,))
         response = client.get(url)
-        assert response.status_code == 404
+        assert response.status_code == 405
 
     def test_returns_404_for_nonexistent_subject(self, client):
         """Verify a POST with an unknown run UUID returns 404."""
