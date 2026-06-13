@@ -34,6 +34,14 @@ from .reporter import Reporter
 logger = logging.getLogger(__name__)
 
 
+def _verify_recaptcha(response_token):
+    result = requests.post(
+        "https://www.google.com/recaptcha/api/siteverify",
+        data={"secret": settings.GOOGLE_RECAPTCHA_SECRET_KEY, "response": response_token},
+    ).json()
+    return result["success"]
+
+
 def _render_tpl(request, tpl_string, context=None):
     return HttpResponse(
         Template(tpl_string).render(RequestContext(request, context or {}))
@@ -166,17 +174,8 @@ def subject_form_submit(request, experiment_id):
     form = SubjectDataForm(request.POST, experiment=experiment)
 
     if form.is_valid():
-        # validate reCAPTCHA
-        recaptcha_response = request.POST.get("g-recaptcha-response")
-        data = {
-            "secret": settings.GOOGLE_RECAPTCHA_SECRET_KEY,
-            "response": recaptcha_response,
-        }
-        r = requests.post("https://www.google.com/recaptcha/api/siteverify", data=data)
-        result = r.json()
-
-        if not result["success"]:
-            logger.info("Invalid reCAPTCHA: " + str(result))
+        if not _verify_recaptcha(request.POST.get("g-recaptcha-response")):
+            logger.info("Invalid reCAPTCHA for experiment %s", experiment_id)
             return _render_tpl(
                 request,
                 experiment.demographic_data_page_tpl,
