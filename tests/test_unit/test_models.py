@@ -72,6 +72,20 @@ def test_instrument_str(instrument_factory):
     assert str(inst) == "My Instrument"
 
 
+@pytest.mark.django_db
+def test_deleting_instrument_nullifies_experiment_fk(instrument_factory, experiment_factory):
+    """Deleting an Instrument sets experiment.instrument to NULL, not cascade-deletes the experiment."""
+    instr = instrument_factory()
+    exp = experiment_factory()
+    exp.instrument = instr
+    exp.save()
+
+    instr.delete()
+
+    exp.refresh_from_db()
+    assert exp.instrument is None
+
+
 # ---------------------------------------------------------------------------
 # Instrument.clean() — CSV-only validation
 # ---------------------------------------------------------------------------
