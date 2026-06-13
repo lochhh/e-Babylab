@@ -14,20 +14,20 @@ _NORWEGIAN_WS = (
     pathlib.Path(__file__).parent / "data" / "norwegian-ws-production"
 )
 _NORWEGIAN_WS_FILES = {
-    "words_list":   "word_list-Norwegian-WS-production.csv",
-    "irt_params":   "IRT_Parameters-Norwegian-WS.csv",
-    "f_lm_np_mean": "np_m-Female-Norwegian-WS.csv",
-    "f_lm_np_sd":   "np_sd-Female-Norwegian-WS.csv",
-    "f_lm_p_mean":  "p_m-Female-Norwegian-WS.csv",
-    "f_lm_p_sd":    "p_sd-Female-Norwegian-WS.csv",
-    "f_bmin":       "BMin-Female-Norwegian-WS.csv",
-    "f_slope":      "Slope-Female-Norwegian-WS.csv",
-    "m_lm_np_mean": "np_m-Male-Norwegian-WS.csv",
-    "m_lm_np_sd":   "np_sd-Male-Norwegian-WS.csv",
-    "m_lm_p_mean":  "p_m-Male-Norwegian-WS.csv",
-    "m_lm_p_sd":    "p_sd-Male-Norwegian-WS.csv",
-    "m_bmin":       "BMin-Male-Norwegian-WS.csv",
-    "m_slope":      "Slope-Male-Norwegian-WS.csv",
+    "words_list":   "word_list-norwegian-ws-production.csv",
+    "irt_params":   "irt_parameters-norwegian-ws.csv",
+    "f_lm_np_mean": "np_m-female-norwegian-ws.csv",
+    "f_lm_np_sd":   "np_sd-female-norwegian-ws.csv",
+    "f_lm_p_mean":  "p_m-female-norwegian-ws.csv",
+    "f_lm_p_sd":    "p_sd-female-norwegian-ws.csv",
+    "f_bmin":       "bmin-female-norwegian-ws.csv",
+    "f_slope":      "slope-female-norwegian-ws.csv",
+    "m_lm_np_mean": "np_m-male-norwegian-ws.csv",
+    "m_lm_np_sd":   "np_sd-male-norwegian-ws.csv",
+    "m_lm_p_mean":  "p_m-male-norwegian-ws.csv",
+    "m_lm_p_sd":    "p_sd-male-norwegian-ws.csv",
+    "m_bmin":       "bmin-male-norwegian-ws.csv",
+    "m_slope":      "slope-male-norwegian-ws.csv",
 }
 
 
