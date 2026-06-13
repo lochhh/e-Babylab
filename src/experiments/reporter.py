@@ -194,14 +194,14 @@ class Reporter:
         case callers must derive an ordinal position from the queryset order.
         """
         outer_pks = list(
-            OuterBlockItem.objects.filter(
-                listitem__pk=subject.listitem.pk
-            ).values_list("pk", flat=True)
+            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
+                "pk", flat=True
+            )
         )
         block_pks = list(
-            BlockItem.objects.filter(
-                outerblockitem__pk__in=outer_pks
-            ).values_list("pk", flat=True)
+            BlockItem.objects.filter(outerblockitem__pk__in=outer_pks).values_list(
+                "pk", flat=True
+            )
         )
         qs = TrialResult.objects.filter(
             trialitem__blockitem__pk__in=block_pks, subject_id=subject.id
@@ -258,7 +258,7 @@ class Reporter:
                     self.calc_trial_duration(result.start_time, result.end_time),
                     (
                         block.outerblockitem.listitem.experiment.recording_option
-                        in ["AUD", "VID"]
+                        in ["AUD", "VID", "ALL"]
                         and result.trialitem.record_media
                     ),
                     result.webcam_file.name,
