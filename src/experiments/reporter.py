@@ -19,11 +19,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.text import get_valid_filename
 
 from .models import (
+    ANSWER_TYPE_MODEL,
     AnswerBase,
     AnswerInteger,
-    AnswerRadio,
-    AnswerSelect,
-    AnswerSelectMultiple,
     AnswerText,
     BlockItem,
     CdiResult,
@@ -36,16 +34,6 @@ from .models import (
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
-
-_ANSWER_MODEL = {
-    Question.TEXT: AnswerText,
-    Question.INTEGER: AnswerInteger,
-    Question.NUM_RANGE: AnswerInteger,
-    Question.RADIO: AnswerRadio,
-    Question.SEX: AnswerRadio,
-    Question.SELECT: AnswerSelect,
-    Question.SELECT_MULTIPLE: AnswerSelectMultiple,
-}
 
 
 class WebgazerSheets(NamedTuple):
@@ -149,7 +137,7 @@ class Reporter:
                 return ""
             # Legacy fallback to read age provided in months
             return str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-        model = _ANSWER_MODEL.get(qt)
+        model = ANSWER_TYPE_MODEL.get(qt)
         return str(model.objects.get(pk=answer_base.pk).body) if model else ""
 
     def create_subject_worksheet(self, subject):

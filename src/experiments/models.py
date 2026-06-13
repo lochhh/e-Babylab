@@ -862,6 +862,18 @@ class AnswerInteger(AnswerBase):
     body = models.IntegerField(blank=True, null=True)
 
 
+ANSWER_TYPE_MODEL = {
+    Question.TEXT: AnswerText,
+    Question.AGE: AnswerText,
+    Question.RADIO: AnswerRadio,
+    Question.SEX: AnswerRadio,
+    Question.SELECT: AnswerSelect,
+    Question.SELECT_MULTIPLE: AnswerSelectMultiple,
+    Question.INTEGER: AnswerInteger,
+    Question.NUM_RANGE: AnswerInteger,
+}
+
+
 class ConsentQuestion(models.Model):
     """A yes/no consent question.
 
