@@ -190,29 +190,36 @@ class Reporter:
             raise
         return pd.DataFrame.from_dict(subject_data, orient="index")
 
+    def _get_trial_results(self, subject):
+        """Return (queryset, unique_trial_number) for a subject's trial results.
+
+        unique_trial_number is False when trial_number values repeat, in which
+        case callers must derive an ordinal position from the queryset order.
+        """
+        outer_pks = list(
+            OuterBlockItem.objects.filter(
+                listitem__pk=subject.listitem.pk
+            ).values_list("pk", flat=True)
+        )
+        block_pks = list(
+            BlockItem.objects.filter(
+                outerblockitem__pk__in=outer_pks
+            ).values_list("pk", flat=True)
+        )
+        qs = TrialResult.objects.filter(
+            trialitem__blockitem__pk__in=block_pks, subject_id=subject.id
+        ).order_by("pk", "trial_number")
+        trial_numbers = qs.values_list("trial_number", flat=True)
+        unique = len(trial_numbers) == len(set(trial_numbers))
+        return qs, unique
+
     def create_trial_worksheet(self, subject):
         """Create a dataframe per subject containing the trial results.
 
         Also adds the corresponding webcam/audio files to the final zip file.
         """
         trial_data = []
-        outer_blocks_pk = list(
-            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
-                "pk", flat=True
-            )
-        )
-        blocks_pk = list(
-            BlockItem.objects.filter(
-                outerblockitem__pk__in=outer_blocks_pk
-            ).values_list("pk", flat=True)
-        )
-        trial_results = TrialResult.objects.filter(
-            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
-        ).order_by("pk", "trial_number")
-        trial_numbers = trial_results.values_list("trial_number", flat=True)
-        unique_trial_number = len(trial_numbers) == len(
-            set(trial_numbers)
-        )  # need to infer trial number if non-unique
+        trial_results, unique_trial_number = self._get_trial_results(subject)
         for result in trial_results:
             audio_file = result.trialitem.audio_file
             coords = list(map(int, re.findall(r"\d+", result.key_pressed)))
@@ -277,23 +284,7 @@ class Reporter:
 
     def create_webgazer_worksheet(self, subject):
         """Create a worksheet per subject containing the eye-tracking results."""
-        outer_blocks_pk = list(
-            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
-                "pk", flat=True
-            )
-        )
-        blocks_pk = list(
-            BlockItem.objects.filter(
-                outerblockitem__pk__in=outer_blocks_pk
-            ).values_list("pk", flat=True)
-        )
-        trial_results = TrialResult.objects.filter(
-            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
-        ).order_by("pk", "trial_number")
-        trial_numbers = trial_results.values_list("trial_number", flat=True)
-        unique_trial_number = len(trial_numbers) == len(
-            set(trial_numbers)
-        )  # need to infer trial number if non-unique
+        trial_results, unique_trial_number = self._get_trial_results(subject)
         validation_data = pd.DataFrame()
         webgazer_data = pd.DataFrame()
         logger.info(trial_results)
