@@ -274,8 +274,7 @@ class TestImportFromZip:
         self, experiment_factory, listitem_factory, outerblock_factory,
         blockitem_factory, trialitem_factory, mock_request
     ):
-        """File stored under experiments/<other_dir>/ on the source is reused if
-        a file with the same original_filename exists anywhere under experiments/."""
+        """All files found under experiments/ (any subfolder) → all reused."""
         other_folder, _ = Folder.objects.get_or_create(
             name="other-stimuli", parent=self.experiments_root
         )
@@ -295,6 +294,46 @@ class TestImportFromZip:
         import_from_zip(mock_request, zip_bytes)
 
         assert FilerFile.objects.filter(original_filename="stim.mp4").count() == before_count
+
+    @pytest.mark.django_db
+    def test_import_partial_match_creates_all_fresh(
+        self, experiment_factory, listitem_factory, outerblock_factory,
+        blockitem_factory, trialitem_factory, filer_file_factory, mock_request
+    ):
+        """If any file is missing from experiments/, all files are created fresh."""
+        exp = experiment_factory(exp_name="PartialMatch")
+        li = listitem_factory(experiment=exp)
+        ob = outerblock_factory(listitem=li)
+        block = blockitem_factory(outerblock=ob)
+        trial = trialitem_factory(blockitem=block)
+        audio = filer_file_factory("audio.wav")
+        visual = filer_file_factory("visual.mp4")
+        trial.audio_file = audio
+        trial.visual_file = visual
+        trial.save()
+
+        zip_bytes = export_to_zip(exp.pk)
+
+        # Keep audio in experiments/ but delete visual — partial match.
+        audio_in_root = FilerFile(
+            original_filename="audio.wav", folder=self.experiments_root
+        )
+        audio_in_root.file.save("audio.wav", ContentFile(b"audio"), save=True)
+        visual.delete()
+
+        import_from_zip(mock_request, zip_bytes)
+
+        # Both files should have been (re)created fresh under experiments/<exp_name>/.
+        # The folder uses the original exp_name from the ZIP, not the copy-suffixed name.
+        exp_folder = Folder.objects.get(
+            name="PartialMatch", parent=self.experiments_root
+        )
+        assert FilerFile.objects.filter(
+            original_filename="audio.wav", folder=exp_folder
+        ).exists()
+        assert FilerFile.objects.filter(
+            original_filename="visual.mp4", folder=exp_folder
+        ).exists()
 
     @pytest.mark.django_db
     def test_import_duplicate_zip_renames_experiment(

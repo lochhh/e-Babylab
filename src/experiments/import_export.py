@@ -126,12 +126,13 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
 
     On import:
 
-    - Experiment media files (audio, visual, loading image) are deduplicated
+    - Experiment media files (audio, visual, loading image) are checked
       against the ``experiments/`` root folder and all its direct subfolders.
-      Missing files are created under ``experiments/<exp_name>/``.
-    - CDI instrument CSV files are deduplicated against the ``instruments/``
-      root folder and all its direct subfolders.  Missing files are created
-      under ``instruments/<instr_name>/``.
+      If **all** files are found, they are reused as-is.  If **any** file is
+      missing, every file is (re)created fresh under ``experiments/<exp_name>/``.
+    - The same all-or-nothing rule applies to CDI instrument CSV files checked
+      against the ``instruments/`` hierarchy, creating under
+      ``instruments/<instr_name>/`` when needed.
     - CDI instruments are matched by ``instr_name``; an existing instrument is
       reused, otherwise a new one is created.
     - If an experiment with the same name already exists on this instance, the
@@ -164,9 +165,11 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         exp_name = raw["experiment"][0]["fields"]["exp_name"]
         media_files = raw.get("media_files", {})
 
-        # Step 1: Reconstruct filer media files.
-        # Experiment media (audio, visual, loading_image) are deduplicated against
-        # the experiments/ hierarchy; CDI instrument CSV files against instruments/.
+        # Step 1: Reconstruct filer media files using an all-or-nothing strategy.
+        # If every file in a group (experiment media / instrument CSVs) already
+        # exists under the respective root, all are reused.  If any single file
+        # is absent, every file in that group is (re)created fresh in a new
+        # subfolder so the experiment always references a consistent set of files.
         experiments_root = Folder.objects.get(name="experiments", parent=None)
         instruments_root, _ = Folder.objects.get_or_create(
             name="instruments", parent=None, defaults={"owner": request.user}
@@ -178,64 +181,76 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             else None
         )
 
-        exp_folder: Folder | None = Folder.objects.filter(
-            name=exp_name, parent=experiments_root
-        ).first()
-        instr_folder: Folder | None = (
-            Folder.objects.filter(name=instr_name, parent=instruments_root).first()
-            if instr_name
-            else None
-        )
+        exp_media = {
+            pk: meta
+            for pk, meta in media_files.items()
+            if meta.get("source") != "instrument"
+        }
+        instr_media = {
+            pk: meta
+            for pk, meta in media_files.items()
+            if meta.get("source") == "instrument"
+        }
 
-        for old_pk, meta in media_files.items():
-            filename = meta["original_filename"]
-            is_image = meta["is_image"]
-            is_instrument_file = meta.get("source") == "instrument"
-
-            search_root = instruments_root if is_instrument_file else experiments_root
-
-            existing = (
-                FilerFile.objects.filter(original_filename=filename)
-                .filter(Q(folder=search_root) | Q(folder__parent=search_root))
-                .first()
-            )
-
-            if existing is not None:
-                new_pk = str(existing.pk)
+        def _resolve(
+            files_meta: dict,
+            search_root: Folder,
+            target_name: str,
+        ) -> dict[str, str]:
+            """Return {old_pk: new_pk} — reuse all or create all fresh."""
+            if not files_meta:
+                return {}
+            found: dict[str, FilerFile] = {}
+            for old_pk, meta in files_meta.items():
+                obj = (
+                    FilerFile.objects.filter(original_filename=meta["original_filename"])
+                    .filter(Q(folder=search_root) | Q(folder__parent=search_root))
+                    .first()
+                )
+                if obj is None:
+                    break
+                found[old_pk] = obj
             else:
+                # All files found — reuse them.
+                return {pk: str(obj.pk) for pk, obj in found.items()}
+
+            # At least one file missing — create every file fresh.
+            folder, _ = Folder.objects.get_or_create(
+                name=target_name,
+                parent=search_root,
+                defaults={"owner": request.user},
+            )
+            pk_map: dict[str, str] = {}
+            for old_pk, meta in files_meta.items():
+                filename = meta["original_filename"]
                 file_bytes = zip_file.read(meta["zip_path"])
-                if is_instrument_file:
-                    if instr_folder is None:
-                        instr_folder, _ = Folder.objects.get_or_create(
-                            name=instr_name,
-                            parent=instruments_root,
-                            defaults={"owner": request.user},
-                        )
-                    target_folder = instr_folder
-                else:
-                    if exp_folder is None:
-                        exp_folder, _ = Folder.objects.get_or_create(
-                            name=exp_name,
-                            parent=experiments_root,
-                            defaults={"owner": request.user},
-                        )
-                    target_folder = exp_folder
                 filer_obj = (
                     FilerImage(
                         original_filename=filename,
-                        folder=target_folder,
+                        folder=folder,
                         owner=request.user,
                     )
-                    if is_image
+                    if meta["is_image"]
                     else FilerFile(
                         original_filename=filename,
-                        folder=target_folder,
+                        folder=folder,
                         owner=request.user,
                     )
                 )
                 filer_obj.file.save(filename, ContentFile(file_bytes), save=True)
-                new_pk = str(filer_obj.pk)
+                pk_map[old_pk] = str(filer_obj.pk)
+            return pk_map
 
+        pk_map = {
+            **_resolve(exp_media, experiments_root, exp_name),
+            **(
+                _resolve(instr_media, instruments_root, instr_name)
+                if instr_name
+                else {}
+            ),
+        }
+
+        for old_pk, new_pk in pk_map.items():
             for field in _ALL_MEDIA_FIELDS:
                 json_str = json_str.replace(
                     f'"{field}": {old_pk}', f'"{field}": {new_pk}'
