@@ -518,36 +518,27 @@ class ExperimentAdmin(
     @staticmethod
     def export_to_json(experiment_id):
         """Create a JSON object of the experiment to be exported."""
-        # Get all data
-        experiment = Experiment.objects.filter(pk=experiment_id)
-        lists = ListItem.objects.filter(experiment=experiment_id)
-        outerblocks = OuterBlockItem.objects.filter(listitem__experiment=experiment_id)
-        innerblocks = BlockItem.objects.filter(
-            outerblockitem__listitem__experiment=experiment_id
-        )
-        trials = TrialItem.objects.filter(
-            blockitem__outerblockitem__listitem__experiment=experiment_id
-        )
-        questions = Question.objects.filter(experiment=experiment_id)
-        consentquestions = ConsentQuestion.objects.filter(experiment=experiment_id)
-
-        # Serialize into JSON object
-        json_data = {}
-        json_data["experiment"] = json.loads(serializers.serialize("json", experiment))
-        json_data["lists"] = json.loads(serializers.serialize("json", lists))
-        json_data["outerblocks"] = json.loads(
-            serializers.serialize("json", outerblocks)
-        )
-        json_data["innerblocks"] = json.loads(
-            serializers.serialize("json", innerblocks)
-        )
-        json_data["trials"] = json.loads(serializers.serialize("json", trials))
-        json_data["questions"] = json.loads(serializers.serialize("json", questions))
-        json_data["consentquestions"] = json.loads(
-            serializers.serialize("json", consentquestions)
-        )
-
-        return json_data
+        querysets = {
+            "experiment": Experiment.objects.filter(pk=experiment_id),
+            "lists": ListItem.objects.filter(experiment=experiment_id),
+            "outerblocks": OuterBlockItem.objects.filter(
+                listitem__experiment=experiment_id
+            ),
+            "innerblocks": BlockItem.objects.filter(
+                outerblockitem__listitem__experiment=experiment_id
+            ),
+            "trials": TrialItem.objects.filter(
+                blockitem__outerblockitem__listitem__experiment=experiment_id
+            ),
+            "questions": Question.objects.filter(experiment=experiment_id),
+            "consentquestions": ConsentQuestion.objects.filter(
+                experiment=experiment_id
+            ),
+        }
+        return {
+            key: json.loads(serializers.serialize("json", qs))
+            for key, qs in querysets.items()
+        }
 
     @staticmethod
     def import_from_json(request, data):
