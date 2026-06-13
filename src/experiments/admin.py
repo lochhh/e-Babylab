@@ -491,7 +491,7 @@ class ExperimentAdmin(
         ),
     ]
     inlines = [ConsentQuestionInline, QuestionInline, ListItemInline]
-    list_display = ("exp_name", "created_on", "experiment_buttons")
+    list_display = ("exp_name", "created_on", "user", "experiment_buttons")
     list_filter = ["created_on"]
     search_fields = ["exp_name"]
     change_list_filter_template = "admin/filter_listing.html"
@@ -559,9 +559,7 @@ class ExperimentAdmin(
 
         # Import lists
         parsed = json.loads(json_data)
-        for list_item in serializers.deserialize(
-            "json", json.dumps(parsed["lists"])
-        ):
+        for list_item in serializers.deserialize("json", json.dumps(parsed["lists"])):
             old_pk = str(list_item.object.id)
             list_item.object.id = None
             list_item.save()
@@ -598,9 +596,7 @@ class ExperimentAdmin(
 
         # Import trials, questions, and consent questions (no FK remapping needed)
         parsed = json.loads(json_data)
-        for trial_item in serializers.deserialize(
-            "json", json.dumps(parsed["trials"])
-        ):
+        for trial_item in serializers.deserialize("json", json.dumps(parsed["trials"])):
             trial_item.object.id = None
             trial_item.save()
 
