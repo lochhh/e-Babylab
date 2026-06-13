@@ -136,7 +136,8 @@ class Reporter:
             return f"({row_num},{col_num})"
         return ""
 
-    def _resolve_answer_value(self, answer_base, participation_date):
+    @staticmethod
+    def _resolve_answer_value(answer_base, participation_date):
         qt = answer_base.question.question_type
         if qt == Question.AGE:
             answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
