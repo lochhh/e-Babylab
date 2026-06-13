@@ -1,16 +1,4 @@
-"""Unit tests that cover reporter.py behaviour.
-
-These tests exercise the Reporter class and its methods
-- __init__ (ensure it creates an empty zipfile and sets up paths correctly)
-- calc_trial_duration (test numeric and missing time inputs)
-- calc_roi_response (test with various coordinate inputs and grid/resolution settings,
-  including edge cases like coordinates on the boundary, or out-of-bounds coordinates)
-- gcd (test with various pairs of integers, including edge cases)
-- create_*_worksheet methods (test that they return the expected objects containing
-  expected data, and that they handle empty datasets gracefully)
-- create_report (test that it produces a .zip file with the expected structure and
-  contents)
-"""
+"""Unit tests that cover reporter.py behaviour."""
 
 import importlib
 import pathlib
@@ -85,28 +73,38 @@ def _xlsx_sheet_columns(sheet_index):
 
 
 class DummyZipFile:
+    """Stub for zipfile.ZipFile that records written entries without touching the filesystem."""
+
     def __init__(self, *_, **__):
+        """Initialise with an empty list to track written entries."""
         self.written = []
 
     def write(self, *args, **kwargs):
+        """Record the write call arguments."""
         self.written.append((args, kwargs))
 
     def close(self):
+        """No-op close."""
         pass
 
 
 class DummyDF:
+    """Stub for pd.DataFrame that records to_excel calls without writing files."""
+
     def __init__(self, data=None, columns=None):
+        """Initialise with optional data and columns, tracking whether to_excel was called."""
         # store so tests can inspect
         self.data = data
         self.columns = columns
         self.saved = {"to_excel": False}
 
     def to_excel(self, *_, **__):
+        """Record that to_excel was called."""
         self.saved["to_excel"] = True
 
     @staticmethod
     def from_dict(d, **__):
+        """Return a DummyDF wrapping the given dict."""
         return DummyDF(data=d)
 
 
@@ -114,14 +112,16 @@ class DummyExcelWriter:
     """Stub for pd.ExcelWriter that discards all operations."""
 
     def __init__(self, *_, **__):
+        """Initialise with no state."""
         pass
 
     def close(self):
+        """No-op close."""
         pass
 
 
 def make_reporter(monkeypatch, tmp_path, experiment):
-    """Helper to construct a Reporter instance with heavy IO monkeypatched away."""
+    """Construct a Reporter instance with heavy IO monkeypatched away."""
     monkeypatch.setattr(
         rpt, "settings", SimpleNamespace(REPORTS_ROOT=str(tmp_path)), raising=False
     )
@@ -197,27 +197,6 @@ def test_calc_roi_response(reporter, result_coords, expected):
         trialitem=SimpleNamespace(grid_row=2, grid_col=2),
     )
     assert reporter.calc_roi_response(trial_result, result_coords) == expected
-
-
-# ---------------------------------------------------------------------------
-# gcd
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "a,b,expected",
-    [
-        (48, 18, 6),  # common divisor case
-        (18, 48, 6),  # gcd is commutative/symmetric
-        (7, 3, 1),  # coprime case
-        (5, 0, 5),  # base case: gcd(a, 0) == a
-        (0, 5, 5),  # base case: gcd(0, b) == b
-        (0, 0, 0),  # edge case: gcd(0, 0) is conventionally defined as 0
-    ],
-)
-def test_gcd(reporter, a, b, expected):
-    """Tests gcd with various pairs of integers, including edge cases."""
-    assert reporter.gcd(a, b) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +312,9 @@ def _patch_create_report(monkeypatch, rep, subject):
         rep, "create_trial_worksheet", lambda _: DummyDF([], columns=rep.trial_columns)
     )
     monkeypatch.setattr(
-        rep, "create_webgazer_worksheet", lambda _: [DummyDF([]), DummyDF([])]
+        rep,
+        "create_webgazer_worksheet",
+        lambda _: rpt.WebgazerSheets(DummyDF([]), DummyDF([])),
     )
     monkeypatch.setattr(rpt.pd, "ExcelWriter", DummyExcelWriter, raising=False)
     monkeypatch.setattr(
@@ -381,7 +362,7 @@ def test_create_report_includes_eye_tracking_worksheets(
 
     def fake_webgazer(s):
         webgazer_called.append(s)
-        return [DummyDF([]), DummyDF([])]
+        return rpt.WebgazerSheets(DummyDF([]), DummyDF([]))
 
     monkeypatch.setattr(rep, "create_subject_worksheet", lambda _: DummyDF({"k": "v"}))
     monkeypatch.setattr(

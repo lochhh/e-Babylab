@@ -1,0 +1,1 @@
+{"nodes": [{"id": "test_unit_test_template_defaults_test_template_defaults", "label": "test_template_defaults_contains_strings", "file_type": "code", "source_file": "tests/test_unit/test_template_defaults.py", "source_location": "8", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

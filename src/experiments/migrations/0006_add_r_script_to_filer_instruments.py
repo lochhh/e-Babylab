@@ -10,12 +10,16 @@ def add_r_script_to_filer(apps, schema_editor):
     File = apps.get_model("filer", "File")
     ContentType = apps.get_model("contenttypes", "contenttype")
 
-    instruments_folder, _ = Folder.objects.get_or_create(name="instruments", parent=None)
+    instruments_folder, _ = Folder.objects.get_or_create(
+        name="instruments", parent=None
+    )
 
     script_name = "generateInstrumentFiles.r"
     script_storage_path = f"instruments/{script_name}"
     script_abs_path = os.path.join(settings.MEDIA_ROOT, "uploads", script_storage_path)
-    file_size = os.path.getsize(script_abs_path) if os.path.exists(script_abs_path) else None
+    file_size = (
+        os.path.getsize(script_abs_path) if os.path.exists(script_abs_path) else None
+    )
 
     file_ct, _ = ContentType.objects.get_or_create(app_label="filer", model="file")
 

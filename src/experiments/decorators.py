@@ -1,3 +1,5 @@
+"""Custom authentication decorators for the experiments application."""
+
 from functools import wraps
 from urllib.parse import urlparse
 

@@ -33,7 +33,7 @@ services:
       - DJANGO_ENV=dev
       - DJANGO_SETTINGS_MODULE=config.settings
       - COVERAGE_RCFILE=/etc/pyproject.toml
-      - PYTEST_ADDOPTS=/usr/src/tests
+      - PYTEST_ADDOPTS=--cov=experiments --cov=config --cov-report=term-missing /usr/src/tests
     logging:
       driver: "json-file"
       options:

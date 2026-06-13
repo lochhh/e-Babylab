@@ -19,7 +19,10 @@ from experiments import models as exp_models
 
 @pytest.mark.django_db
 class TestConsentForm:
+    """Tests for the ConsentForm class."""
+
     def test_no_consent_questions_produces_empty_form(self, experiment_factory):
+        """Verify an experiment with no consent questions produces an empty form."""
         experiment = experiment_factory()
         form = exp_forms.ConsentForm(experiment=experiment)
         assert len(form.fields) == 0
@@ -27,6 +30,7 @@ class TestConsentForm:
     def test_one_consent_question_adds_one_choice_field(
         self, experiment_factory, consent_question_factory
     ):
+        """Verify a single consent question adds one ChoiceField to the form."""
         experiment = experiment_factory()
         cq = consent_question_factory(text="I agree", experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
@@ -39,6 +43,7 @@ class TestConsentForm:
     def test_consent_field_choices_use_response_yes_no(
         self, experiment_factory, consent_question_factory
     ):
+        """Verify the yes/no choices map to the question's response labels."""
         experiment = experiment_factory()
         cq = consent_question_factory(experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
@@ -52,6 +57,7 @@ class TestConsentForm:
     def test_consent_field_has_required_css_class(
         self, experiment_factory, consent_question_factory
     ):
+        """Verify the consent field widget carries the required CSS class."""
         experiment = experiment_factory()
         cq = consent_question_factory(experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
@@ -61,6 +67,7 @@ class TestConsentForm:
     def test_multiple_consent_questions_all_added(
         self, experiment_factory, consent_question_factory
     ):
+        """Verify all consent questions are added as fields."""
         experiment = experiment_factory()
         cq1 = consent_question_factory(text="Q1", experiment=experiment, position=1)
         cq2 = consent_question_factory(text="Q2", experiment=experiment, position=2)
@@ -76,7 +83,10 @@ class TestConsentForm:
 
 @pytest.mark.django_db
 class TestSubjectDataFormInit:
+    """Tests for SubjectDataForm field generation from experiment questions."""
+
     def test_text_question_adds_char_field(self, experiment_factory, question_factory):
+        """Verify a TEXT question adds a CharField to the form."""
         experiment = experiment_factory()
         q = question_factory(
             text="Name", experiment=experiment, question_type=exp_models.Question.TEXT
@@ -89,6 +99,7 @@ class TestSubjectDataFormInit:
     def test_radio_question_adds_choice_field_with_radio_widget(
         self, experiment_factory, question_factory
     ):
+        """Verify a RADIO question adds a ChoiceField with a RadioSelect widget."""
         experiment = experiment_factory()
         q = question_factory(
             text="Color",
@@ -104,6 +115,7 @@ class TestSubjectDataFormInit:
     def test_sex_question_adds_choice_field_with_radio_widget(
         self, experiment_factory, question_factory
     ):
+        """Verify a SEX question adds a ChoiceField with a RadioSelect widget."""
         experiment = experiment_factory()
         q = question_factory(
             text="Sex",
@@ -119,6 +131,7 @@ class TestSubjectDataFormInit:
     def test_select_question_adds_choice_field_with_empty_first_option(
         self, experiment_factory, question_factory
     ):
+        """Verify a SELECT question adds a ChoiceField with an empty first option."""
         experiment = experiment_factory()
         q = question_factory(
             text="Country",
@@ -137,6 +150,7 @@ class TestSubjectDataFormInit:
     def test_select_multiple_question_adds_multiple_choice_field(
         self, experiment_factory, question_factory
     ):
+        """Verify a SELECT_MULTIPLE question adds a MultipleChoiceField."""
         experiment = experiment_factory()
         q = question_factory(
             text="Tags",
@@ -152,6 +166,7 @@ class TestSubjectDataFormInit:
     def test_integer_question_adds_integer_field(
         self, experiment_factory, question_factory
     ):
+        """Verify an INTEGER question adds an IntegerField."""
         experiment = experiment_factory()
         q = question_factory(
             text="Count",
@@ -165,6 +180,7 @@ class TestSubjectDataFormInit:
     def test_num_range_question_sets_min_max(
         self, experiment_factory, question_factory
     ):
+        """Verify a NUM_RANGE question sets min_value, max_value, and step."""
         experiment = experiment_factory()
         q = question_factory(
             text="Score",
@@ -181,6 +197,7 @@ class TestSubjectDataFormInit:
         assert field.widget.attrs.get("step") == "1"
 
     def test_age_question_adds_date_field(self, experiment_factory, question_factory):
+        """Verify an AGE question adds a DateField."""
         experiment = experiment_factory()
         q = question_factory(
             text="DOB",
@@ -195,6 +212,7 @@ class TestSubjectDataFormInit:
     def test_required_question_sets_required_true_and_css(
         self, experiment_factory, question_factory
     ):
+        """Verify required questions set required=True and a required CSS class."""
         experiment = experiment_factory()
         q = question_factory(
             text="Must",
@@ -210,6 +228,7 @@ class TestSubjectDataFormInit:
     def test_optional_question_sets_required_false_and_css(
         self, experiment_factory, question_factory
     ):
+        """Verify optional questions set required=False and list-unstyled CSS class."""
         experiment = experiment_factory()
         q = question_factory(
             text="Optional",
@@ -225,6 +244,7 @@ class TestSubjectDataFormInit:
     def test_initial_populated_from_post_data(
         self, experiment_factory, question_factory
     ):
+        """Verify POST data pre-fills initial values for question fields."""
         experiment = experiment_factory()
         q = question_factory(
             text="Name", experiment=experiment, question_type=exp_models.Question.TEXT
@@ -239,6 +259,7 @@ class TestSubjectDataFormInit:
         assert form.fields[key].initial == "Alice"
 
     def test_no_questions_produces_only_hidden_fields(self, experiment_factory):
+        """Verify a form with no questions contains only hidden resolution fields."""
         experiment = experiment_factory()
         form = exp_forms.SubjectDataForm(experiment=experiment)
         # Only resolution_w and resolution_h from Meta
@@ -252,13 +273,16 @@ class TestSubjectDataFormInit:
 
 @pytest.mark.django_db
 class TestSubjectDataFormClean:
+    """Tests for SubjectDataForm.clean() — age-range validation."""
+
     def _make_form_with_dob(self, experiment, question, dob_str):
-        """Helper: build a bound form with the given date of birth string."""
+        """Build a bound form with the given date of birth string."""
         key = "question_%d" % question.pk
         data = {key: dob_str, "resolution_w": "0", "resolution_h": "0"}
         return exp_forms.SubjectDataForm(data=data, experiment=experiment)
 
     def test_age_within_range_is_valid(self, experiment_factory, question_factory):
+        """Verify a date of birth within the allowed age range passes validation."""
         experiment = experiment_factory()
         # age range 6–36 months; a 12-month-old should pass
         q = question_factory(
@@ -274,6 +298,7 @@ class TestSubjectDataFormClean:
         assert form.is_valid(), form.errors
 
     def test_age_below_minimum_adds_error(self, experiment_factory, question_factory):
+        """Verify a date of birth below the minimum age adds a validation error."""
         experiment = experiment_factory()
         q = question_factory(
             text="DOB",
@@ -290,7 +315,29 @@ class TestSubjectDataFormClean:
         key = "question_%d" % q.pk
         assert key in form.errors
 
+    def test_clean_invalid_date_does_not_raise(
+        self, experiment_factory, question_factory
+    ):
+        """Verify clean() exits early when Django rejects the date field value."""
+        experiment = experiment_factory()
+        q = question_factory(
+            text="DOB",
+            experiment=experiment,
+            question_type=exp_models.Question.AGE,
+            choices="6, 36",
+            required=True,
+        )
+        data = {
+            "question_%d" % q.pk: "not-a-date",
+            "resolution_w": "0",
+            "resolution_h": "0",
+        }
+        form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
+        assert not form.is_valid()
+        assert "question_%d" % q.pk in form.errors
+
     def test_age_above_maximum_adds_error(self, experiment_factory, question_factory):
+        """Verify a date of birth above the maximum age adds a validation error."""
         experiment = experiment_factory()
         q = question_factory(
             text="DOB",
@@ -315,9 +362,12 @@ class TestSubjectDataFormClean:
 
 @pytest.mark.django_db
 class TestSubjectDataFormSave:
+    """Tests for SubjectDataForm.save() — SubjectData and Answer record creation."""
+
     def test_save_creates_subject_data_with_experiment_and_uuid(
         self, experiment_factory, question_factory
     ):
+        """Verify save() creates a SubjectData with participant_id=1."""
         experiment = experiment_factory()
         q = question_factory(
             text="Name",
@@ -337,6 +387,7 @@ class TestSubjectDataFormSave:
     def test_save_creates_answer_for_text_question(
         self, experiment_factory, question_factory
     ):
+        """Verify save() creates an AnswerText record for a TEXT question."""
         experiment = experiment_factory()
         q = question_factory(
             text="Name",
@@ -355,6 +406,7 @@ class TestSubjectDataFormSave:
     def test_save_increments_participant_id(
         self, experiment_factory, question_factory, subjectdata_factory
     ):
+        """Verify save() assigns participant_id as max existing + 1."""
         experiment = experiment_factory()
         # Pre-existing participant
         subjectdata_factory(experiment=experiment, participant_id=5)
@@ -374,6 +426,7 @@ class TestSubjectDataFormSave:
     def test_save_creates_answer_for_integer_question(
         self, experiment_factory, question_factory
     ):
+        """Verify save() creates an AnswerInteger record for an INTEGER question."""
         experiment = experiment_factory()
         q = question_factory(
             text="Age",
@@ -392,6 +445,7 @@ class TestSubjectDataFormSave:
     def test_save_creates_answer_for_radio_question(
         self, experiment_factory, question_factory
     ):
+        """Verify save() creates an AnswerRadio record for a RADIO question."""
         experiment = experiment_factory()
         q = question_factory(
             text="Color",
@@ -411,6 +465,7 @@ class TestSubjectDataFormSave:
     def test_save_creates_answer_for_select_question(
         self, experiment_factory, question_factory
     ):
+        """Verify save() creates an AnswerSelect record for a SELECT question."""
         experiment = experiment_factory()
         q = question_factory(
             text="Country",
@@ -430,6 +485,7 @@ class TestSubjectDataFormSave:
     def test_save_creates_answer_for_select_multiple_question(
         self, experiment_factory, question_factory
     ):
+        """Verify save() stores an AnswerSelectMultiple for SELECT_MULTIPLE."""
         experiment = experiment_factory()
         q = question_factory(
             text="Langs",
@@ -456,7 +512,10 @@ class TestSubjectDataFormSave:
 
 @pytest.mark.django_db
 class TestQuestionInlineFormSet:
+    """Tests for QuestionInlineFormSet default initial values."""
+
     def test_adds_default_initial_when_no_questions_exist(self, experiment_factory):
+        """Verify age/sex questions are injected as initial data when none exist."""
         from experiments.forms import QuestionInlineFormSet
         from experiments.models import Question
 
@@ -477,6 +536,7 @@ class TestQuestionInlineFormSet:
     def test_no_default_initial_when_questions_already_exist(
         self, experiment_factory, question_factory
     ):
+        """Verify no initial data is injected when questions already exist."""
         from experiments.forms import QuestionInlineFormSet
         from experiments.models import Question
 
@@ -506,7 +566,10 @@ class TestQuestionInlineFormSet:
 
 @pytest.mark.django_db
 class TestExperimentForm:
+    """Tests for ExperimentForm — sharing_groups clean validation."""
+
     def _bound_form(self, sharing_option, groups):
+        """Build a bound ExperimentForm with the given sharing_option and groups."""
         data = {
             "exp_name": "Test",
             "sharing_option": sharing_option,
@@ -523,25 +586,38 @@ class TestExperimentForm:
         return exp_forms.ExperimentForm(data=data)
 
     def test_clean_sharing_groups_raises_when_grp_and_no_groups(self, user):
+        """Verify a validation error when GRP sharing is set with no groups selected."""
         form = self._bound_form("GRP", [])
         assert not form.is_valid()
         assert "sharing_groups" in form.errors
 
     def test_clean_sharing_groups_valid_when_grp_and_groups_provided(self, group):
+        """Verify no sharing_groups error when groups are provided for GRP sharing."""
         form = self._bound_form("GRP", [group])
-        # The form may have other missing required fields; check only sharing_groups has no error
+        # Other required fields may be missing; only check sharing_groups has no error.
         form.is_valid()
         assert "sharing_groups" not in form.errors
 
     def test_clean_sharing_groups_valid_when_private_and_no_groups(self, user):
+        """Verify no sharing_groups error when sharing_option is OWN."""
         form = self._bound_form("OWN", [])
         form.is_valid()
         assert "sharing_groups" not in form.errors
 
     def test_clean_sharing_groups_valid_when_public_and_no_groups(self, user):
+        """Verify no sharing_groups error when sharing_option is PUB."""
         form = self._bound_form("PUB", [])
         form.is_valid()
         assert "sharing_groups" not in form.errors
+
+    @pytest.mark.parametrize("sharing_option", ["PUB", "OWN"])
+    def test_clean_sharing_groups_raises_when_groups_selected_without_grp_option(
+        self, group, sharing_option
+    ):
+        """Verify error when groups are selected but sharing_option is not GRP."""
+        form = self._bound_form(sharing_option, [group])
+        assert not form.is_valid()
+        assert "sharing_groups" in form.errors
 
 
 # ---------------------------------------------------------------------------
@@ -550,7 +626,10 @@ class TestExperimentForm:
 
 
 class TestVocabularyChecklistForm:
+    """Tests for VocabularyChecklistForm — word keyword argument behaviour."""
+
     def test_word_kwarg_adds_boolean_field(self):
+        """Verify the word kwarg creates a BooleanField named word_<word>."""
         form = exp_forms.VocabularyChecklistForm(word="apple")
         assert "word_apple" in form.fields
         field = form.fields["word_apple"]
@@ -559,23 +638,28 @@ class TestVocabularyChecklistForm:
         assert field.required is False
 
     def test_word_field_has_list_unstyled_class(self):
+        """Verify the word field has the list-unstyled CSS class."""
         form = exp_forms.VocabularyChecklistForm(word="banana")
         assert form.fields["word_banana"].widget.attrs.get("class") == "list-unstyled"
 
     def test_no_word_produces_empty_form(self):
+        """Verify omitting the word kwarg produces a form with no fields."""
         form = exp_forms.VocabularyChecklistForm()
         assert len(form.fields) == 0
 
     def test_word_none_produces_empty_form(self):
+        """Verify word=None produces a form with no fields."""
         form = exp_forms.VocabularyChecklistForm(word=None)
         assert len(form.fields) == 0
 
     def test_valid_with_word_checked(self):
+        """Verify a checked word field is valid and returns True in cleaned_data."""
         form = exp_forms.VocabularyChecklistForm(data={"word_cat": True}, word="cat")
         assert form.is_valid()
         assert form.cleaned_data["word_cat"] is True
 
     def test_valid_with_word_unchecked(self):
+        """Verify an unchecked word field is valid and returns False in cleaned_data."""
         # BooleanField with required=False: unchecked (absent from POST) should be valid
         form = exp_forms.VocabularyChecklistForm(data={}, word="cat")
         assert form.is_valid()
@@ -588,12 +672,16 @@ class TestVocabularyChecklistForm:
 
 
 class TestImportForm:
+    """Tests for ImportForm — file field presence and validation."""
+
     def test_import_form_has_file_field(self):
+        """Verify the import form contains a FileField named import_file."""
         form = exp_forms.ImportForm()
         assert "import_file" in form.fields
         assert isinstance(form.fields["import_file"], django_forms.FileField)
 
     def test_import_form_invalid_without_file(self):
+        """Verify the import form is invalid when no file is provided."""
         form = exp_forms.ImportForm(data={})
         assert not form.is_valid()
         assert "import_file" in form.errors

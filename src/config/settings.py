@@ -124,7 +124,7 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # noqa: E501
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -173,7 +173,11 @@ TINYMCE_DEFAULT_CONFIG = {
     "remove_script_host": False,
     "forced_root_block": False,
     "plugins": "lists link image code",
-    "toolbar": "undo redo | fontselect fontsizeselect | forecolor | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code | removeformat",
+    "toolbar": (
+        "undo redo | fontselect fontsizeselect | forecolor | bold italic underline"
+        " | alignleft aligncenter alignright alignjustify"
+        " | bullist numlist outdent indent | link image | code | removeformat"
+    ),
     "fontsize_formats": "8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt",
     "extended_valid_elements": "script[language|type|src]",
 }

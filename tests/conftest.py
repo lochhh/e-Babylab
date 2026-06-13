@@ -1,5 +1,6 @@
 """Fixtures for experiments app tests."""
 
+import pathlib
 import uuid
 
 import pytest
@@ -8,6 +9,26 @@ from django.core.files.base import ContentFile
 from filer.models.filemodels import File as FilerFile
 
 from experiments import models as exp_models
+
+_NORWEGIAN_WS = (
+    pathlib.Path(__file__).parent / "data" / "norwegian-ws-production"
+)
+_NORWEGIAN_WS_FILES = {
+    "words_list":   "word_list-norwegian-ws-production.csv",
+    "irt_params":   "irt_parameters-norwegian-ws.csv",
+    "f_lm_np_mean": "np_m-female-norwegian-ws.csv",
+    "f_lm_np_sd":   "np_sd-female-norwegian-ws.csv",
+    "f_lm_p_mean":  "p_m-female-norwegian-ws.csv",
+    "f_lm_p_sd":    "p_sd-female-norwegian-ws.csv",
+    "f_bmin":       "bmin-female-norwegian-ws.csv",
+    "f_slope":      "slope-female-norwegian-ws.csv",
+    "m_lm_np_mean": "np_m-male-norwegian-ws.csv",
+    "m_lm_np_sd":   "np_sd-male-norwegian-ws.csv",
+    "m_lm_p_mean":  "p_m-male-norwegian-ws.csv",
+    "m_lm_p_sd":    "p_sd-male-norwegian-ws.csv",
+    "m_bmin":       "bmin-male-norwegian-ws.csv",
+    "m_slope":      "slope-male-norwegian-ws.csv",
+}
 
 
 def _make_filer_file(filename):
@@ -37,6 +58,26 @@ def user(db):
 def group(db):
     """Create a basic Group for tests that require group membership."""
     return Group.objects.create(name="testgroup")
+
+
+@pytest.fixture(scope="session")
+def real_instrument(django_db_setup, django_db_blocker):
+    """Instrument backed by the real Norwegian WS production CSV files.
+
+    Session-scoped: the instrument row and its filer files are created once
+    and reused across all tests. No test mutates this fixture.
+    """
+    with django_db_blocker.unblock():
+        def _filer(csv_filename):
+            content = (_NORWEGIAN_WS / csv_filename).read_bytes()
+            f = FilerFile(original_filename=csv_filename)
+            f.file.save(csv_filename, ContentFile(content), save=True)
+            return f
+
+        return exp_models.Instrument.objects.create(
+            instr_name="norwegian-ws-prod",
+            **{field: _filer(csv) for field, csv in _NORWEGIAN_WS_FILES.items()},
+        )
 
 
 @pytest.fixture

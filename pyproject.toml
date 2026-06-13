@@ -39,11 +39,12 @@ fix=true
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
-ignore = []
+ignore = ["D203", "D213", "RUF012"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D205"] # missing-blank-line-after-summary
 "**/template_defaults.py" = ["E501"] # line-too-long (HTML template strings)
+"**/migrations/*.py" = ["D"] # auto-generated files
 
 [tool.ruff.format]
 quote-style = "double"

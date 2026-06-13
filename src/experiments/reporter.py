@@ -1,13 +1,17 @@
+"""Result export utilities for generating subject data downloads."""
+
 import contextlib
 import datetime
 import json
 import logging
+import math
 import os
 import re
 import shutil
 import uuid
 import zipfile
 from io import StringIO
+from typing import NamedTuple
 
 import pandas as pd
 from django.conf import settings
@@ -15,11 +19,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.text import get_valid_filename
 
 from .models import (
+    ANSWER_TYPE_MODEL,
     AnswerBase,
     AnswerInteger,
-    AnswerRadio,
-    AnswerSelect,
-    AnswerSelectMultiple,
     AnswerText,
     BlockItem,
     CdiResult,
@@ -34,10 +36,18 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+class WebgazerSheets(NamedTuple):
+    """Pair of DataFrames produced by create_webgazer_worksheet."""
+
+    gaze: "pd.DataFrame"
+    validation: "pd.DataFrame"
+
+
 class Reporter:
     """Utility for generating results as a zip file to be downloaded."""
 
     def __init__(self, experiment):
+        """Initialise the reporter with the experiment to export."""
         self.experiment = experiment
 
         # Trial columns
@@ -88,13 +98,13 @@ class Reporter:
             os.makedirs("webcam")
 
     def calc_trial_duration(self, t1, t2):
-        """Calculates trial duration based on the start and end times."""
+        """Calculate trial duration based on the start and end times."""
         if t1 and t2:
             return str(t2 - t1)
         return ""
 
     def calc_roi_response(self, result, coords):
-        """Determines row and col responded to (click/gaze) based on grid size defined for the trial."""
+        """Determine the row and column of a click or gaze within the trial's grid."""
         width = result.resolution_w
         height = result.resolution_h
         boundaries_r = list(range(0, height, int(height / result.trialitem.grid_row)))
@@ -114,19 +124,26 @@ class Reporter:
             return f"({row_num},{col_num})"
         return ""
 
-    def gcd(self, a, b):
-        """Calculate greatest common divisor of a and b using Euclidean algorithm."""
-        if b == 0:
-            return a
-        return self.gcd(b, a % b)
+    @staticmethod
+    def _resolve_answer_value(answer_base, participation_date):
+        qt = answer_base.question.question_type
+        if qt == Question.AGE:
+            answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
+            if answer_text and answer_text.body:
+                dob = datetime.date.fromisoformat(answer_text.body)
+                age_months = round((participation_date - dob).days / (365 / 12))
+                return f"{answer_text.body} ({age_months} mo.)"
+            if answer_text:
+                return ""
+            # Legacy fallback to read age provided in months
+            return str(AnswerInteger.objects.get(pk=answer_base.pk).body)
+        model = ANSWER_TYPE_MODEL.get(qt)
+        return str(model.objects.get(pk=answer_base.pk).body) if model else ""
 
     def create_subject_worksheet(self, subject):
-        """Create a dataframe for each participant containing the data
-        obtained from the consent form and the demographic/participant data form.
-        """
-        gcd = self.gcd(subject.resolution_w, subject.resolution_h)
-        if gcd == 0:
-            gcd = 1
+        """Create a dataframe per subject containing consent and subject form data."""
+        gcd = math.gcd(subject.resolution_w, subject.resolution_h) or 1
+        aspect = f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}"
         try:
             subject_data = {
                 "Report Date": datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
@@ -138,101 +155,68 @@ class Reporter:
                 "Participant Number": subject.participant_id,
                 "Participant UUID": subject.id,
                 "Participation Date": subject.created.strftime("%d.%m.%Y %H:%M:%S"),
-                "Aspect Ratio": f"{int(subject.resolution_h / gcd)}:{int(subject.resolution_w / gcd)}",
+                "Aspect Ratio": aspect,
                 "Resolution": f"{subject.resolution_w}x{subject.resolution_h}",
                 "Consent Questions": "",
             }
 
-            consent_questions = ConsentQuestion.objects.filter(
+            consent_qs = ConsentQuestion.objects.filter(
                 experiment_id=subject.experiment.id
             )
-            for consent_question in consent_questions:
-                # format dictionary key with pos to ensure uniqueness
-                subject_data[
-                    f"{consent_question.position + 1}. {consent_question.text}"
-                ] = "Y"
+            for q in consent_qs:
+                subject_data[f"{q.position + 1}. {q.text}"] = "Y"
 
-            answer_bases = AnswerBase.objects.filter(subject_data_id=subject.id)
             subject_data["Participant Form Responses"] = ""
-            for answer_base in answer_bases:
-                value = ""
-                if answer_base.question.question_type == Question.TEXT:
-                    value = str(AnswerText.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.AGE:
-                    answer_text = AnswerText.objects.filter(pk=answer_base.pk).first()
-                    if answer_text:
-                        if answer_text.body:
-                            value = str(answer_text.body)
-                            dob = datetime.date.fromisoformat(value)
-                            value += (
-                                " ("
-                                + str(
-                                    round(
-                                        ((subject.created.date() - dob).days)
-                                        / (365 / 12)
-                                    )
-                                )
-                                + " mo.)"
-                            )
-                    else:  # Legacy fallback to read age provided in months
-                        value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-                elif (
-                    answer_base.question.question_type == Question.INTEGER
-                    or answer_base.question.question_type == Question.NUM_RANGE
-                ):
-                    value = str(AnswerInteger.objects.get(pk=answer_base.pk).body)
-                elif (
-                    answer_base.question.question_type == Question.RADIO
-                    or answer_base.question.question_type == Question.SEX
-                ):
-                    value = str(AnswerRadio.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.SELECT:
-                    value = str(AnswerSelect.objects.get(pk=answer_base.pk).body)
-                elif answer_base.question.question_type == Question.SELECT_MULTIPLE:
-                    value = str(
-                        AnswerSelectMultiple.objects.get(pk=answer_base.pk).body
-                    )
-                # format dictionary key with pos to ensure uniqueness
-                subject_data[
-                    f"{answer_base.question.position + 1}. {answer_base.question.text}"
-                ] = value
+            for answer_base in AnswerBase.objects.filter(subject_data_id=subject.id):
+                q = answer_base.question
+                key = f"{q.position + 1}. {q.text}"
+                subject_data[key] = self._resolve_answer_value(
+                    answer_base, subject.created.date()
+                )
 
-            cdi_results = CdiResult.objects.filter(subject=subject.id)
             subject_data["CDI estimate"] = subject.cdi_estimate
             subject_data["CDI instrument"] = (
                 subject.experiment.instrument.instr_name
                 if subject.experiment.instrument
                 else ""
             )
-            for cdi_result in cdi_results:
+            for cdi_result in CdiResult.objects.filter(subject=subject.id):
                 subject_data[cdi_result.given_label] = cdi_result.response
         except ObjectDoesNotExist as e:
             logger.exception("Object does not exist: " + str(e))
             raise
         return pd.DataFrame.from_dict(subject_data, orient="index")
 
-    def create_trial_worksheet(self, subject):
-        """Creates a dataframe per participant containing the trial results
-        and adds the corresponding webcam/audio files to the final zip file.
+    def _get_trial_results(self, subject):
+        """Return (queryset, unique_trial_number) for a subject's trial results.
+
+        unique_trial_number is False when trial_number values repeat, in which
+        case callers must derive an ordinal position from the queryset order.
         """
-        trial_data = []
-        outer_blocks_pk = list(
+        outer_pks = list(
             OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
                 "pk", flat=True
             )
         )
-        blocks_pk = list(
-            BlockItem.objects.filter(
-                outerblockitem__pk__in=outer_blocks_pk
-            ).values_list("pk", flat=True)
+        block_pks = list(
+            BlockItem.objects.filter(outerblockitem__pk__in=outer_pks).values_list(
+                "pk", flat=True
+            )
         )
-        trial_results = TrialResult.objects.filter(
-            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
+        qs = TrialResult.objects.filter(
+            trialitem__blockitem__pk__in=block_pks, subject_id=subject.id
         ).order_by("pk", "trial_number")
-        trial_numbers = trial_results.values_list("trial_number", flat=True)
-        unique_trial_number = len(trial_numbers) == len(
-            set(trial_numbers)
-        )  # need to infer trial number if non-unique
+        trial_numbers = qs.values_list("trial_number", flat=True)
+        unique = len(trial_numbers) == len(set(trial_numbers))
+        return qs, unique
+
+    def create_trial_worksheet(self, subject):
+        """Create a dataframe per subject containing the trial results.
+
+        Also adds the corresponding webcam/audio files to the final zip file.
+        """
+        trial_data = []
+        trial_results, unique_trial_number = self._get_trial_results(subject)
         for result in trial_results:
             audio_file = result.trialitem.audio_file
             coords = list(map(int, re.findall(r"\d+", result.key_pressed)))
@@ -274,7 +258,7 @@ class Reporter:
                     self.calc_trial_duration(result.start_time, result.end_time),
                     (
                         block.outerblockitem.listitem.experiment.recording_option
-                        in ["AUD", "VID"]
+                        in ["AUD", "VID", "ALL"]
                         and result.trialitem.record_media
                     ),
                     result.webcam_file.name,
@@ -296,26 +280,10 @@ class Reporter:
         return pd.DataFrame(trial_data, columns=self.trial_columns)
 
     def create_webgazer_worksheet(self, subject):
-        """Creates a worksheet per participant containing the eye-tracking results."""
-        outer_blocks_pk = list(
-            OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
-                "pk", flat=True
-            )
-        )
-        blocks_pk = list(
-            BlockItem.objects.filter(
-                outerblockitem__pk__in=outer_blocks_pk
-            ).values_list("pk", flat=True)
-        )
-        trial_results = TrialResult.objects.filter(
-            trialitem__blockitem__pk__in=blocks_pk, subject_id=subject.id
-        ).order_by("pk", "trial_number")
-        trial_numbers = trial_results.values_list("trial_number", flat=True)
-        unique_trial_number = len(trial_numbers) == len(
-            set(trial_numbers)
-        )  # need to infer trial number if non-unique
-        validation_data = pd.DataFrame()
-        webgazer_data = pd.DataFrame()
+        """Create a worksheet per subject containing the eye-tracking results."""
+        trial_results, unique_trial_number = self._get_trial_results(subject)
+        validation_frames = []
+        webgazer_frames = []
         logger.info(trial_results)
         for result in trial_results:
             # skip trials where gaze is not recorded
@@ -336,12 +304,7 @@ class Reporter:
                 curr_validation_data.insert(0, "Trial Number", trial_number)
                 curr_validation_data.insert(1, "Trial Label", result.trialitem.label)
                 curr_validation_data.insert(2, "Trial Code", result.trialitem.code)
-                validation_data = pd.concat(
-                    [
-                        validation_data,
-                        curr_validation_data,
-                    ]
-                )
+                validation_frames.append(curr_validation_data)
             else:
                 curr_webgazer_data = pd.read_json(
                     StringIO(json.dumps(result.webgazer_data))
@@ -360,37 +323,35 @@ class Reporter:
                 )
             else:
                 curr_webgazer_data["Gaze Area (row,col)"] = ""
-            webgazer_data = pd.concat(
-                [
-                    webgazer_data,
-                    curr_webgazer_data,
-                ]
-            )
+            webgazer_frames.append(curr_webgazer_data)
 
-        return [webgazer_data, validation_data]
+        gaze = (
+            pd.concat(webgazer_frames, ignore_index=True)
+            if webgazer_frames
+            else pd.DataFrame()
+        )
+        validation = (
+            pd.concat(validation_frames, ignore_index=True)
+            if validation_frames
+            else pd.DataFrame()
+        )
+        return WebgazerSheets(gaze=gaze, validation=validation)
 
     def create_report(self):
-        """Create a zip file containing all participants' results and recordings.
+        """Create a zip file containing all subjects' results and recordings.
 
-        The .zip file contains an .xlsx report for each participant with their trial results
-        and responses to consent and demographic questions, as well as their corresponding
-        webcam/audio files for an experiment.
+        The .zip file contains an .xlsx report for each subject with their trial results
+        and responses to consent and demographic questions, as well as their
+        corresponding webcam/audio files for an experiment.
         """
         # For each subject
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
         for subject in subjects:
             # Create excel report
-            workbook_file = (
-                str(subject.participant_id)
-                + "_"
-                + self.experiment.exp_name
-                + "_"
-                + subject.created.strftime("%Y%m%d")
-                + "_"
-                + subject.id
-                + ".xlsx"
+            workbook_file = get_valid_filename(
+                f"{subject.participant_id}_{self.experiment.exp_name}"
+                f"_{subject.created:%Y%m%d}_{subject.id}.xlsx"
             )
-            workbook_file = get_valid_filename(workbook_file)
 
             # Create Pandas Excel writer using XlsxWriter as the engine
             writer = pd.ExcelWriter(
@@ -410,11 +371,11 @@ class Reporter:
                 )
                 if self.experiment.recording_option in ["EYE", "ALL"]:
                     # Create webgazer worksheet
-                    webgazer_worksheets = self.create_webgazer_worksheet(subject)
-                    webgazer_worksheets[0].to_excel(
+                    sheets = self.create_webgazer_worksheet(subject)
+                    sheets.gaze.to_excel(
                         writer, sheet_name="EyeTrackingData", index=False
                     )
-                    webgazer_worksheets[1].to_excel(
+                    sheets.validation.to_excel(
                         writer, sheet_name="EyeTrackingValidation", index=False
                     )
 
