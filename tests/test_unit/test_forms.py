@@ -315,6 +315,27 @@ class TestSubjectDataFormClean:
         key = "question_%d" % q.pk
         assert key in form.errors
 
+    def test_clean_invalid_date_does_not_raise(
+        self, experiment_factory, question_factory
+    ):
+        """Verify clean() exits early when Django rejects the date field value."""
+        experiment = experiment_factory()
+        q = question_factory(
+            text="DOB",
+            experiment=experiment,
+            question_type=exp_models.Question.AGE,
+            choices="6, 36",
+            required=True,
+        )
+        data = {
+            "question_%d" % q.pk: "not-a-date",
+            "resolution_w": "0",
+            "resolution_h": "0",
+        }
+        form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
+        assert not form.is_valid()
+        assert "question_%d" % q.pk in form.errors
+
     def test_age_above_maximum_adds_error(self, experiment_factory, question_factory):
         """Verify a date of birth above the maximum age adds a validation error."""
         experiment = experiment_factory()

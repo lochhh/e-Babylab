@@ -127,7 +127,11 @@ class SubjectDataForm(models.ModelForm):
         cleaned_data = super().clean()
 
         age_question = next(
-            (q for q in self._question_fields.values() if q.question_type == Question.AGE),
+            (
+                q
+                for q in self._question_fields.values()
+                if q.question_type == Question.AGE
+            ),
             None,
         )
         if not age_question:
@@ -161,10 +165,7 @@ class SubjectDataForm(models.ModelForm):
 
         for field_name, q in self._question_fields.items():
             field_value = self.cleaned_data[field_name]
-            answer_class = ANSWER_TYPE_MODEL.get(q.question_type)
-            if answer_class is None:
-                continue
-            a = answer_class(question=q)
+            a = ANSWER_TYPE_MODEL[q.question_type](question=q)
             a.body = field_value
             logger.info(
                 f'Creating answer to "{q.text}" '
