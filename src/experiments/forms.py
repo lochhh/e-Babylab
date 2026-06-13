@@ -13,11 +13,7 @@ from django.forms import models
 from django.forms.widgets import DateInput
 
 from .models import (
-    AnswerInteger,
-    AnswerRadio,
-    AnswerSelect,
-    AnswerSelectMultiple,
-    AnswerText,
+    ANSWER_TYPE_MODEL,
     Experiment,
     Question,
     SubjectData,
@@ -66,94 +62,90 @@ class SubjectDataForm(models.ModelForm):
 
     def __init__(self, *args, **kwargs):
         """Build participant data fields from the experiment's subject questions."""
-        # expects an experiment object to be passed in initially
         experiment = kwargs.pop("experiment")
         self.experiment = experiment
         super().__init__(*args, **kwargs)
         self.uuid = uuid.uuid4().hex
 
-        # add a field for each question, corresponding to the question
-        # type as appropriate.
         data = kwargs.get("data")
+        self._question_fields: dict[str, Question] = {}
         for q in experiment.subject_questions():
             field_name = f"question_{q.pk}"
-            if q.question_type == Question.TEXT:
-                self.fields[field_name] = forms.CharField(
+            self._question_fields[field_name] = q
+            self.fields[field_name] = self._build_question_field(q)
+            self.fields[field_name].required = q.required
+            self.fields[field_name].widget.attrs["class"] = (
+                "required list-unstyled" if q.required else "list-unstyled"
+            )
+            if data:
+                self.fields[field_name].initial = data.get(field_name)
+
+    def _build_question_field(self, q):
+        """Return the appropriate form field for a question type."""
+        match q.question_type:
+            case Question.TEXT:
+                return forms.CharField(
                     label=q.text, widget=forms.Textarea(attrs={"rows": 1})
                 )
-            elif q.question_type == Question.RADIO or q.question_type == Question.SEX:
-                question_choices = q.get_choices()
-                self.fields[field_name] = forms.ChoiceField(
-                    label=q.text, widget=forms.RadioSelect, choices=question_choices
+            case Question.RADIO | Question.SEX:
+                return forms.ChoiceField(
+                    label=q.text, widget=forms.RadioSelect, choices=q.get_choices()
                 )
-            elif q.question_type == Question.SELECT:
-                question_choices = q.get_choices()
-                # add an empty option at the top so that the user has to
-                # explicitly select one of the options
-                question_choices = (("", "-------------"), *question_choices)
-                self.fields[field_name] = forms.ChoiceField(
-                    label=q.text, widget=forms.Select, choices=question_choices
+            case Question.SELECT:
+                return forms.ChoiceField(
+                    label=q.text,
+                    widget=forms.Select,
+                    choices=(("", "-------------"), *q.get_choices()),
                 )
-            elif q.question_type == Question.SELECT_MULTIPLE:
-                question_choices = q.get_choices()
-                self.fields[field_name] = forms.MultipleChoiceField(
+            case Question.SELECT_MULTIPLE:
+                return forms.MultipleChoiceField(
                     label=q.text,
                     widget=forms.CheckboxSelectMultiple,
-                    choices=question_choices,
+                    choices=q.get_choices(),
                 )
-            elif q.question_type == Question.INTEGER:
-                self.fields[field_name] = forms.IntegerField(
-                    label=q.text, localize=True
-                )
-            elif q.question_type == Question.NUM_RANGE:
-                question_choices = q.get_choices()
-                self.fields[field_name] = forms.IntegerField(
+            case Question.INTEGER:
+                return forms.IntegerField(label=q.text, localize=True)
+            case Question.NUM_RANGE:
+                lo, hi = q.get_choices()
+                field = forms.IntegerField(
                     label=q.text,
-                    min_value=int(question_choices[0][0]),
-                    max_value=int(question_choices[1][0]),
+                    min_value=int(lo[0]),
+                    max_value=int(hi[0]),
                     localize=True,
                 )
-                self.fields[field_name].widget.attrs["step"] = "1"
-            elif q.question_type == Question.AGE:
-                self.fields[field_name] = forms.DateField(
+                field.widget.attrs["step"] = "1"
+                return field
+            case Question.AGE:
+                return forms.DateField(
                     label=q.text,
                     initial=datetime.date.today,
                     widget=DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                 )
-            # if the required, give it a corresponding css class.
-            if q.required:
-                self.fields[field_name].required = True
-                self.fields[field_name].widget.attrs["class"] = "required list-unstyled"
-            else:
-                self.fields[field_name].required = False
-                self.fields[field_name].widget.attrs["class"] = "list-unstyled"
-
-            # initialise the form filed with values from a POST request, if any.
-            if data:
-                self.fields[field_name].initial = data.get(field_name)
 
     def clean(self):
         """Validate responses and compute participant age from any date fields."""
         cleaned_data = super().clean()
 
-        # find datetime object
-        for field_name, field_value in cleaned_data.items():
-            if isinstance(field_value, datetime.date):
-                # get age range
-                age_question = Question.objects.filter(
-                    experiment=self.experiment.pk, question_type="age"
-                ).first()
-                if age_question:
-                    age_mo = ((datetime.date.today() - field_value).days) / (365 / 12)
-                    age_range = age_question.get_choices()
-                    min_age = int(age_range[0][0])
-                    max_age = int(age_range[1][0])
-                    if age_mo < min_age:
-                        self.add_error(field_name, "Min: " + str(min_age) + " mo.")
-                    if age_mo > max_age:
-                        self.add_error(field_name, "Max: " + str(max_age) + " mo.")
-                    logger.info("Age in months: " + str(round(age_mo)))
-                    break
+        age_question = next(
+            (q for q in self._question_fields.values() if q.question_type == Question.AGE),
+            None,
+        )
+        if not age_question:
+            return cleaned_data
+
+        field_name = f"question_{age_question.pk}"
+        dob = cleaned_data.get(field_name)
+        if not isinstance(dob, datetime.date):
+            return cleaned_data
+
+        age_mo = (datetime.date.today() - dob).days / (365 / 12)
+        age_range = age_question.get_choices()
+        min_age, max_age = int(age_range[0][0]), int(age_range[1][0])
+        if age_mo < min_age:
+            self.add_error(field_name, f"Min: {min_age} mo.")
+        if age_mo > max_age:
+            self.add_error(field_name, f"Max: {max_age} mo.")
+        logger.info(f"Age in months: {round(age_mo)}")
         return cleaned_data
 
     def save(self, commit=True):
@@ -161,56 +153,26 @@ class SubjectDataForm(models.ModelForm):
         subject_data = super().save(commit=False)
         subject_data.experiment = self.experiment
         subject_data.id = self.uuid
-        if SubjectData.objects.filter(experiment=self.experiment.pk):
-            # get largest participant number
-            subject_data.participant_id = (
-                SubjectData.objects.filter(experiment=self.experiment.pk).aggregate(
-                    Max("participant_id")
-                )["participant_id__max"]
-                + 1
-            )
-        else:
-            # first participant
-            subject_data.participant_id = 1
+        max_id = SubjectData.objects.filter(
+            experiment=self.experiment.pk
+        ).aggregate(Max("participant_id"))["participant_id__max"]
+        subject_data.participant_id = (max_id or 0) + 1
         subject_data.save()
 
-        # create an answer object for each question and associate it with SubjectData.
-        for field_name, field_value in self.cleaned_data.items():
-            if field_name.startswith("question_"):
-                # warning: this way of extracting the id is very fragile and
-                # entirely dependent on the way the question_id is encoded in
-                # the field name in the __init__ method of this form class.
-                q_id = int(field_name.split("_")[1])
-                q = Question.objects.get(pk=q_id)
-
-                if q.question_type == Question.TEXT or q.question_type == Question.AGE:
-                    a = AnswerText(question=q)
-                    a.body = field_value
-                elif (
-                    q.question_type == Question.RADIO or q.question_type == Question.SEX
-                ):
-                    a = AnswerRadio(question=q)
-                    a.body = field_value
-                elif q.question_type == Question.SELECT:
-                    a = AnswerSelect(question=q)
-                    a.body = field_value
-                elif q.question_type == Question.SELECT_MULTIPLE:
-                    a = AnswerSelectMultiple(question=q)
-                    a.body = field_value
-                elif (
-                    q.question_type == Question.INTEGER
-                    or q.question_type == Question.NUM_RANGE
-                ):
-                    a = AnswerInteger(question=q)
-                    a.body = field_value
-
-                logger.info(
-                    f'Creating answer to "{a.question.text}" '
-                    f"(question {q_id}) of type "
-                    f"{a.question.question_type}: {field_value}"
-                )
-                a.subject_data = subject_data
-                a.save()
+        for field_name, q in self._question_fields.items():
+            field_value = self.cleaned_data[field_name]
+            answer_class = ANSWER_TYPE_MODEL.get(q.question_type)
+            if answer_class is None:
+                continue
+            a = answer_class(question=q)
+            a.body = field_value
+            logger.info(
+                f'Creating answer to "{q.text}" '
+                f"(question {q.pk}) of type "
+                f"{q.question_type}: {field_value}"
+            )
+            a.subject_data = subject_data
+            a.save()
         return subject_data
 
 
