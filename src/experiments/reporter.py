@@ -360,17 +360,10 @@ class Reporter:
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
         for subject in subjects:
             # Create excel report
-            workbook_file = (
-                str(subject.participant_id)
-                + "_"
-                + self.experiment.exp_name
-                + "_"
-                + subject.created.strftime("%Y%m%d")
-                + "_"
-                + subject.id
-                + ".xlsx"
+            workbook_file = get_valid_filename(
+                f"{subject.participant_id}_{self.experiment.exp_name}"
+                f"_{subject.created:%Y%m%d}_{subject.id}.xlsx"
             )
-            workbook_file = get_valid_filename(workbook_file)
 
             # Create Pandas Excel writer using XlsxWriter as the engine
             writer = pd.ExcelWriter(
