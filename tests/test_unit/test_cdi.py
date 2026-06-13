@@ -472,16 +472,11 @@ def _patch_cdi_submit_common(monkeypatch, sd, exp, unique_count):
         def count(self):
             return _uc
 
+        def create(self, **k):
+            return None
+
     class FakeCdiResult:
         objects = _Q()
-
-        def __init__(self):
-            self.subject = None
-            self.given_label = None
-            self.response = None
-
-        def save(self):
-            pass
 
     monkeypatch.setattr(cdi, "CdiResult", FakeCdiResult)
 

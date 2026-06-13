@@ -137,9 +137,7 @@ def estimate_cdi(run_uuid):
                 )
             )
 
-        # get index of max value in basis
-        b = np.where(basis == np.amax(basis))
-        b = int(b[0][0]) + 1
+        b = int(np.argmax(basis)) + 1
         estimate = (b - bmin.at[0, str(age)]) / slope.at[0, str(age)]
 
         # store CDI estimate in subject_data
@@ -223,15 +221,12 @@ def cdi_submit(request, run_uuid):
         logger.debug(f"form.cleaned_data: {form.cleaned_data}")
         for key, value in form.cleaned_data.items():
             if key.startswith("word_"):
-                cdiresult = CdiResult()
-                cdiresult.subject = subject_data
-                cdiresult.given_label = key[5:]
-                cdiresult.response = value
+                CdiResult.objects.create(
+                    subject=subject_data, given_label=key[5:], response=value
+                )
                 responses.append(int(value))
-                cdiresult.save()
         request.session["responses"] = responses
         request.session.modified = True
-        irt_run = request.session.get("irt_run")
         # count unique items
         count_unique = (
             CdiResult.objects.filter(subject=run_uuid)
