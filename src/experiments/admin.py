@@ -1,15 +1,11 @@
 """Admin configuration for the experiments application."""
 
-import json
-
 from django.conf import settings
 from django.contrib import admin
-from django.core import serializers
 from django.db import models
 from django.db.models import Q
 from django.forms import Textarea
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import format_html
 
 from .forms import ExperimentForm, QuestionInlineFormSet
@@ -514,103 +510,6 @@ class ExperimentAdmin(
         )
 
     experiment_buttons.short_description = "Actions"
-
-    @staticmethod
-    def export_to_json(experiment_id):
-        """Create a JSON object of the experiment to be exported."""
-        querysets = {
-            "experiment": Experiment.objects.filter(pk=experiment_id),
-            "lists": ListItem.objects.filter(experiment=experiment_id),
-            "outerblocks": OuterBlockItem.objects.filter(
-                listitem__experiment=experiment_id
-            ),
-            "innerblocks": BlockItem.objects.filter(
-                outerblockitem__listitem__experiment=experiment_id
-            ),
-            "trials": TrialItem.objects.filter(
-                blockitem__outerblockitem__listitem__experiment=experiment_id
-            ),
-            "questions": Question.objects.filter(experiment=experiment_id),
-            "consentquestions": ConsentQuestion.objects.filter(
-                experiment=experiment_id
-            ),
-        }
-        return {
-            key: json.loads(serializers.serialize("json", qs))
-            for key, qs in querysets.items()
-        }
-
-    @staticmethod
-    def import_from_json(request, data):
-        """Import an experiment from JSON file data."""
-        json_data = data.decode("utf-8")
-
-        # Import experiment
-        parsed = json.loads(json_data)
-        for experiment in serializers.deserialize(
-            "json", json.dumps(parsed["experiment"])
-        ):
-            old_pk = str(experiment.object.id)
-            experiment.object.created_on = timezone.now()
-            experiment.object.user = request.user
-            experiment.object.id = None
-            experiment.save()
-            json_data = json_data.replace(old_pk, str(experiment.object.id))
-
-        # Import lists
-        parsed = json.loads(json_data)
-        for list_item in serializers.deserialize("json", json.dumps(parsed["lists"])):
-            old_pk = str(list_item.object.id)
-            list_item.object.id = None
-            list_item.save()
-            new_pk = str(list_item.object.id)
-            json_data = json_data.replace(
-                f'"listitem": {old_pk},', f'"listitem": {new_pk},'
-            )
-
-        # Import outer blocks
-        parsed = json.loads(json_data)
-        for outer_block_item in serializers.deserialize(
-            "json", json.dumps(parsed["outerblocks"])
-        ):
-            old_pk = str(outer_block_item.object.id)
-            outer_block_item.object.id = None
-            outer_block_item.save()
-            new_pk = str(outer_block_item.object.id)
-            json_data = json_data.replace(
-                f'"outerblockitem": {old_pk},', f'"outerblockitem": {new_pk},'
-            )
-
-        # Import inner blocks
-        parsed = json.loads(json_data)
-        for inner_block_item in serializers.deserialize(
-            "json", json.dumps(parsed["innerblocks"])
-        ):
-            old_pk = str(inner_block_item.object.id)
-            inner_block_item.object.id = None
-            inner_block_item.save()
-            new_pk = str(inner_block_item.object.id)
-            json_data = json_data.replace(
-                f'"blockitem": {old_pk},', f'"blockitem": {new_pk},'
-            )
-
-        # Import trials, questions, and consent questions (no FK remapping needed)
-        parsed = json.loads(json_data)
-        for trial_item in serializers.deserialize("json", json.dumps(parsed["trials"])):
-            trial_item.object.id = None
-            trial_item.save()
-
-        for question in serializers.deserialize(
-            "json", json.dumps(parsed["questions"])
-        ):
-            question.object.id = None
-            question.save()
-
-        for consent_question in serializers.deserialize(
-            "json", json.dumps(parsed["consentquestions"])
-        ):
-            consent_question.object.id = None
-            consent_question.save()
 
 
 class ListItemAdmin(
