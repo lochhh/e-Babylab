@@ -600,6 +600,15 @@ class TestExperimentAdmin:
         assert Question.objects.count() == 2
         assert ConsentQuestion.objects.count() == 2
 
+        new_exp = Experiment.objects.exclude(pk=ex.pk).get()
+        new_li = ListItem.objects.exclude(pk=li.pk).get()
+        new_ob = OuterBlockItem.objects.exclude(pk=ob.pk).get()
+        new_bi = BlockItem.objects.exclude(pk=bi.pk).get()
+
+        assert new_li.experiment == new_exp
+        assert new_ob.listitem == new_li
+        assert new_bi.outerblockitem == new_ob
+
 
 # ---------------------------------------------------------------------------
 # ListItemAdmin
