@@ -262,6 +262,15 @@ class TestWebcamUpload:
         response = client.get(_webcam_upload_url(subject.id))
         assert response.status_code == 405
 
+    def test_post_without_file_or_trial_result_id_returns_404(
+        self, client, subjectdata_factory, experiment_factory
+    ):
+        """A POST with neither a file nor trialResultId returns 404."""
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        response = client.post(_webcam_upload_url(subject.id), data={})
+        assert response.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # find_files

@@ -74,55 +74,49 @@ def webcam_test_upload(request, run_uuid):
     )
 
 
+def _upload_chunk(request):
+    """Store a single uploaded chunk in WEBCAM_ROOT, replacing any existing file."""
+    fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
+    webcam_file = request.FILES["file"]
+    if fs.exists(webcam_file.name):
+        fs.delete(webcam_file.name)
+    fs.save(get_valid_filename(webcam_file.name), webcam_file)
+    logger.info(f"Received upload request of {webcam_file.name}.")
+    return HttpResponse(status=204)
+
+
+def _upload_merge(request, run_uuid):
+    """Merge uploaded chunks into a single file and associate it with a TrialResult."""
+    fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
+    base_filename = get_valid_filename(request.POST["filename"])
+    logger.info(f"Received last file of {base_filename}, merge files.")
+
+    webcam_files = find_files(base_filename)
+    merge_files(base_filename + ".webm", webcam_files)
+    for webcam_file in webcam_files:
+        fs.delete(webcam_file)
+
+    try:
+        trial_result_id = int(request.POST["trialResultId"])
+    except ValueError as e:
+        logger.exception("Failed to retrieve trial result ID: " + str(e))
+        raise Http404("Invalid trialResultId.") from e
+    trial_result = get_object_or_404(TrialResult, pk=trial_result_id, subject=run_uuid)
+    trial_result.webcam_file = base_filename + ".webm"
+    trial_result.save()
+    logger.info("Successfully saved webcam file to trial result.")
+    return HttpResponse(status=204)
+
+
 @require_POST
 def webcam_upload(request, run_uuid):
     """Receive uploaded video/audio chunks and merge them into a complete file."""
-    fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
-
-    # Upload request
     if request.FILES.get("file"):
-        webcam_file = request.FILES.get("file")
-
-        # Delete existing file
-        if fs.exists(webcam_file.name):
-            fs.delete(webcam_file.name)
-
-        fs.save(get_valid_filename(webcam_file.name), webcam_file)
-        logger.info(f"Received upload request of {webcam_file.name}.")
-        return HttpResponse(status=204)
-
-    # Merge request
-    elif request.POST.get("trialResultId"):
-        # Get base filename, by removing chunk number at the end
-        base_filename = request.POST.get("filename")
-        base_filename = get_valid_filename(base_filename)
-        logger.info(f"Received last file of {base_filename}, merge files.")
-
-        # Find and merge individual chunks
-        webcam_files = find_files(base_filename)
-        merge_files(base_filename + ".webm", webcam_files)
-
-        # Delete chunks
-        for webcam_file in webcam_files:
-            fs.delete(webcam_file)
-
-        # Add filename to trial result
-        try:
-            trial_result_id = int(request.POST.get("trialResultId"))
-        except ValueError as e:
-            logger.exception("Failed to retrieve trial result ID: " + str(e))
-            raise Http404("Invalid trialResultId.") from e
-        trial_result = get_object_or_404(
-            TrialResult, pk=trial_result_id, subject=run_uuid
-        )
-        trial_result.webcam_file = base_filename + ".webm"
-        trial_result.save()
-        logger.info("Successfully saved webcam file to trial result.")
-        return HttpResponse(status=204)
-
-    else:
-        logger.error("Failed to upload webcam file.")
-        raise Http404("Page not found.")
+        return _upload_chunk(request)
+    if request.POST.get("trialResultId"):
+        return _upload_merge(request, run_uuid)
+    logger.error("Failed to upload webcam file.")
+    raise Http404("Page not found.")
 
 
 def find_files(base_filename):
