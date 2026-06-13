@@ -95,7 +95,8 @@ def experiment_import(request):
             json_data = request.FILES["import_file"].read()
             ExperimentAdmin.import_from_json(request, json_data)
             return redirect("/admin/experiments/experiment")
-    form = ImportForm()
+    else:
+        form = ImportForm()
     return render(request, "admin/experiments/import_form.html", {"form": form})
 
 
