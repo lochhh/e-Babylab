@@ -13,6 +13,7 @@ from django.template import RequestContext, Template
 from django.urls import reverse
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 
 from .models import SubjectData, TrialResult
 
@@ -44,42 +45,42 @@ def webcam_test(request, run_uuid):
     return HttpResponse(t.render(c))
 
 
+@require_POST
 def webcam_test_upload(request, run_uuid):
     """Upload the webcam/microphone test file and return metadata."""
     webcam_file = request.FILES.get("file")
-    if request.method == "POST" and webcam_file:
-        get_object_or_404(SubjectData, pk=run_uuid)
-        webcam_file_type = request.POST.get("type")
-
-        fs = FileSystemStorage(
-            location=settings.WEBCAM_TEST_ROOT, base_url=settings.WEBCAM_TEST_URL
-        )
-
-        # Generate random file name
-        extension = Path(webcam_file.name).suffix
-        random_file_name = str(uuid.uuid4()) + extension
-        filename = fs.save(random_file_name, webcam_file)
-
-        # Return metadata of uploaded video
-        return JsonResponse(
-            {
-                "videoUrl": fs.url(filename),
-                "size": fs.size(filename),
-                "type": webcam_file_type,
-                "runUuid": run_uuid,
-            }
-        )
-    else:
+    if not webcam_file:
         logger.error("Failed to upload test media.")
         raise Http404("Page not found.")
 
+    get_object_or_404(SubjectData, pk=run_uuid)
+    webcam_file_type = request.POST.get("type")
 
+    fs = FileSystemStorage(
+        location=settings.WEBCAM_TEST_ROOT, base_url=settings.WEBCAM_TEST_URL
+    )
+
+    extension = Path(webcam_file.name).suffix
+    random_file_name = str(uuid.uuid4()) + extension
+    filename = fs.save(random_file_name, webcam_file)
+
+    return JsonResponse(
+        {
+            "videoUrl": fs.url(filename),
+            "size": fs.size(filename),
+            "type": webcam_file_type,
+            "runUuid": run_uuid,
+        }
+    )
+
+
+@require_POST
 def webcam_upload(request, run_uuid):
     """Receive uploaded video/audio chunks and merge them into a complete file."""
     fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
 
     # Upload request
-    if request.method == "POST" and request.FILES.get("file"):
+    if request.FILES.get("file"):
         webcam_file = request.FILES.get("file")
 
         # Delete existing file
@@ -91,7 +92,7 @@ def webcam_upload(request, run_uuid):
         return HttpResponse(status=204)
 
     # Merge request
-    elif request.method == "POST" and request.POST.get("trialResultId"):
+    elif request.POST.get("trialResultId"):
         # Get base filename, by removing chunk number at the end
         base_filename = request.POST.get("filename")
         base_filename = get_valid_filename(base_filename)

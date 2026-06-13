@@ -130,14 +130,14 @@ class TestWebcamTestUpload:
         assert data["runUuid"] == str(subject.id)
         assert data["size"] > 0
 
-    def test_get_request_returns_404(
+    def test_get_request_returns_405(
         self, client, subjectdata_factory, experiment_factory
     ):
-        """A GET request to webcam_test_upload returns 404."""
+        """A GET request to webcam_test_upload returns 405 Method Not Allowed."""
         exp = _make_experiment(experiment_factory)
         subject = subjectdata_factory(experiment=exp)
         response = client.get(_webcam_test_upload_url(subject.id))
-        assert response.status_code == 404
+        assert response.status_code == 405
 
     def test_post_without_file_returns_404(
         self, client, subjectdata_factory, experiment_factory
@@ -253,14 +253,14 @@ class TestWebcamUpload:
         )
         assert response.status_code == 404
 
-    def test_get_request_returns_404(
+    def test_get_request_returns_405(
         self, client, subjectdata_factory, experiment_factory
     ):
-        """A GET request to webcam_upload returns 404."""
+        """A GET request to webcam_upload returns 405 Method Not Allowed."""
         exp = _make_experiment(experiment_factory)
         subject = subjectdata_factory(experiment=exp)
         response = client.get(_webcam_upload_url(subject.id))
-        assert response.status_code == 404
+        assert response.status_code == 405
 
 
 # ---------------------------------------------------------------------------
