@@ -22,7 +22,6 @@ from .forms import ConsentForm, ImportForm, SubjectDataForm
 from .models import (
     BlockItem,
     Experiment,
-    ListItem,
     OuterBlockItem,
     SubjectData,
     TrialItem,
@@ -399,28 +398,14 @@ def experiment_end(request, run_uuid):
     tpl = experiment.thank_you_page_tpl
 
     if subject_data.listitem:
-        get_object_or_404(ListItem, pk=subject_data.listitem.pk)
-        # count number of trials in the listitem
-        # get list of outer block id's
-        outer_blocks_all = OuterBlockItem.objects.filter(
-            listitem=subject_data.listitem.pk
-        ).values_list("id", flat=True)
-        # get all inner blocks of the listitem
-        blocks_all = BlockItem.objects.filter(outerblockitem__pk__in=outer_blocks_all)
-
-        tr_count = 0
-
-        for bl in blocks_all:
-            tr_count += TrialItem.objects.filter(blockitem=bl.pk).count()
-
-        # count participant's number of trial results
+        tr_count = TrialItem.objects.filter(
+            blockitem__outerblockitem__listitem=subject_data.listitem
+        ).count()
         completed_count = (
             TrialResult.objects.filter(subject=run_uuid)
             .exclude(key_pressed="PAUSE")
             .count()
         )
-
-        # if experiment incomplete, render end page after discontinuation
         if completed_count < tr_count:
             tpl = experiment.thank_you_abort_page_tpl
 
