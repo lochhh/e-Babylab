@@ -294,8 +294,8 @@ class Reporter:
     def create_webgazer_worksheet(self, subject):
         """Create a worksheet per subject containing the eye-tracking results."""
         trial_results, unique_trial_number = self._get_trial_results(subject)
-        validation_data = pd.DataFrame()
-        webgazer_data = pd.DataFrame()
+        validation_frames = []
+        webgazer_frames = []
         logger.info(trial_results)
         for result in trial_results:
             # skip trials where gaze is not recorded
@@ -316,12 +316,7 @@ class Reporter:
                 curr_validation_data.insert(0, "Trial Number", trial_number)
                 curr_validation_data.insert(1, "Trial Label", result.trialitem.label)
                 curr_validation_data.insert(2, "Trial Code", result.trialitem.code)
-                validation_data = pd.concat(
-                    [
-                        validation_data,
-                        curr_validation_data,
-                    ]
-                )
+                validation_frames.append(curr_validation_data)
             else:
                 curr_webgazer_data = pd.read_json(
                     StringIO(json.dumps(result.webgazer_data))
@@ -340,14 +335,19 @@ class Reporter:
                 )
             else:
                 curr_webgazer_data["Gaze Area (row,col)"] = ""
-            webgazer_data = pd.concat(
-                [
-                    webgazer_data,
-                    curr_webgazer_data,
-                ]
-            )
+            webgazer_frames.append(curr_webgazer_data)
 
-        return WebgazerSheets(gaze=webgazer_data, validation=validation_data)
+        gaze = (
+            pd.concat(webgazer_frames, ignore_index=True)
+            if webgazer_frames
+            else pd.DataFrame()
+        )
+        validation = (
+            pd.concat(validation_frames, ignore_index=True)
+            if validation_frames
+            else pd.DataFrame()
+        )
+        return WebgazerSheets(gaze=gaze, validation=validation)
 
     def create_report(self):
         """Create a zip file containing all subjects' results and recordings.
