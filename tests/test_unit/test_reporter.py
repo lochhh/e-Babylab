@@ -150,7 +150,7 @@ def test_reporter_init(monkeypatch, tmp_path, experiment_factory):
     rep = make_reporter(monkeypatch, tmp_path, exp)
 
     assert rep.output_folder == str(tmp_path)
-    assert rep.output_file == "myexp.zip"
+    assert rep.output_file == "results_myexp.zip"
     assert isinstance(rep.zip_file, DummyZipFile)
     assert isinstance(rep.trial_columns, list)
     assert len(rep.trial_columns) > 0
