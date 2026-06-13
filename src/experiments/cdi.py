@@ -98,21 +98,14 @@ def estimate_cdi(run_uuid):
         ).choices
         choices = list(filter(None, [x.strip() for x in choices.split(",")]))
 
-        # get lookup files for child's sex
-        if sex.strip().lower() == choices[0].lower():  # choices0 = female
-            lm_np_mean = pd.read_csv(instrument.f_lm_np_mean.file.path)
-            lm_np_sd = pd.read_csv(instrument.f_lm_np_sd.file.path)
-            lm_p_mean = pd.read_csv(instrument.f_lm_p_mean.file.path)
-            lm_p_sd = pd.read_csv(instrument.f_lm_p_sd.file.path)
-            bmin = pd.read_csv(instrument.f_bmin.file.path)
-            slope = pd.read_csv(instrument.f_slope.file.path)
-        else:  # choices1 = male
-            lm_np_mean = pd.read_csv(instrument.m_lm_np_mean.file.path)
-            lm_np_sd = pd.read_csv(instrument.m_lm_np_sd.file.path)
-            lm_p_mean = pd.read_csv(instrument.m_lm_p_mean.file.path)
-            lm_p_sd = pd.read_csv(instrument.m_lm_p_sd.file.path)
-            bmin = pd.read_csv(instrument.m_bmin.file.path)
-            slope = pd.read_csv(instrument.m_slope.file.path)
+        # get lookup files for child's sex; choices[0] = female, choices[1] = male
+        prefix = "f" if sex.strip().lower() == choices[0].lower() else "m"
+        lm_np_mean = pd.read_csv(getattr(instrument, f"{prefix}_lm_np_mean").file.path)
+        lm_np_sd = pd.read_csv(getattr(instrument, f"{prefix}_lm_np_sd").file.path)
+        lm_p_mean = pd.read_csv(getattr(instrument, f"{prefix}_lm_p_mean").file.path)
+        lm_p_sd = pd.read_csv(getattr(instrument, f"{prefix}_lm_p_sd").file.path)
+        bmin = pd.read_csv(getattr(instrument, f"{prefix}_bmin").file.path)
+        slope = pd.read_csv(getattr(instrument, f"{prefix}_slope").file.path)
 
         instr_num_words = len(lm_np_mean.index)
         basis = np.ones(instr_num_words + 1)
