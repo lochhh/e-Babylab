@@ -16,7 +16,7 @@ information_page_content = """{% extends "experiments/base.html" %}
                 If you wish to participate in this study with your child, please carefully go through the following information about the study:<br />
                 - The aim of this study is to XXX.<br />
                 - To be eligible to participate in this study, your child must be XXX years old.<br />
-                - In order to evaluate this online study, we will require video recordings and these will be recorded using your computer's webcam. Thus, to participate, you must be using a computer or a laptop with a webcam and be ready to allow access to the webcam for recording. The videos are transmitted via a secure connection (TLS, 256-bit encryption) directly to the university's servers, where they are stored under the highest security standards. <br />
+                - In order to evaluate this online study, we will require video recordings and these will be recorded using your computer's webcam. Thus, to participate, you must be using a computer or a laptop with a webcam and be ready to allow access to the webcam for recording. The videos are transmitted via a secure, encrypted connection (HTTPS/TLS) directly to the university's servers, where they are stored under the highest security standards. <br />
                 - During the study, your child needs to be seated so that they can be properly seen on the webcam recording. <br />
                 - Before starting, we will ask you a few questions and your personal data will be stored separately from the data and videos of the study. <br />
                 - The study is only compatible with Firefox and Google Chrome browsers. Please use one of these browsers. <br />
