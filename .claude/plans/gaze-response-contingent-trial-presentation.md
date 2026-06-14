@@ -210,6 +210,17 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 
 ---
 
+## Testing Requirements (all PRs)
+
+- **Existing tests must continue to pass** after every PR: `uv run pytest` (Python) and `npm test` (Vitest unit + Playwright e2e).
+- **Update or delete tests** that break due to intentional behaviour changes (e.g. the trials-data JSON in the template changing shape in PR 1).
+- **New backend logic gets pytest coverage**: parametrise over edge cases (no trials remaining, mid-session resume, error paths).
+- **New JS logic gets Vitest unit tests** where the function is pure or easily isolated (e.g. the live AOI/dwell calculation in Stage 2).
+- **New user-facing flows get Playwright e2e tests**: at minimum a happy-path test per PR that runs a minimal experiment through to the thank-you page.
+- **Test-driven where practical**: write the pytest/Vitest test first for new backend endpoints and pure JS helpers, then implement.
+
+---
+
 ## Suggested PR Sequence
 
 | PR | Stage | Est. scope |
