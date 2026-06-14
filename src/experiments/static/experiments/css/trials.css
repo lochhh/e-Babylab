@@ -304,6 +304,15 @@ body:has(#trials-data) {
     z-index: -100;
 }
 
+/* Centre action buttons; #exit-button is position:fixed so unaffected */
+.col-lg-7 .mt-4:has(.btn) {
+    text-align: center;
+}
+
+.col-lg-7 .d-flex:has(.btn) {
+    justify-content: center;
+}
+
 /* Webcam/media preview */
 .media-container {
     max-width: 480px;
