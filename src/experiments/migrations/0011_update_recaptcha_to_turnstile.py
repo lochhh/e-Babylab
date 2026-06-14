@@ -8,7 +8,7 @@ REPLACEMENTS = [
     (
         "<!-- reCAPTCHA input -->\n                        "
         '<input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">',
-        '<div class="cf-turnstile" data-sitekey="{{turnstile_site_key}}" data-size="invisible" data-callback="onTurnstileVerified"></div>',
+        '<div class="cf-turnstile turnstile-badge" data-sitekey="{{turnstile_site_key}}" data-size="compact" data-execution="execute" data-callback="onTurnstileVerified"></div>',
     ),
     (
         "<!-- reCAPTCHA API -->\n"
