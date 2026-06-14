@@ -50,14 +50,21 @@ To set up e-Babylab, you will need to define values specific to your own instanc
 
 4. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
-5. Register for Cloudflare Turnstile to obtain the site key and secret key:
+5. Register for [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/) to obtain the site key and secret key:
 
-    - Go to the [Cloudflare dashboard](https://dash.cloudflare.com/) and navigate to **Turnstile** in the sidebar.
-    - Click **Add site** and fill in:
-        - **Site name**: e.g. `e-Babylab`
-        - **Domain**: `localhost` for local development, or your own domain (e.g. `your-domain.com`) for production
-        - **Widget type**: `Invisible`
-    - Click **Create** to generate the keys.
+    ::::{tab-set}
+    :::{tab-item} Local development
+    For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) — no account needed.
+    :::
+    :::{tab-item} Production
+    Go to the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile) and click **Add widget**, then fill in:
+
+    - **Widget name**: e.g. `e-Babylab`
+    - **Hostname**: your domain (e.g. `your-domain.com`)
+
+    Leave all other options at their defaults and click **Create** to generate the keys.
+    :::
+    ::::
 
 6. Copy the site key to `CLOUDFLARE_TURNSTILE_SITE_KEY` and the secret key to `CLOUDFLARE_TURNSTILE_SECRET_KEY` in your `.env` file.
 
