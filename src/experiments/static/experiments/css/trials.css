@@ -34,11 +34,12 @@ body {
 
 /* Headings */
 h1 {
-    font-size: 1.45rem;
+    font-size: 1.75rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--text);
     margin-bottom: 1.5rem;
+    text-align: center;
 }
 
 h5.modal-title {
@@ -181,6 +182,31 @@ p.card-text + p.card-text {
     font-size: 0.875rem;
 }
 
+/* Django error lists */
+ul.errorlist {
+    list-style: none;
+    padding: 0;
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+    color: var(--danger);
+}
+
+ul.errorlist li::before {
+    content: "⚠ ";
+}
+
+ul.errorlist.nonfield {
+    background-color: var(--danger-bg);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Red border on inputs Django marks as invalid */
+[aria-invalid="true"] {
+    border-color: var(--danger) !important;
+}
+
 /* Form field layout */
 .field-wrapper {
     margin-bottom: 0.25rem;
@@ -240,6 +266,13 @@ p.card-text + p.card-text {
 #exit-button:hover {
     background-color: var(--surface) !important;
     color: var(--text) !important;
+}
+
+/* Webcam/media preview */
+.media-container {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Webcam calibration step visibility — webcam-calibration.js toggles .active */

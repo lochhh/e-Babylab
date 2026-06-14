@@ -209,9 +209,9 @@ webcam_check_page_content = """{% extends "experiments/base.html" %}
                 <div class="media-container ratio ratio-4x3 mt-3" style="display: none;">
                     <video controls></video>
                 </div>
-                <div class="mt-4">
+                <div class="d-flex gap-2 flex-wrap align-items-start mt-4">
                     <button type="button" class="btn btn-primary" disabled>Start test recording</button>
-                    <button type="button" class="btn btn-warning ms-2" id="repeat-check-button" style="display: none;">Repeat test recording</button>
+                    <button type="button" class="btn btn-warning" id="repeat-check-button" style="display: none;">Repeat test recording</button>
                 </div>
             </div>
 
@@ -232,9 +232,9 @@ webcam_check_page_content = """{% extends "experiments/base.html" %}
                 <div class="alert alert-success mt-3" role="alert" style="display: none;">
                     The video upload was successful. Please proceed with the study.
                 </div>
-                <div class="mt-4">
+                <div class="d-flex gap-2 flex-wrap align-items-start mt-4">
                     <button type="button" class="btn btn-primary" disabled data-target="{% url 'experiments:experimentRun' subject_data.pk %}">Next (Image and sound were recorded.)</button>
-                    <button type="button" class="btn btn-warning ms-2" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test (There was a problem with the test recording.)</button>
+                    <button type="button" class="btn btn-warning" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test (There was a problem with the test recording.)</button>
                 </div>
             </div>
         </div>
@@ -299,9 +299,9 @@ microphone_check_page_content = """{% extends "experiments/base.html" %}
                 <div class="alert alert-success mt-3" role="alert" style="display: none;">
                     The audio upload was successful, please continue.
                 </div>
-                <div class="mt-4">
+                <div class="d-flex gap-2 flex-wrap align-items-start mt-4">
                     <button type="button" class="btn btn-primary" disabled data-target="{% url 'experiments:experimentRun' subject_data.pk %}">Next (Sound was recorded.)</button>
-                    <button type="button" class="btn btn-warning ms-2" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test recording (There was a problem with the test recording.)</button>
+                    <button type="button" class="btn btn-warning" disabled data-bs-toggle="modal" data-bs-target="#repeatWebcamModal">Repeat test recording (There was a problem with the test recording.)</button>
                 </div>
             </div>
         </div>
