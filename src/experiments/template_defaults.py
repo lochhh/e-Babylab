@@ -432,13 +432,13 @@ thank_you_page_content = """{% extends "experiments/base.html" %}
                 <p class="card-text">
                     You have reached the end of the study. Please click "Approve processing and use of data" to confirm your participation in the study. If you wish to withdraw from the study, please click "Remove all my data".
                 </p>
-                <div class="d-flex gap-3 mt-4">
-                    <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
-                    <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
-                        {% csrf_token %}
+                <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
                         <button type="submit" class="btn btn-danger" id="delete-data-button">Remove all my data</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
             <div id="end_page_approve" style="display:none">
                 <h1>Thank you</h1>
@@ -473,13 +473,13 @@ thank_you_abort_page_content = """{% extends "experiments/base.html" %}
                     It is a pity that you aborted the study. The recording has ended. You may now close the browser window.<br /><br />
                     We would like to know why you aborted the study. If you wish to tell us about this, please send an email to XXX.
                 </p>
-                <div class="d-flex gap-3 mt-4">
-                    <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
-                    <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
-                        {% csrf_token %}
+                <form action="{% url 'experiments:deleteSubject' subject_id %}" method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="button" class="btn btn-primary" id="approve-data-button">Approve processing and use of data</button>
                         <button type="submit" class="btn btn-danger" id="delete-data-button">Remove all my data</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
             <div id="end_page_approve" style="display:none">
                 <h1>Thank you</h1>
