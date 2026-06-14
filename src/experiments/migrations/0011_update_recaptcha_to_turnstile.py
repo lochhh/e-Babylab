@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
     """Replace Google reCAPTCHA Enterprise with Cloudflare Turnstile in stored experiment templates."""
 
     dependencies = [
-        ("experiments", "0008_update_recaptcha_to_enterprise"),
+        ("experiments", "0010_reconcile_template_defaults"),
     ]
 
     operations = [
