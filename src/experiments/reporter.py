@@ -77,7 +77,7 @@ class Reporter:
         ]
 
         # Define report folders
-        self.output_file = get_valid_filename(experiment.exp_name + ".zip")
+        self.output_file = get_valid_filename(f"results_{experiment.exp_name}.zip")
         self.output_folder = settings.REPORTS_ROOT
 
         # Create random folder

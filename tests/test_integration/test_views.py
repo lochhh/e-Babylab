@@ -518,22 +518,30 @@ class TestExperimentExport:
     """Tests for the experimentExport view."""
 
     @pytest.mark.django_db
-    def test_export_returns_json_response(self, client, simple_experiment):
-        """Verify the export endpoint returns a JSON response with the expected keys."""
+    def test_export_returns_zip_response(self, client, simple_experiment):
+        """Verify the export endpoint returns a ZIP response with the expected keys."""
+        import io
+        import zipfile as _zipfile
+
         url = reverse("experiments:experimentExport", args=[simple_experiment.pk])
         response = client.get(url)
         assert response.status_code == 200
-        assert response["Content-Type"] == "application/json"
-        data = json.loads(response.content)
+        assert response["Content-Type"] == "application/zip"
+        with _zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            data = json.loads(zf.read("experiment.json"))
         assert "experiment" in data
         assert "lists" in data
 
     @pytest.mark.django_db
     def test_export_contains_experiment_name(self, client, simple_experiment):
-        """Verify exported JSON contains the experiment name in the experiment key."""
+        """Verify exported ZIP contains the experiment name in experiment.json."""
+        import io
+        import zipfile as _zipfile
+
         url = reverse("experiments:experimentExport", args=[simple_experiment.pk])
         response = client.get(url)
-        data = json.loads(response.content)
+        with _zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            data = json.loads(zf.read("experiment.json"))
         exp_names = [e["fields"]["exp_name"] for e in data["experiment"]]
         assert simple_experiment.exp_name in exp_names
 
@@ -550,30 +558,28 @@ class TestExperimentImport:
 
     @pytest.mark.django_db
     def test_import_creates_new_experiment(self, client, user, simple_experiment):
-        """Verify that importing a valid JSON file creates a new experiment."""
-        # Export the experiment first
+        """Verify that importing a valid ZIP creates a new experiment."""
+        from filer.models import Folder
+
+        Folder.objects.get_or_create(name="experiments", parent=None)
+
         export_url = reverse(
             "experiments:experimentExport", args=[simple_experiment.pk]
         )
-        export_response = client.get(export_url)
-        json_bytes = export_response.content
+        zip_bytes = client.get(export_url).content
 
-        # Authenticate as the owner before importing
         client.force_login(user)
 
         import_url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         uploaded = SimpleUploadedFile(
-            "exp.json", json_bytes, content_type="application/json"
+            "exp.zip", zip_bytes, content_type="application/zip"
         )
         response = client.post(import_url, {"import_file": uploaded})
-        # Should redirect after successful import
         assert response.status_code == 302
-        # A new experiment with the same name should exist (original + import)
-        assert (
-            exp_models.Experiment.objects.filter(
-                exp_name=simple_experiment.exp_name
-            ).count()
-            == 2
-        )
+        # Original name + copy name → total 2 experiments
+        assert exp_models.Experiment.objects.count() == 2
+        assert exp_models.Experiment.objects.filter(
+            exp_name=f"{simple_experiment.exp_name} copy"
+        ).exists()

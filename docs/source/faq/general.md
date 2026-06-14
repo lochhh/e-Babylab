@@ -50,9 +50,11 @@ Currently, media recording features (requiring webcam and/or microphone) are not
 
 Participants' IP addresses are not stored anywhere.
 
-## How do I batch-download experiment stimuli files of an e-Babylab experiment?
+## How do I share/duplicate an experiment?
 
-On the e-Babylab admin site, you can only download _individual_ files. To _batch-download_ the stimuli files of an experiment, use this [bash script](https://gist.github.com/lochhh/f5a2cb0b9727756dd8df0ce7fca685c9). You will need to edit the path to the `experiment.json` file (downloadable via "Export Experiment") and the URL of your e-Babylab server. You will also have to [make the script executable](https://www.andrewcbancroft.com/blog/musings/make-bash-script-executable/) before you run it.
+Use the **Export** button on the Experiment Admin page. This downloads a `.zip` file that bundles the complete experiment configuration together with all media stimuli (audio, visual, and loading image) and, if applicable, the CDI instrument and its parameter files.
+
+This `.zip` file can then be imported into e-Babylab on the same or a different instance using the **Import** button on the Experiment Admin page. During import, media files are stored under `experiments/<experiment name>/` in the file manager if they do not already exist in the `experiments/` folder. If a CDI instrument with the same name already exists on the target instance it is reused; otherwise a new instrument is created, with parameter files stored under `instruments/<instrument name>/`. If an experiment with the same name already exists, the imported experiment is renamed with a `copy` suffix (e.g. `My Experiment copy`, `My Experiment copy 1`, etc.).
 
 ## Can I modify the HTML templates to skip the participant page?
 

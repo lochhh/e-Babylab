@@ -501,7 +501,7 @@ class TestExperimentAdmin:
         assert "Download Results" in buttons_html
         assert "Export Experiment" in buttons_html
 
-    def test_export_to_json(
+    def test_export_to_zip_structure(
         self,
         experiment_factory,
         listitem_factory,
@@ -509,45 +509,61 @@ class TestExperimentAdmin:
         blockitem_factory,
         trialitem_factory,
     ):
-        """Verify export_to_json returns all expected top-level keys with correct PKs."""
+        """Verify export_to_zip returns a ZIP whose experiment.json has all expected keys."""
+        import io
+        import zipfile
+
+        from experiments.import_export import export_to_zip
+
         ex = experiment_factory()
         li = listitem_factory(experiment=ex)
         ob = outerblock_factory(listitem=li)
         bi = blockitem_factory(outerblock=ob)
         ti = trialitem_factory(blockitem=bi)
 
-        data = ExperimentAdmin.export_to_json(ex.id)
+        zip_bytes = export_to_zip(ex.id)
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            data = json.loads(zf.read("experiment.json"))
 
-        assert "experiment" in data
-        assert "lists" in data
-        assert "outerblocks" in data
-        assert "innerblocks" in data
-        assert "trials" in data
-        assert "questions" in data
-        assert "consentquestions" in data
+        for key in ("experiment", "lists", "outerblocks", "innerblocks",
+                    "trials", "questions", "consentquestions", "media_files"):
+            assert key in data
 
         assert data["experiment"][0]["pk"] == str(ex.id)
         assert data["trials"][0]["pk"] == ti.id
 
-    def test_export_to_json_includes_questions(
+    def test_export_to_zip_includes_questions(
         self, experiment_factory, question_factory, consent_question_factory
     ):
-        """Verify export_to_json separates questions into their keys."""
+        """Verify export_to_zip separates questions into their keys."""
+        import io
+        import zipfile
+
+        from experiments.import_export import export_to_zip
+
         ex = experiment_factory()
         question_factory(experiment=ex, text="Q1")
         consent_question_factory(experiment=ex, text="Consent?")
 
-        data = ExperimentAdmin.export_to_json(ex.id)
+        zip_bytes = export_to_zip(ex.id)
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            data = json.loads(zf.read("experiment.json"))
+
         assert len(data["questions"]) == 1
         assert len(data["consentquestions"]) == 1
 
-    def test_import_from_json_creates_new_experiment(
+    def test_import_from_zip_creates_new_experiment(
         self, experiment_factory, user, rf
     ):
-        """Verify import_from_json creates a new experiment owned by the request user."""
+        """Verify import_from_zip creates a new experiment owned by the request user."""
+        from filer.models import Folder
+
+        from experiments.import_export import export_to_zip, import_from_zip
+
+        Folder.objects.get_or_create(name="experiments", parent=None)
+
         ex = experiment_factory()
-        data = ExperimentAdmin.export_to_json(ex.id)
-        json_bytes = json.dumps(data).encode("utf-8")
+        zip_bytes = export_to_zip(ex.id)
 
         new_user = User.objects.create_user(username="importer", password="pass")
         request = rf.post("/")
@@ -555,7 +571,7 @@ class TestExperimentAdmin:
 
         initial_count = Experiment.objects.count()
         before = timezone.now()
-        ExperimentAdmin.import_from_json(request, json_bytes)
+        import_from_zip(request, zip_bytes)
         after = timezone.now()
 
         assert Experiment.objects.count() == initial_count + 1
@@ -563,7 +579,7 @@ class TestExperimentAdmin:
         assert new_exp.user == new_user
         assert before <= new_exp.created_on <= after
 
-    def test_import_from_json_with_list_and_structure(
+    def test_import_from_zip_recreates_full_hierarchy(
         self,
         experiment_factory,
         listitem_factory,
@@ -575,7 +591,13 @@ class TestExperimentAdmin:
         user,
         rf,
     ):
-        """Verify import_from_json recreates the full experiment hierarchy."""
+        """Verify import_from_zip recreates the full experiment hierarchy."""
+        from filer.models import Folder
+
+        from experiments.import_export import export_to_zip, import_from_zip
+
+        Folder.objects.get_or_create(name="experiments", parent=None)
+
         ex = experiment_factory()
         li = listitem_factory(experiment=ex)
         ob = outerblock_factory(listitem=li)
@@ -584,13 +606,12 @@ class TestExperimentAdmin:
         question_factory(experiment=ex)
         consent_question_factory(experiment=ex)
 
-        data = ExperimentAdmin.export_to_json(ex.id)
-        json_bytes = json.dumps(data).encode("utf-8")
+        zip_bytes = export_to_zip(ex.id)
 
         request = rf.post("/")
         request.user = user
 
-        ExperimentAdmin.import_from_json(request, json_bytes)
+        import_from_zip(request, zip_bytes)
 
         assert Experiment.objects.count() == 2
         assert ListItem.objects.count() == 2

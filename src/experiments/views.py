@@ -16,8 +16,8 @@ from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
-from .admin import ExperimentAdmin
 from .decorators import login_required
+from .import_export import export_to_zip, import_from_zip
 from .forms import ConsentForm, ImportForm, SubjectDataForm
 from .models import (
     BlockItem,
@@ -75,11 +75,11 @@ def experiment_report(request, experiment_id):
 
 
 def experiment_export(request, experiment_id):
-    """Export an experiment to a JSON file."""
+    """Export an experiment and its media files as a ZIP archive."""
     experiment = get_object_or_404(Experiment, pk=experiment_id)
-    json_data = ExperimentAdmin.export_to_json(experiment_id)
-    response = HttpResponse(json.dumps(json_data), content_type="application/json")
-    response["Content-Disposition"] = f'attachment; filename="{experiment.exp_name}.json"'
+    zip_bytes = export_to_zip(experiment_id)
+    response = HttpResponse(zip_bytes, content_type="application/zip")
+    response["Content-Disposition"] = f'attachment; filename="{experiment.exp_name}.zip"'
     return response
 
 
@@ -88,9 +88,13 @@ def experiment_import(request):
     if request.method == "POST":
         form = ImportForm(request.POST, request.FILES)
         if form.is_valid():
-            json_data = request.FILES["import_file"].read()
-            ExperimentAdmin.import_from_json(request, json_data)
-            return redirect("/admin/experiments/experiment")
+            zip_data = request.FILES["import_file"].read()
+            try:
+                import_from_zip(request, zip_data)
+            except ValueError as e:
+                form.add_error("import_file", str(e))
+            else:
+                return redirect("/admin/experiments/experiment")
     else:
         form = ImportForm()
     return render(request, "admin/experiments/import_form.html", {"form": form})

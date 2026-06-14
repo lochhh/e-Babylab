@@ -322,7 +322,7 @@ class Experiment(models.Model):
 
     # CDI
     instrument = models.ForeignKey(
-        Instrument, on_delete=models.CASCADE, null=True, blank=True
+        Instrument, on_delete=models.SET_NULL, null=True, blank=True
     )
     COMP = "COMP"
     PROD = "PROD"
