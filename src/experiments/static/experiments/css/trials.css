@@ -20,9 +20,7 @@
 }
 
 /* Base */
-html,
 body {
-    margin: 0;
     background-color: var(--bg);
     font-family: var(--font);
     color: var(--text);
@@ -268,11 +266,10 @@ ul.errorlist.nonfield {
     color: var(--text) !important;
 }
 
-/* Trial pages — hide body background and prevent scroll in fullscreen */
+/* Trial pages — prevent scroll in fullscreen */
 body:has(#trials),
 body:has(#trials-data) {
     overflow: hidden;
-    background-color: #000;
 }
 
 /* Trial image: fills the viewport, centred, aspect-ratio preserved */
