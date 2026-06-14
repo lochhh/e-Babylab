@@ -3,12 +3,12 @@ export function init() {
     const disapprove = document.querySelector('#end_page_step_1 button.btn-danger');
     if (!approve || !disapprove) return;
     approve.addEventListener('click', () => {
-        document.getElementById('end_page_step_1').classList.remove('active');
-        document.getElementById('end_page_approve').classList.add('active');
+        document.getElementById('end_page_step_1').style.display = 'none';
+        document.getElementById('end_page_approve').style.display = 'block';
     });
     disapprove.addEventListener('click', () => {
-        document.getElementById('end_page_step_1').classList.remove('active');
-        document.getElementById('end_page_disapprove').classList.add('active');
+        document.getElementById('end_page_step_1').style.display = 'none';
+        document.getElementById('end_page_disapprove').style.display = 'block';
     });
 }
 

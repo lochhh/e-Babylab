@@ -1,16 +1,296 @@
-html,
-body {
-    margin: 0;
+/* Design tokens */
+:root {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --success-bg: #f0fdf4;
+    --success-text: #15803d;
+    --warning-bg: #fffbeb;
+    --warning-text: #92400e;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 20px rgba(0, 0, 0, 0.07);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Base */
+body {
+    background-color: var(--bg);
+    font-family: var(--font);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings */
+h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+h5.modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Cards */
+.card {
+    border: none !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+}
+
+.card-body {
+    padding: 2rem 2.25rem !important;
+}
+
+/* Buttons */
+.btn {
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+    font-size: 0.9375rem !important;
+    padding: 0.5rem 1.5rem !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease !important;
+}
+
+.btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+.btn-secondary {
+    background-color: #e5e7eb !important;
+    border-color: #e5e7eb !important;
+    color: var(--text) !important;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #d1d5db !important;
+    border-color: #d1d5db !important;
+}
+
+.btn-danger {
+    background-color: var(--danger) !important;
+    border-color: var(--danger) !important;
+}
+
+.btn-warning {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    color: #fff !important;
+}
+
+.btn:disabled,
+.btn[disabled] {
+    opacity: 0.45 !important;
+    pointer-events: none !important;
+}
+
+/* Form controls */
+.form-control,
+select,
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+textarea {
+    border-color: var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.9375rem !important;
+    color: var(--text) !important;
+    background-color: var(--surface) !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.form-control:focus,
+select:focus,
+input:focus,
+textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+    outline: none !important;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Alerts */
+.alert {
+    border: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.9rem !important;
+}
+
+.alert-danger {
+    background-color: var(--danger-bg) !important;
+    color: var(--danger) !important;
+}
+
+.alert-success {
+    background-color: var(--success-bg) !important;
+    color: var(--success-text) !important;
+}
+
+.alert-warning {
+    background-color: var(--warning-bg) !important;
+    color: var(--warning-text) !important;
+}
+
+/* Typography */
+.card-text {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: var(--text);
+}
+
+p.card-text + p.card-text {
+    margin-top: 0.75rem;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+    font-size: 0.85rem !important;
+}
+
+.asterix {
+    color: var(--danger);
+    font-size: 0.875rem;
+}
+
+/* Django error lists */
+ul.errorlist {
+    list-style: none;
+    padding: 0;
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+    color: var(--danger);
+}
+
+ul.errorlist li::before {
+    content: "⚠ ";
+}
+
+ul.errorlist.nonfield {
+    background-color: var(--danger-bg);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Red border on inputs Django marks as invalid */
+[aria-invalid="true"] {
+    border-color: var(--danger) !important;
+}
+
+/* Form field layout */
+.field-wrapper {
+    margin-bottom: 0.25rem;
+}
+
+.label-inline {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+}
+
+.form-field-body {
+    margin-top: 0.35rem;
+}
+
+.q-item {
+    margin-bottom: 0.5rem;
+}
+
+/* Modal */
+.modal-content {
+    border: none !important;
+    border-radius: var(--radius) !important;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.modal-header {
+    border-bottom-color: var(--border) !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
+.modal-body {
+    padding: 1.25rem 1.5rem !important;
+    font-size: 0.9375rem !important;
+}
+
+.modal-footer {
+    border-top-color: var(--border) !important;
+    padding: 1rem 1.5rem !important;
+}
+
+/* Exit button (webcam / experiment pages) */
+#exit-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9998;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.8125rem !important;
+    padding: 0.3rem 0.9rem !important;
+    backdrop-filter: blur(4px);
+}
+
+#exit-button:hover {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+}
+
+/* Trial pages — prevent scroll in fullscreen */
 body:has(#trials),
 body:has(#trials-data) {
     overflow: hidden;
 }
 
-.col>h1 {
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
+/* Trial image: fills the viewport, centred, aspect-ratio preserved */
+.trial-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+/* Trial video: fills the viewport, aspect-ratio preserved */
+.trial-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 #trials video,
@@ -24,94 +304,32 @@ body:has(#trials-data) {
     z-index: -100;
 }
 
-#calibration-instructions {
-    position: absolute;
-    top: max(260px, 40%);
+/* Centre action buttons; #exit-button is position:fixed so unaffected */
+.col-lg-7 .mt-4:has(.btn) {
+    text-align: center;
 }
 
-#webcam-calibration .card:not(.active),
-#thank-you .card:not(.active),
-#webgazer-init {
+.col-lg-7 .d-flex:has(.btn) {
+    justify-content: center;
+}
+
+/* Webcam/media preview */
+.media-container {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Webcam calibration step visibility — webcam-calibration.js toggles .active */
+#webcam-calibration .webcam-step:not(.active) {
     display: none;
 }
 
-#webcam-calibration .embed-responsive {
-    height: 250px;
-    padding: 20px;
-}
-
-#webcam-calibration .media-container {
-    max-width: 640px;
-    margin: 0 auto 1rem;
-}
-
-#pause.container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.trial-image {
+/* Turnstile badge */
+.turnstile-badge {
+    display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: contain;
-}
-
-.trial-video {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.subject-data-form,
-.consent-form {
-    list-style-type: none;
-}
-
-#fullscreen-button {
-    display: block;
-    margin: 40px auto;
-    cursor: pointer;
-}
-
-#exit-button {
-    display: block;
-    cursor: pointer;
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    z-index: 1000;
-}
-
-#side-by-side-left,
-#side-by-side-right {
-    display: inline-block;
-    padding: 0 5% 0 5%;
-}
-
-form .label-inline {
-    font-weight: bold;
-}
-
-.asterix {
-    color: red;
-}
-
-.errorlist {
-    list-style-type: disc;
-    margin: 0 10px 15px 10px;
-    padding: 8px 35px 8px 30px;
-    color: #B94A48;
-    background-color: #F2DEDE;
-    border: 2px solid #EED3D7;
-    border-radius: 4px;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
 }

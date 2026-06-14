@@ -4,6 +4,7 @@ import json
 import uuid
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from experiments import models as exp_models
@@ -536,20 +537,20 @@ class TestSubjectFormSubmit:
         return reverse("experiments:subjectFormSubmit", args=(str(exp.pk),))
 
     def _base_post_data(self, extra=None):
-        """Return a base POST dict with resolution and reCAPTCHA fields."""
+        """Return a base POST dict with resolution and Turnstile fields."""
         data = {
             "resolution_w": "1920",
             "resolution_h": "1080",
-            "g-recaptcha-response": "test-token",
+            "cf-turnstile-response": "test-token",
         }
         if extra:
             data.update(extra)
         return data
 
-    def test_valid_form_recaptcha_success_no_instrument_redirects(
+    def test_valid_form_turnstile_success_no_instrument_redirects(
         self, client, experiment_factory, mocker
     ):
-        """Verify a valid reCAPTCHA submission redirects to the experiment run."""
+        """Verify a valid Turnstile submission redirects to the experiment run."""
         exp = _simple_experiment(experiment_factory)
         mock_post = mocker.patch("experiments.views.requests.post")
         mock_post.return_value.json.return_value = {"success": True}
@@ -559,7 +560,7 @@ class TestSubjectFormSubmit:
         # recording_option is NON by default → experimentRun
         assert "run" in location
 
-    def test_valid_form_recaptcha_success_with_instrument_redirects_to_cdi(
+    def test_valid_form_turnstile_success_with_instrument_redirects_to_cdi(
         self, client, experiment_factory, instrument_factory, mocker
     ):
         """Verify a valid submission with an instrument redirects to the CDI page."""
@@ -572,10 +573,18 @@ class TestSubjectFormSubmit:
         assert response.status_code == 302
         assert "vocab" in response["Location"]
 
-    def test_recaptcha_failure_renders_demographic_page(
+    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="")
+    def test_turnstile_bypassed_when_no_secret_key(self, client, experiment_factory):
+        """Verify Turnstile is skipped entirely when no secret key is configured."""
+        exp = _simple_experiment(experiment_factory)
+        response = client.post(self._url(exp), self._base_post_data())
+        assert response.status_code == 302
+
+    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret")
+    def test_turnstile_failure_renders_demographic_page(
         self, client, experiment_factory, mocker
     ):
-        """Verify a failing reCAPTCHA re-renders the demographic page."""
+        """Verify a failing Turnstile failure re-renders the demographic page."""
         exp = _simple_experiment(experiment_factory)
         exp.demographic_data_page_tpl = "DEMOG_PAGE"
         exp.save()
