@@ -118,7 +118,6 @@ class SubjectDataForm(models.ModelForm):
             case Question.AGE:
                 return forms.DateField(
                     label=q.text,
-                    initial=datetime.date.today,
                     widget=DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                 )
 
