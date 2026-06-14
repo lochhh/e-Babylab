@@ -84,6 +84,9 @@ jobs:
       - name: Create .env from template
         run: cp .env.template .env
 
+      - name: Set Cloudflare Turnstile test site key
+        run: sed -i 's/CLOUDFLARE_TURNSTILE_SITE_KEY=.*/CLOUDFLARE_TURNSTILE_SITE_KEY=1x00000000000000000000AA/' .env
+
       - name: Start dev server
         run: docker compose -f docker-compose.dev.yml up -d --build
 
