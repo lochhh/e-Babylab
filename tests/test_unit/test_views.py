@@ -4,6 +4,7 @@ import json
 import uuid
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from experiments import models as exp_models
@@ -572,6 +573,14 @@ class TestSubjectFormSubmit:
         assert response.status_code == 302
         assert "vocab" in response["Location"]
 
+    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="")
+    def test_turnstile_bypassed_when_no_secret_key(self, client, experiment_factory):
+        """Verify Turnstile is skipped entirely when no secret key is configured."""
+        exp = _simple_experiment(experiment_factory)
+        response = client.post(self._url(exp), self._base_post_data())
+        assert response.status_code == 302
+
+    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret")
     def test_turnstile_failure_renders_demographic_page(
         self, client, experiment_factory, mocker
     ):

@@ -7,6 +7,7 @@ verifying status codes, redirects, rendered content, and database side-effects.
 import json
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from experiments import models as exp_models
@@ -226,6 +227,7 @@ class TestSubjectFormSubmit:
         )
 
     @pytest.mark.django_db
+    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret")
     def test_failed_turnstile_does_not_create_subject(
         self, client, simple_experiment, mocker
     ):
