@@ -67,6 +67,11 @@ urlpatterns = [
         name="storeResult",
     ),
     re_path(
+        r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/nexttrial$",
+        views.next_trial,
+        name="nextTrial",
+    ),
+    re_path(
         r"^(?P<run_uuid>[0-9A-Fa-f-]+)/run/pause$",
         views.experiment_pause,
         name="experimentPause",

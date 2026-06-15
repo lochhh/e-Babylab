@@ -3,8 +3,9 @@
 import json
 import logging
 import os.path
+import random as _random
+import uuid
 from pathlib import Path
-from random import shuffle
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -204,6 +205,42 @@ def subject_form_submit(request, experiment_id):
     )
 
 
+def _build_trial_sequence(subject_data):
+    """Return ordered (TrialItem, BlockItem, trial_number) tuples for all pending trials.
+
+    Randomisation is seeded from the subject UUID so the shuffled order is stable
+    across repeated calls for the same participant (needed now that we evaluate the
+    sequence lazily on every nexttrial request rather than once at page load).
+    """
+    rng = _random.Random(uuid.UUID(str(subject_data.id)).int)
+
+    list_item = subject_data.listitem
+    outer_block_items = list_item.outerblockitem_set.all().order_by("position")
+
+    completed_trial_ids = set(
+        TrialResult.objects.filter(subject=subject_data)
+        .exclude(key_pressed="PAUSE")
+        .values_list("trialitem_id", flat=True)
+    )
+
+    sequence = []
+    trial_number = 1
+    for ob in outer_block_items:
+        inner_blocks = list(ob.blockitem_set.all().order_by("position"))
+        if ob.randomise_inner_blocks:
+            rng.shuffle(inner_blocks)
+        for block in inner_blocks:
+            trial_items = list(block.trialitem_set.all().order_by("position"))
+            if block.randomise_trials:
+                rng.shuffle(trial_items)
+            for trial in trial_items:
+                if trial.id not in completed_trial_ids:
+                    sequence.append((trial, block, trial_number))
+                trial_number += 1  # increment for every slot, including completed
+
+    return sequence
+
+
 def create_trial_dict(trial, block, trial_number):
     """Return a dictionary containing the details of a trial."""
     trial_type = ""
@@ -249,61 +286,25 @@ def create_trial_dict(trial, block, trial_number):
 
 @ensure_csrf_cookie
 def experiment_run(request, run_uuid):
-    """Generate the (main) experimental task of an experiment."""
+    """Render the experiment page with the first pending trial.
+
+    Subsequent trials are fetched one at a time via the nexttrial endpoint
+    after each result is stored.
+    """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = subject_data.experiment
-    trials = []
-    completed_trials = []
-    block_items = []
     loading_image = experiment.loading_image if experiment.loading_image else ""
-    trial_number = 1
 
     try:
-        # retrieve a certain list
         if subject_data.listitem is None:
-            list_item = experiment.get_list_item()
-            subject_data.listitem = list_item
+            subject_data.listitem = experiment.get_list_item()
             subject_data.save()
-        list_item = subject_data.listitem
 
-        # QuerySet of all outer block items of the list
-        outer_block_items = list_item.outerblockitem_set.all().order_by("position")
-
-        # search for existing trial results
-        all_trial_results = TrialResult.objects.filter(subject__id=run_uuid)
-        trial_number += all_trial_results.count()
-
-        # exclude pause trials
-        trial_results = all_trial_results.exclude(key_pressed="PAUSE")
-        if trial_results.exists():
-            # construct list of completed trials
-            for tr in list(trial_results):
-                completed_trials.append(
-                    get_object_or_404(TrialItem, pk=tr.trialitem.id)
-                )
-
-        # retrieve all block items from all outer blocks
-        for ob in outer_block_items:
-            inner_blocks = list(ob.blockitem_set.all().order_by("position"))
-
-            if ob.randomise_inner_blocks:
-                shuffle(inner_blocks)
-
-            block_items += inner_blocks
-
-        # retrieve all trial items from all block items
-        for b in block_items:
-            trial_items = list(b.trialitem_set.all().order_by("position"))
-
-            if b.randomise_trials:
-                shuffle(trial_items)
-
-            # subtract completed trials from trial list
-            trial_items = [x for x in trial_items if x not in completed_trials]
-
-            for t in trial_items:
-                trials.append(create_trial_dict(t, b, trial_number))
-                trial_number += 1
+        sequence = _build_trial_sequence(subject_data)
+        first_trials = []
+        if sequence:
+            trial, block, trial_number = sequence[0]
+            first_trials = [create_trial_dict(trial, block, trial_number)]
 
     except (
         KeyError,
@@ -317,6 +318,7 @@ def experiment_run(request, run_uuid):
             reverse("experiments:experimentError", args=(run_uuid,))
         )
     else:
+        list_item = subject_data.listitem
         return _render_tpl(
             request,
             experiment.experiment_page_tpl,
@@ -328,9 +330,39 @@ def experiment_run(request, run_uuid):
                 "include_pause_page": experiment.include_pause_page,
                 "recording_option": experiment.recording_option,
                 "show_gaze_estimations": experiment.show_gaze_estimations,
-                "trials": json.dumps(trials),
+                "trials": json.dumps(first_trials),
             },
         )
+
+
+@require_POST
+def next_trial(request, run_uuid):
+    """Return the next pending trial for a subject as JSON.
+
+    Called by the frontend after each trial result is stored. Returns
+    {"done": true} when no trials remain, or {"done": false, "trial": {...}}
+    with the next trial dict.
+    """
+    subject_data = get_object_or_404(SubjectData, pk=run_uuid)
+    try:
+        sequence = _build_trial_sequence(subject_data)
+    except (
+        KeyError,
+        AttributeError,
+        OuterBlockItem.DoesNotExist,
+        BlockItem.DoesNotExist,
+        TrialItem.DoesNotExist,
+    ) as e:
+        logger.exception("Failed to fetch next trial: " + str(e))
+        return JsonResponse({"error": str(e)}, status=500)
+
+    if not sequence:
+        return JsonResponse({"done": True})
+
+    trial, block, trial_number = sequence[0]
+    return JsonResponse(
+        {"done": False, "trial": create_trial_dict(trial, block, trial_number)}
+    )
 
 
 @require_POST
