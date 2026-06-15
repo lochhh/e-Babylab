@@ -205,12 +205,12 @@ def subject_form_submit(request, experiment_id):
     )
 
 
-def _build_trial_sequence(subject_data):
-    """Return ordered (TrialItem, BlockItem, trial_number) tuples for all pending trials.
+def _get_next_pending_trial(subject_data):
+    """Return (TrialItem, BlockItem, trial_number) for the next pending trial, or None.
 
-    Randomisation is seeded from the subject UUID so the shuffled order is stable
-    across repeated calls for the same participant (needed now that we evaluate the
-    sequence lazily on every nexttrial request rather than once at page load).
+    Iterates the shuffled sequence in subject-UUID-seeded order, skipping completed
+    trials (counting them to keep trial_number stable), and returns as soon as the
+    first pending trial is found.
     """
     rng = _random.Random(uuid.UUID(str(subject_data.id)).int)
 
@@ -223,7 +223,6 @@ def _build_trial_sequence(subject_data):
         .values_list("trialitem_id", flat=True)
     )
 
-    sequence = []
     trial_number = 1
     for ob in outer_block_items:
         inner_blocks = list(ob.blockitem_set.all().order_by("position"))
@@ -235,10 +234,10 @@ def _build_trial_sequence(subject_data):
                 rng.shuffle(trial_items)
             for trial in trial_items:
                 if trial.id not in completed_trial_ids:
-                    sequence.append((trial, block, trial_number))
-                trial_number += 1  # increment for every slot, including completed
+                    return (trial, block, trial_number)
+                trial_number += 1  # count completed slots to keep numbering stable
 
-    return sequence
+    return None
 
 
 def create_trial_dict(trial, block, trial_number):
@@ -300,10 +299,10 @@ def experiment_run(request, run_uuid):
             subject_data.listitem = experiment.get_list_item()
             subject_data.save()
 
-        sequence = _build_trial_sequence(subject_data)
+        next_trial_tuple = _get_next_pending_trial(subject_data)
         first_trials = []
-        if sequence:
-            trial, block, trial_number = sequence[0]
+        if next_trial_tuple:
+            trial, block, trial_number = next_trial_tuple
             first_trials = [create_trial_dict(trial, block, trial_number)]
 
     except (
@@ -345,7 +344,7 @@ def next_trial(request, run_uuid):
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     try:
-        sequence = _build_trial_sequence(subject_data)
+        next_trial_tuple = _get_next_pending_trial(subject_data)
     except (
         KeyError,
         AttributeError,
@@ -356,10 +355,10 @@ def next_trial(request, run_uuid):
         logger.exception("Failed to fetch next trial: " + str(e))
         return JsonResponse({"error": str(e)}, status=500)
 
-    if not sequence:
+    if not next_trial_tuple:
         return JsonResponse({"done": True})
 
-    trial, block, trial_number = sequence[0]
+    trial, block, trial_number = next_trial_tuple
     return JsonResponse(
         {"done": False, "trial": create_trial_dict(trial, block, trial_number)}
     )
