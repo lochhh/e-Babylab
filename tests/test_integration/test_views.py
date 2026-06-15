@@ -321,7 +321,7 @@ class TestExperimentRun:
     def test_trial_json_included_in_response(
         self, client, subjectdata_factory, experiment_with_trials
     ):
-        """Verify the response contains serialised trial data for the assigned list."""
+        """Verify the response contains only the first pending trial."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
@@ -335,10 +335,32 @@ class TestExperimentRun:
         assert trials[0]["label"] == trial.label
 
     @pytest.mark.django_db
+    def test_only_first_trial_returned_for_multi_trial_experiment(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        experiment_with_trials,
+    ):
+        """Verify experimentRun returns only the first trial even when multiple exist."""
+        exp, listitem, first_trial = experiment_with_trials
+        # Add a second trial to the same block
+        block = first_trial.blockitem
+        trialitem_factory(blockitem=block, label="Trial2", code="C2", position=2)
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
+        exp.save()
+        url = reverse("experiments:experimentRun", args=[sd.pk])
+        response = client.get(url)
+        trials = json.loads(response.content.decode())
+        assert len(trials) == 1
+        assert trials[0]["label"] == first_trial.label
+
+    @pytest.mark.django_db
     def test_completed_trials_excluded(
         self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
     ):
-        """Verify trials with existing TrialResult records are excluded from the run."""
+        """Verify experimentRun returns empty list when the only trial is already done."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         trialresult_factory(subject=sd, trialitem=trial)
@@ -394,6 +416,113 @@ class TestStoreResult:
         url = reverse("experiments:storeResult", args=[sd.pk])
         response = client.get(url)
         assert response.status_code == 405
+
+
+# ---------------------------------------------------------------------------
+# nextTrial
+# ---------------------------------------------------------------------------
+
+
+class TestNextTrial:
+    """Tests for the nextTrial view."""
+
+    @pytest.mark.django_db
+    def test_get_returns_405(self, client, subjectdata_factory, simple_experiment):
+        """Verify a GET request to nextTrial returns 405 Method Not Allowed."""
+        sd = subjectdata_factory(experiment=simple_experiment)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.get(url)
+        assert response.status_code == 405
+
+    @pytest.mark.django_db
+    def test_returns_first_trial_when_none_completed(
+        self, client, subjectdata_factory, experiment_with_trials
+    ):
+        """Verify nextTrial returns the first pending trial when nothing is complete."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        assert response.status_code == 200
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == trial.pk
+        assert data["trial"]["label"] == trial.label
+
+    @pytest.mark.django_db
+    def test_returns_second_trial_after_first_completed(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        trialresult_factory,
+        experiment_with_trials,
+    ):
+        """Verify nextTrial returns the second trial after the first is stored."""
+        exp, listitem, first_trial = experiment_with_trials
+        block = first_trial.blockitem
+        second_trial = trialitem_factory(blockitem=block, label="Trial2", code="C2", position=2)
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=first_trial)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == second_trial.pk
+
+    @pytest.mark.django_db
+    def test_returns_done_when_all_trials_complete(
+        self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
+    ):
+        """Verify nextTrial returns done=true when all trials have TrialResults."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=trial)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data == {"done": True}
+
+    @pytest.mark.django_db
+    def test_pause_result_does_not_count_as_completed(
+        self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
+    ):
+        """Verify PAUSE TrialResults do not exclude the trial from nexttrial."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=trial)
+        # Overwrite with PAUSE key
+        exp_models.TrialResult.objects.filter(subject=sd).update(key_pressed="PAUSE")
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == trial.pk
+
+    @pytest.mark.django_db
+    def test_trial_number_stable_across_calls(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        trialresult_factory,
+        experiment_with_trials,
+    ):
+        """Verify trial_number for a given trial is the same before and after another trial completes."""
+        exp, listitem, first_trial = experiment_with_trials
+        block = first_trial.blockitem
+        trialitem_factory(blockitem=block, label="Trial2", code="C2", position=2)
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+
+        # Before completing anything: first trial should have trial_number=1
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        data_before = json.loads(client.post(url).content)
+        assert data_before["trial"]["trial_number"] == 1
+
+        # Complete the first trial; second trial should have trial_number=2
+        trialresult_factory(subject=sd, trialitem=first_trial)
+        data_after = json.loads(client.post(url).content)
+        assert data_after["trial"]["trial_number"] == 2
 
 
 # ---------------------------------------------------------------------------
