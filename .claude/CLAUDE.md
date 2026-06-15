@@ -87,3 +87,9 @@ Experiments and data are shared within Django `Group`s, reflecting real research
 
 ### Settings
 All secrets and DB config come from `.env`.
+
+### Static files — two directories, do not confuse them
+- **`src/experiments/static/experiments/`** — source JS/CSS tracked in git (Django app static convention). Edit files here.
+- **`src/static/`** — `collectstatic` output, gitignored via `src/static/**`. Never edit or commit files here; they are overwritten at deploy time.
+
+When editing frontend JS, always work in `src/experiments/static/experiments/js/`, not `src/static/`.
