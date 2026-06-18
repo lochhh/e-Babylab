@@ -37,7 +37,14 @@ ENTRYPOINT []
 FROM base AS prod
 
 COPY README.md LICENSE ./
-COPY ./src ./
+COPY ./src ./src/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
+
+WORKDIR /usr/src/app/src
+
+RUN chmod +x docker-entrypoint.sh wait-for-it.sh
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
