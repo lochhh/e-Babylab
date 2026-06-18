@@ -37,12 +37,10 @@ ENTRYPOINT []
 FROM base AS prod
 
 COPY README.md LICENSE ./
-COPY ./src ./src/
+COPY ./src ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
-
-WORKDIR /usr/src/app/src
+    uv sync --locked --no-dev --no-install-project
 
 RUN chmod +x docker-entrypoint.sh wait-for-it.sh
 

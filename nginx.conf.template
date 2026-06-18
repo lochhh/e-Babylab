@@ -3,9 +3,10 @@ upstream django {
 }
 
 server {
-    listen 443 http2 ssl;
+    listen 443 ssl;
+    http2 on;
 
-    server_name localhost <your_domain.com>;
+    server_name localhost ${DOMAIN};
 
     client_max_body_size 100M;
 
@@ -21,19 +22,19 @@ server {
     ssl_prefer_server_ciphers on;
 
     location /static/ {
-        alias /ipl/static/;
+        alias /app/static/;
     }
 
     location /media/ {
-        alias /ipl/media/;
+        alias /app/media/;
     }
 
     location /webcam-test/ {
-        alias /ipl/webcam/test/;
+        alias /app/webcam/test/;
     }
 
     location /reports/ {
-        alias /ipl/reports/;
+        alias /app/reports/;
     }
 
     location / {
@@ -48,7 +49,7 @@ server {
 
 server {
     listen 80;
-    server_name localhost <your_domain.com>;
+    server_name localhost ${DOMAIN};
 
     return 301 https://$host$request_uri;
 }
