@@ -27,6 +27,12 @@ Run the Python test suite inside the Docker container:
 docker compose -f docker-compose.dev.yml exec web uv run pytest
 ```
 
+Run a specific test file:
+
+```bash
+docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests/test_unit/test_config.py
+```
+
 ### JavaScript (Vitest) and End-to-End Tests (Playwright)
 
 JS tests run directly on your machine (no Docker needed). Requires [Node.js](https://nodejs.org/).
