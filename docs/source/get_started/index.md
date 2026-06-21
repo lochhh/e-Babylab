@@ -149,25 +149,6 @@ docker compose up -d
 
 e-Babylab will be available at `https://your-domain.com/admin/`.
 
-### Verify Locally (Without a Domain)
-
-To test the production setup locally, use `DOMAIN=localhost` with a self-signed certificate:
-
-```bash
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout server.key -out cert.pem -subj '/CN=localhost'
-```
-
-Then set the paths in your `.env` file:
-
-```bash
-DOMAIN=localhost
-SSL_CERT_PATH=./cert.pem
-SSL_KEY_PATH=./server.key
-```
-
-Start the production stack and visit `https://localhost/admin/`. Your browser will warn about the self-signed certificate — this is expected.
-
 ### Database Access
 
 For production database access, use any Postgres client (e.g. psql, pgAdmin, DBeaver) with SSH tunnelling to port 5432 on your server:

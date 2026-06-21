@@ -95,6 +95,29 @@ cd tests/e2e && npm run test:ui
 `mobile-safari` uses WebKit with iPhone 14 device emulation. For the most accurate Safari results, run this project on macOS (CI uses a macOS runner; locally, it works on any platform but macOS gives the closest match to real Safari).
 :::
 
+## Verify Production Setup Locally
+
+To test the production stack locally without a domain, use `DOMAIN=localhost` with a self-signed certificate:
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout server.key -out cert.pem -subj '/CN=localhost'
+```
+
+Then set the paths in your `.env` file:
+
+```bash
+DOMAIN=localhost
+SSL_CERT_PATH=./cert.pem
+SSL_KEY_PATH=./server.key
+```
+
+Start the production stack and visit `https://localhost/admin/`. Your browser will warn about the self-signed certificate — this is expected.
+
+```bash
+docker compose up -d
+```
+
 ## Database Admin (pgAdmin)
 
 The development environment includes [pgAdmin](https://www.pgadmin.org/) for easy access to the database. It is accessible at `http://localhost:5050`. The default port can be changed by updating the `5050:80` port mapping under the `pgadmin` service in `docker-compose.dev.yml`. Login credentials are set via `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` in `.env`.
