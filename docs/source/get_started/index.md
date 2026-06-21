@@ -91,6 +91,8 @@ Deploy e-Babylab to a production server.
         SSL_KEY_PATH=/etc/ssl/private/your_key.key
         ```
 
+    - **PostgreSQL data directory** — `POSTGRES_DATA_PATH` defaults to `./postgres_data`. Change it to an SSD-backed path for better I/O performance if available.
+
     - **Database password** — set a strong `DB_PASSWORD`.
 
     - **Admin account** (optional) — set `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` to auto-create an admin account on first startup. If you skip this, you can create one manually later:
