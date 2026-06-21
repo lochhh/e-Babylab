@@ -27,13 +27,6 @@ from .models import (
 
 # Filer fields on TrialItem and Experiment that are bundled in the ZIP.
 _TRIAL_FILE_FIELDS = ("audio_file", "visual_file")
-_EXPERIMENT_FILE_FIELDS = ("loading_image",)
-_ALL_MEDIA_FIELDS = (
-    *_EXPERIMENT_FILE_FIELDS,
-    *_TRIAL_FILE_FIELDS,
-    *Instrument._CSV_FILE_FIELDS,
-)
-
 
 def export_to_zip(experiment_id: Any) -> bytes:
     """Bundle an experiment's full hierarchy and all referenced media files into a ZIP.
@@ -121,6 +114,75 @@ def export_to_zip(experiment_id: Any) -> bytes:
     return buf.getvalue()
 
 
+def _remap_fk(obj: Any, field_name: str, pk_map: dict) -> None:
+    """Set obj.<field_name>_id to pk_map[old_value], handling type mismatches."""
+    fk_attr = f"{field_name}_id"
+    old_val = getattr(obj, fk_attr)
+    if old_val is None:
+        return
+    new_val = pk_map.get(old_val)
+    if new_val is None:
+        new_val = pk_map.get(str(old_val))
+    if new_val is not None:
+        setattr(obj, fk_attr, new_val)
+
+
+def _resolve_media(
+    files_meta: dict,
+    search_root: Folder,
+    target_name: str,
+    zip_file: zipfile.ZipFile,
+    owner: Any,
+) -> dict[str, str]:
+    """Return ``{old_pk: new_pk}`` — reuse all existing files or create all fresh.
+
+    Uses an all-or-nothing strategy: if every file in *files_meta* already
+    exists under *search_root* (or a direct subfolder), all are reused.  If
+    any single file is absent, every file is (re)created fresh under
+    ``<search_root>/<target_name>/``.
+    """
+    if not files_meta:
+        return {}
+    found: dict[str, FilerFile] = {}
+    for old_pk, meta in files_meta.items():
+        obj = (
+            FilerFile.objects.filter(original_filename=meta["original_filename"])
+            .filter(Q(folder=search_root) | Q(folder__parent=search_root))
+            .first()
+        )
+        if obj is None:
+            break
+        found[old_pk] = obj
+    else:
+        return {pk: str(obj.pk) for pk, obj in found.items()}
+
+    folder, _ = Folder.objects.get_or_create(
+        name=target_name,
+        parent=search_root,
+        defaults={"owner": owner},
+    )
+    pk_map: dict[str, str] = {}
+    for old_pk, meta in files_meta.items():
+        filename = meta["original_filename"]
+        file_bytes = zip_file.read(meta["zip_path"])
+        filer_obj = (
+            FilerImage(
+                original_filename=filename,
+                folder=folder,
+                owner=owner,
+            )
+            if meta["is_image"]
+            else FilerFile(
+                original_filename=filename,
+                folder=folder,
+                owner=owner,
+            )
+        )
+        filer_obj.file.save(filename, ContentFile(file_bytes), save=True)
+        pk_map[old_pk] = str(filer_obj.pk)
+    return pk_map
+
+
 def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
     """Recreate an experiment from a ZIP produced by :func:`export_to_zip`.
 
@@ -160,16 +222,11 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             raise ValueError(
                 "Invalid experiment archive: experiment.json not found in the ZIP."
             ) from exc
-        json_str = json.dumps(raw)
 
         exp_name = raw["experiment"][0]["fields"]["exp_name"]
         media_files = raw.get("media_files", {})
 
         # Step 1: Reconstruct filer media files using an all-or-nothing strategy.
-        # If every file in a group (experiment media / instrument CSVs) already
-        # exists under the respective root, all are reused.  If any single file
-        # is absent, every file in that group is (re)created fresh in a new
-        # subfolder so the experiment always references a consistent set of files.
         experiments_root = Folder.objects.get(name="experiments", parent=None)
         instruments_root, _ = Folder.objects.get_or_create(
             name="instruments", parent=None, defaults={"owner": request.user}
@@ -192,92 +249,36 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             if meta.get("source") == "instrument"
         }
 
-        def _resolve(
-            files_meta: dict,
-            search_root: Folder,
-            target_name: str,
-        ) -> dict[str, str]:
-            """Return {old_pk: new_pk} — reuse all or create all fresh."""
-            if not files_meta:
-                return {}
-            found: dict[str, FilerFile] = {}
-            for old_pk, meta in files_meta.items():
-                obj = (
-                    FilerFile.objects.filter(original_filename=meta["original_filename"])
-                    .filter(Q(folder=search_root) | Q(folder__parent=search_root))
-                    .first()
-                )
-                if obj is None:
-                    break
-                found[old_pk] = obj
-            else:
-                # All files found — reuse them.
-                return {pk: str(obj.pk) for pk, obj in found.items()}
-
-            # At least one file missing — create every file fresh.
-            folder, _ = Folder.objects.get_or_create(
-                name=target_name,
-                parent=search_root,
-                defaults={"owner": request.user},
-            )
-            pk_map: dict[str, str] = {}
-            for old_pk, meta in files_meta.items():
-                filename = meta["original_filename"]
-                file_bytes = zip_file.read(meta["zip_path"])
-                filer_obj = (
-                    FilerImage(
-                        original_filename=filename,
-                        folder=folder,
-                        owner=request.user,
-                    )
-                    if meta["is_image"]
-                    else FilerFile(
-                        original_filename=filename,
-                        folder=folder,
-                        owner=request.user,
-                    )
-                )
-                filer_obj.file.save(filename, ContentFile(file_bytes), save=True)
-                pk_map[old_pk] = str(filer_obj.pk)
-            return pk_map
-
-        pk_map = {
-            **_resolve(exp_media, experiments_root, exp_name),
+        media_pk_map = {
+            **_resolve_media(
+                exp_media, experiments_root, exp_name, zip_file, request.user
+            ),
             **(
-                _resolve(instr_media, instruments_root, instr_name)
+                _resolve_media(
+                    instr_media, instruments_root, instr_name,
+                    zip_file, request.user,
+                )
                 if instr_name
                 else {}
             ),
         }
 
-        for old_pk, new_pk in pk_map.items():
-            for field in _ALL_MEDIA_FIELDS:
-                json_str = json_str.replace(
-                    f'"{field}": {old_pk}', f'"{field}": {new_pk}'
-                )
-
     # Step 2: Handle CDI instrument — reuse by name or create fresh.
-    parsed = json.loads(json_str)
-
+    new_instr_pk = None
     if "instrument" in raw:
-        instr_serialized = parsed["instrument"]
-        old_instr_pk = str(instr_serialized[0]["pk"])
-        instr_name = instr_serialized[0]["fields"]["instr_name"]
-
+        instr_name = raw["instrument"][0]["fields"]["instr_name"]
         existing_instr = Instrument.objects.filter(instr_name=instr_name).first()
         if existing_instr is not None:
-            new_instr_pk = str(existing_instr.pk)
+            new_instr_pk = existing_instr.pk
         else:
-            for instr in serializers.deserialize("json", json.dumps(instr_serialized)):
+            for instr in serializers.deserialize(
+                "json", json.dumps(raw["instrument"])
+            ):
                 instr.object.id = None
+                for field_name in Instrument._CSV_FILE_FIELDS:
+                    _remap_fk(instr.object, field_name, media_pk_map)
                 instr.save()
-                new_instr_pk = str(instr.object.id)
-
-        json_str = json_str.replace(
-            f'"instrument": {old_instr_pk}',
-            f'"instrument": {new_instr_pk}',
-        )
-        parsed = json.loads(json_str)
+                new_instr_pk = instr.object.pk
 
     # Step 3: Ensure the imported experiment gets a unique name.
     candidate_name = exp_name
@@ -288,58 +289,69 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             candidate_name = f"{exp_name} copy {n}"
             n += 1
 
-    # Step 4: Import the experiment hierarchy using the same PK-remapping
-    # pattern as the original import logic.
-    for exp_obj in serializers.deserialize("json", json.dumps(parsed["experiment"])):
-        old_exp_pk = str(exp_obj.object.id)
+    # Step 4: Import the experiment hierarchy with direct FK remapping.
+    exp_pk_map: dict = {}
+    for exp_obj in serializers.deserialize(
+        "json", json.dumps(raw["experiment"])
+    ):
+        old_pk = exp_obj.object.pk
+        exp_obj.object.id = None
         exp_obj.object.created_on = timezone.now()
         exp_obj.object.user = request.user
-        exp_obj.object.id = None
         exp_obj.object.exp_name = candidate_name
+        _remap_fk(exp_obj.object, "loading_image", media_pk_map)
+        if new_instr_pk is not None:
+            exp_obj.object.instrument_id = new_instr_pk
         exp_obj.save()
-        json_str = json_str.replace(old_exp_pk, str(exp_obj.object.id))
+        exp_pk_map[old_pk] = exp_obj.object.pk
 
-    parsed = json.loads(json_str)
-
-    for list_item in serializers.deserialize("json", json.dumps(parsed["lists"])):
-        old_pk = str(list_item.object.id)
+    list_pk_map: dict = {}
+    for list_item in serializers.deserialize(
+        "json", json.dumps(raw["lists"])
+    ):
+        old_pk = list_item.object.pk
         list_item.object.id = None
+        _remap_fk(list_item.object, "experiment", exp_pk_map)
         list_item.save()
-        json_str = json_str.replace(
-            f'"listitem": {old_pk},', f'"listitem": {list_item.object.id!s},'
-        )
+        list_pk_map[old_pk] = list_item.object.pk
 
-    parsed = json.loads(json_str)
-
-    for outer in serializers.deserialize("json", json.dumps(parsed["outerblocks"])):
-        old_pk = str(outer.object.id)
+    outerblock_pk_map: dict = {}
+    for outer in serializers.deserialize(
+        "json", json.dumps(raw["outerblocks"])
+    ):
+        old_pk = outer.object.pk
         outer.object.id = None
+        _remap_fk(outer.object, "listitem", list_pk_map)
         outer.save()
-        json_str = json_str.replace(
-            f'"outerblockitem": {old_pk},',
-            f'"outerblockitem": {outer.object.id!s},',
-        )
+        outerblock_pk_map[old_pk] = outer.object.pk
 
-    parsed = json.loads(json_str)
-
-    for inner in serializers.deserialize("json", json.dumps(parsed["innerblocks"])):
-        old_pk = str(inner.object.id)
+    block_pk_map: dict = {}
+    for inner in serializers.deserialize(
+        "json", json.dumps(raw["innerblocks"])
+    ):
+        old_pk = inner.object.pk
         inner.object.id = None
+        _remap_fk(inner.object, "outerblockitem", outerblock_pk_map)
         inner.save()
-        json_str = json_str.replace(
-            f'"blockitem": {old_pk},', f'"blockitem": {inner.object.id!s},'
-        )
+        block_pk_map[old_pk] = inner.object.pk
 
-    parsed = json.loads(json_str)
-
-    for trial in serializers.deserialize("json", json.dumps(parsed["trials"])):
+    for trial in serializers.deserialize("json", json.dumps(raw["trials"])):
         trial.object.id = None
+        _remap_fk(trial.object, "blockitem", block_pk_map)
+        for field_name in _TRIAL_FILE_FIELDS:
+            _remap_fk(trial.object, field_name, media_pk_map)
         trial.save()
 
-    for question in serializers.deserialize("json", json.dumps(parsed["questions"])):
+    for question in serializers.deserialize(
+        "json", json.dumps(raw["questions"])
+    ):
         question.object.id = None
+        _remap_fk(question.object, "experiment", exp_pk_map)
         question.save()
 
-    for cq in serializers.deserialize("json", json.dumps(parsed["consentquestions"])):
+    for cq in serializers.deserialize(
+        "json", json.dumps(raw["consentquestions"])
+    ):
         cq.object.id = None
+        _remap_fk(cq.object, "experiment", exp_pk_map)
         cq.save()

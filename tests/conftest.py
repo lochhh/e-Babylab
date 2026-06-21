@@ -10,6 +10,38 @@ from filer.models.filemodels import File as FilerFile
 
 from experiments import models as exp_models
 
+
+@pytest.fixture(autouse=True, scope="session")
+def _tmp_media(tmp_path_factory):
+    """Redirect filer file storage to a temp directory, auto-cleaned after session."""
+    from django.conf import settings
+
+    media = str(tmp_path_factory.mktemp("media"))
+    orig_media_root = settings.MEDIA_ROOT
+    settings.MEDIA_ROOT = media
+
+    # Filer uses its own PublicFileSystemStorage / PrivateFileSystemStorage
+    # singletons (configured via FILER_STORAGES), not Django's default_storage.
+    # Patch those directly.
+    from filer.models.filemodels import File as _FilerFile
+
+    _sentinel = _FilerFile(original_filename="")
+    storages = _sentinel.file.storages
+    originals = {}
+    for key, storage in storages.items():
+        originals[key] = storage._location
+        storage._location = f"{media}/{key}"
+        storage.__dict__.pop("base_location", None)
+        storage.__dict__.pop("location", None)
+
+    yield
+
+    settings.MEDIA_ROOT = orig_media_root
+    for key, storage in storages.items():
+        storage._location = originals[key]
+        storage.__dict__.pop("base_location", None)
+        storage.__dict__.pop("location", None)
+
 _NORWEGIAN_WS = (
     pathlib.Path(__file__).parent / "data" / "norwegian-ws-production"
 )
@@ -61,7 +93,7 @@ def group(db):
 
 
 @pytest.fixture(scope="session")
-def real_instrument(django_db_setup, django_db_blocker):
+def real_instrument(django_db_setup, django_db_blocker, _tmp_media):
     """Instrument backed by the real Norwegian WS production CSV files.
 
     Session-scoped: the instrument row and its filer files are created once
