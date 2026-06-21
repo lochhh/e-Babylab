@@ -134,13 +134,13 @@ In your `.env` file, uncomment and set the following:
 3. **Admin account** (optional) — uncomment `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` to auto-create an admin account on first startup. If you skip this, you can create one manually later:
 
     ```bash
-    docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+    docker compose exec web python manage.py createsuperuser
     ```
 
 ### Start
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
 e-Babylab will be available at `https://your-domain.com/admin/`.
@@ -179,7 +179,7 @@ Then connect to `localhost:5432` with the credentials from your `.env` file. pgA
 To run Django management commands inside the container:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec web python manage.py <command> [options]
+docker compose exec web python manage.py <command> [options]
 ```
 
 All available commands can be found in the [Django documentation](https://docs.djangoproject.com/en/6.0/ref/django-admin/).

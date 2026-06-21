@@ -34,7 +34,7 @@ All commits are on the `prod-image` branch. Remaining work:
 3. Start the prod stack:
 
     ```bash
-    docker compose -f docker-compose.prod.yml up -d
+    docker compose up -d
     ```
 
 4. Visit `https://localhost/admin/` (browser will warn about self-signed cert — expected).
@@ -43,7 +43,7 @@ All commits are on the `prod-image` branch. Remaining work:
 
 1. SSH into the NREC instance and install Docker.
 
-2. Clone the repo (or copy the deployment files: `docker-compose.prod.yml`, `nginx.conf.template`, `.env.template`).
+2. Clone the repo (or copy the deployment files: `docker-compose.yml`, `nginx.conf.template`, `.env.template`).
 
 3. Generate a self-signed certificate using the instance's IP:
 
@@ -66,12 +66,12 @@ All commits are on the `prod-image` branch. Remaining work:
 6. Start the prod stack:
 
     ```bash
-    docker compose -f docker-compose.prod.yml up -d
+    docker compose up -d
     ```
 
 7. Visit `https://<NREC_IP>/admin/` and verify:
    - Nginx serves HTTPS with the self-signed cert
-   - Migrations ran automatically (check logs: `docker compose -f docker-compose.prod.yml logs web`)
+   - Migrations ran automatically (check logs: `docker compose logs web`)
    - Static files are served correctly
    - Admin login works (superuser was auto-created or create one manually)
 
@@ -83,7 +83,7 @@ All commits are on the `prod-image` branch. Remaining work:
 - `.env.template`: added optional `DJANGO_SUPERUSER_*` vars
 
 ### 2. `e850616` Parameterise prod config with env vars and add pgAdmin auto-config
-- Replaced `docker-compose.yml.template` with `docker-compose.prod.yml`
+- Replaced `docker-compose.yml.template` with `docker-compose.yml`
 - Env var interpolation for `DOMAIN`, `SSL_CERT_PATH`, `SSL_KEY_PATH`
 - Standard ports 80/443 instead of 8080/8443
 - nginx.conf.template uses `${DOMAIN}` with auto-envsubst
