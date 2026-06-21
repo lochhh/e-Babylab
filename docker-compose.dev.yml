@@ -23,6 +23,9 @@ services:
       - ./src:/usr/src/app # Mount source code for live reload
       - ./tests:/usr/src/tests # Mount tests directory
       - venv_cache:/usr/src/.venv # Preserve virtual environment
+      - ./media:/usr/src/app/media # Match prod media path
+      - ./webcam:/usr/src/app/webcam
+      - ./reports:/usr/src/app/reports
     depends_on:
       - db
     ports:

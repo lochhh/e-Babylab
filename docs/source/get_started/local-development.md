@@ -199,16 +199,20 @@ docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
 ```
 
-### Wipe and reset the database
+### Reset the dev environment
 
 > **Warning:** This permanently deletes all data in the dev database.
 
 ```bash
 docker compose -f docker-compose.dev.yml down -v   # removes containers + named volumes
+# optional: remove bind-mounted data
+rm -rf media/ webcam/ reports/
 docker compose -f docker-compose.dev.yml up -d --build
 docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
 docker compose -f docker-compose.dev.yml exec web uv run python manage.py createsuperuser
 ```
+
+`down -v` removes Docker **named volumes** (`postgres_data_dev`, `venv_cache`) but not bind-mounted directories. The `rm -rf` step is optional — include it to also clear uploaded media, webcam recordings, and reports for a fully clean slate. These directories are recreated automatically when Django needs them.
 
 ## Data Model Changes
 

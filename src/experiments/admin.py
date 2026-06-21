@@ -84,7 +84,7 @@ GRID_LAYOUT_HELP_TEXT = " ".join(
 INSTRUMENT_HELP_TEXT = format_html(
     "<p>To generate the required .csv files, download and run this"
     ' <a href="{url_rscript}">R script</a>.',
-    url_rscript="/media/uploads/instruments/generateInstrumentFiles.r",
+    url_rscript="/static/experiments/generateInstrumentFiles.r",
 )
 
 
