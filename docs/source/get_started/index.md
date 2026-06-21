@@ -52,6 +52,10 @@ git clone https://github.com/YOUR_GITHUB_USERNAME/e-Babylab.git
 
     Or use an online generator such as [Djecrety](https://djecrety.ir/).
 
+    :::{note}
+    If your secret key contains special characters like `$`, `\`, or `` ` ``, Docker will try to interpret them as variable references in the `.env` file. Either wrap the value in single quotes (e.g., `SECRET_KEY='my$ecretKey'`) or regenerate until you get a key without those characters. The `secrets.token_urlsafe()` method above only produces URL-safe characters and avoids this problem.
+    :::
+
 4. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
 5. Register for [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/) to obtain the site key and secret key:
