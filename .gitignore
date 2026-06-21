@@ -83,6 +83,13 @@ celerybeat-schedule
 
 # Environments
 .env
+
+# SSL certificates
+*.pem
+*.key
+
+# Generated from templates (old workflow artefacts)
+nginx.conf
 .venv
 env/
 venv/
@@ -106,19 +113,14 @@ venv.bak/
 # .DS_store
 .DS_Store
 
-# Django media folder
-src/media/uploads/**
-!src/media/uploads/.keep
-!src/media/uploads/instruments/*.r
-src/media/filer_private/**
-src/media/filer_public_thumbnails/**
+# Django media & runtime data (bind-mounted at repo root in both dev and prod)
+media/
+webcam/
+reports/
+postgres[-_]data
 
 # Django static folder
 src/static/**
-
-src/webcam/**
-postgres[-_]data
-src/reports/**
 
 # Node
 node_modules/
