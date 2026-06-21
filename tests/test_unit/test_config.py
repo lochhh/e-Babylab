@@ -22,7 +22,7 @@ class TestWsgi:
 
     def test_django_settings_module_env_var_is_set(self):
         """wsgi.py ensures DJANGO_SETTINGS_MODULE defaults to config.settings."""
-        import config.wsgi  # noqa: F401 – ensure the module is imported
+        import config.wsgi  # noqa: F401 - ensure the module is imported
 
         assert os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings"
 
@@ -49,7 +49,7 @@ class TestSettings:
         importlib.reload(s)
         try:
             assert s.DEBUG is False
-            assert s.ALLOWED_HOSTS == ["*"]
+            assert s.ALLOWED_HOSTS == ["localhost"]
             assert s.USE_X_FORWARDED_HOST is True
             assert s.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
         finally:

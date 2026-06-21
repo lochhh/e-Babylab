@@ -40,4 +40,9 @@ COPY README.md LICENSE ./
 COPY ./src ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    uv sync --locked --no-dev --no-install-project
+
+RUN chmod +x docker-entrypoint.sh wait-for-it.sh
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

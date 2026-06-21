@@ -16,7 +16,7 @@ Rules:
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
 ## Environment Setup
-Requires Docker Desktop. 
+Requires Docker Desktop.
 The dev compose file is `docker-compose.dev.yml`. All Django and pytest commands run inside the container:
 ```bash
 docker compose -f docker-compose.dev.yml exec web <command>
@@ -28,12 +28,12 @@ Admin UI at `http://localhost:8080/admin/`, pgAdmin at `http://localhost:5050`.
 Ensure new code is covered by tests. Run existing tests to verify setup and check for regressions. Use test-driven development wherever possible.
 
 ### Python (pytest)
-Run pytest inside the container:
+Run pytest inside the container. Tests are in `/usr/src/tests/`:
 ```bash
-docker compose -f docker-compose.dev.yml exec web uv run pytest 
+docker compose -f docker-compose.dev.yml exec web uv run pytest
 ```
 
-Before writing new fixtures, check for existing ones in `tests/conftest.py`. 
+Before writing new fixtures, check for existing ones in `tests/conftest.py`.
 
 Parametrize tests to cover multiple scenarios without duplication. Use `pytest.mark.parametrize` for this.
 

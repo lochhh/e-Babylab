@@ -13,7 +13,7 @@ CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "
 # SECURITY WARNING: don't run with debug turned on in production!
 if os.getenv("DJANGO_ENV") == "prod":
     DEBUG = False
-    ALLOWED_HOSTS = ["*"]
+    ALLOWED_HOSTS = [os.getenv("DOMAIN", "localhost")]
     USE_X_FORWARDED_HOST = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 else:
