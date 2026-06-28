@@ -183,25 +183,65 @@ Then connect to `localhost:5432` with the credentials from your `.env` file. pgA
 
 3. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
-4. Register for [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/) to obtain the site key and secret key:
+4. Configure a CAPTCHA provider (see [](target-captcha-config) below).
 
-    ::::{tab-set}
-    :::{tab-item} Local development
-    For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) — no account needed.
-    :::
-    :::{tab-item} Production
-    Go to the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile) and click **Add widget**, then fill in:
+5. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
 
-    - **Widget name**: e.g. `e-Babylab`
-    - **Hostname**: your domain (e.g. `your-domain.com`)
+(target-captcha-config)=
+### CAPTCHA Configuration
 
-    Leave all other options at their defaults and click **Create** to generate the keys.
-    :::
-    ::::
+CAPTCHA protects the participant form from automated submissions that can pollute your study data. We recommend keeping CAPTCHA enabled in production. Disabling it (`CAPTCHA_PROVIDER=none`) is suitable for development and testing but leaves your study open to automated submissions in production.
 
-5. Copy the site key to `CLOUDFLARE_TURNSTILE_SITE_KEY` and the secret key to `CLOUDFLARE_TURNSTILE_SECRET_KEY` in your `.env` file.
+Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following:
 
-6. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
+| | ALTCHA (default) | Turnstile | TrustSig | None |
+|---|---|---|---|---|
+| **Compliance** | Universal (self-hosted, no data leaves your server) | US-based | EU-based (Germany) | N/A |
+| **User friction** | Invisible (proof-of-work) | Low (checkbox) | Invisible (hardware signals) | None |
+| **Third-party data** | None | Cloudflare (US) | TrustSig (EU) | None |
+| **Cookies** | Zero | Some | Zero | None |
+| **Cost** | [Free forever (MIT)](https://altcha.org/) | [Free](https://www.cloudflare.com/en-gb/products/turnstile/) | [Free 50k/mo, then from €9/mo](https://trustsig.eu/#pricing) | Free |
+| **Best for** | GDPR/privacy-first deployments | Zero server maintenance, easy setup | EU institutions wanting invisible protection | Dev/testing only |
+
+::::{tab-set}
+:::{tab-item} ALTCHA (recommended)
+Self-hosted proof-of-work — no third-party requests, no cookies, universally compliant with GDPR, CCPA, LGPD, and PIPL. No account needed.
+
+```bash
+CAPTCHA_PROVIDER=altcha
+ALTCHA_HMAC_KEY=<generate with: openssl rand -hex 32>
+```
+:::
+:::{tab-item} Turnstile
+Cloudflare's checkbox-style CAPTCHA. Easy setup, zero server maintenance.
+
+Register at the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile), click **Add widget**, enter your domain, and copy the keys. For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
+
+```bash
+CAPTCHA_PROVIDER=turnstile
+CLOUDFLARE_TURNSTILE_SITE_KEY=<your site key>
+CLOUDFLARE_TURNSTILE_SECRET_KEY=<your secret key>
+```
+:::
+:::{tab-item} TrustSig
+Invisible hardware-signal bot protection, hosted in Germany (EU). Zero cookies, GDPR compliant.
+
+Register at [trustsig.eu](https://trustsig.eu/) and copy the keys from your dashboard. Add your production domain to the Allowed Domains list.
+
+```bash
+CAPTCHA_PROVIDER=trustsig
+TRUSTSIG_SITE_KEY=<your pk_live_ key>
+TRUSTSIG_SECRET_KEY=<your sk_live_ key>
+```
+:::
+:::{tab-item} None
+Disable CAPTCHA entirely. Only use for development/testing.
+
+```bash
+CAPTCHA_PROVIDER=none
+```
+:::
+::::
 
 :::{toctree}
 :maxdepth: 1
