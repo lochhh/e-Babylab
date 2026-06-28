@@ -109,6 +109,45 @@ Deploy e-Babylab to a production server.
 
 e-Babylab will be available at `https://your-domain.com/admin/`.
 
+### Updating
+
+A GitHub Actions workflow builds and pushes a new Docker image on every push to `main` and on [version releases](https://github.com/lochhh/e-Babylab/releases). The image tag is configurable via `IMAGE_TAG` in `.env` (defaults to `latest`).
+
+:::{note}
+Releases before v2.0.0 are not compatible with this deployment method.
+:::
+
+To update to a specific release (e.g. `v2.0.0`):
+
+```bash
+cd /path/to/e-Babylab
+
+# Download config files matching the release
+curl -Lo docker-compose.yml.new \
+  https://raw.githubusercontent.com/lochhh/e-Babylab/v2.0.0/docker-compose.yml
+curl -Lo nginx.conf.template.new \
+  https://raw.githubusercontent.com/lochhh/e-Babylab/v2.0.0/nginx.conf.template
+curl -Lo .env.template.new \
+  https://raw.githubusercontent.com/lochhh/e-Babylab/v2.0.0/.env.template
+
+# Review changes before applying
+diff docker-compose.yml docker-compose.yml.new
+diff nginx.conf.template nginx.conf.template.new
+diff .env .env.template.new
+# Add any new variables from .env.template.new to your .env
+mv docker-compose.yml.new docker-compose.yml
+mv nginx.conf.template.new nginx.conf.template
+rm .env.template.new
+
+# Set the image tag in .env
+IMAGE_TAG=2.0.0
+
+# Pull and restart
+docker compose pull
+docker compose up -d
+docker compose exec web python manage.py migrate
+```
+
 ### Database Access
 
 For production database access, use any Postgres client (e.g. psql, pgAdmin, DBeaver) with SSH tunnelling to port 5432 on your server:

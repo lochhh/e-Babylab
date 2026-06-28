@@ -37,7 +37,7 @@ services:
       - ${POSTGRES_DATA_PATH}:/var/lib/postgresql
     restart: always
   web:
-    image: ghcr.io/lochhh/e-babylab:latest
+    image: ghcr.io/lochhh/e-babylab:${IMAGE_TAG:-latest}
     # To build from source instead of pulling the pre-built image, uncomment:
     # build:
     #   context: .
