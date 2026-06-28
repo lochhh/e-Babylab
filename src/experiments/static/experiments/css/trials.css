@@ -325,8 +325,8 @@ body:has(#trials-data) {
     display: none;
 }
 
-/* Turnstile badge */
-.turnstile-badge {
+/* CAPTCHA badge */
+.captcha-badge {
     display: none;
     position: fixed;
     bottom: 20px;
