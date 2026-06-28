@@ -6,7 +6,6 @@ import os.path
 from pathlib import Path
 from random import shuffle
 
-import requests
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -16,6 +15,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
+from .captcha import captcha_context, get_captcha_provider
 from .decorators import login_required
 from .forms import ConsentForm, ImportForm, SubjectDataForm
 from .import_export import export_to_zip, import_from_zip
@@ -31,19 +31,6 @@ from .reporter import Reporter
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
-
-
-def _verify_turnstile(response_token):
-    if not settings.CLOUDFLARE_TURNSTILE_SECRET_KEY:
-        return True
-    result = requests.post(
-        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-        data={
-            "secret": settings.CLOUDFLARE_TURNSTILE_SECRET_KEY,
-            "response": response_token,
-        },
-    ).json()
-    return result["success"]
 
 
 def _render_tpl(request, tpl_string, context=None):
@@ -171,7 +158,7 @@ def subject_form(request, experiment_id):
         {
             "subject_data_form": form,
             "experiment": experiment,
-            "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
+            **captcha_context(),
         },
     )
 
@@ -182,10 +169,9 @@ def subject_form_submit(request, experiment_id):
     form = SubjectDataForm(request.POST, experiment=experiment)
 
     if form.is_valid():
-        if not _verify_turnstile(request.POST.get("cf-turnstile-response")):
-            logger.info(
-                "Turnstile verification failed for experiment %s", experiment_id
-            )
+        provider = get_captcha_provider()
+        if not provider.verify(request.POST):
+            logger.info("CAPTCHA verification failed for experiment %s", experiment_id)
             return _render_tpl(
                 request,
                 experiment.demographic_data_page_tpl,
@@ -193,7 +179,7 @@ def subject_form_submit(request, experiment_id):
                     "subject_data_form": form,
                     "experiment": experiment,
                     "error_message": "Security check failed. Please try again.",
-                    "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
+                    **captcha_context(),
                 },
             )
         response = form.save()
@@ -211,7 +197,7 @@ def subject_form_submit(request, experiment_id):
         {
             "subject_data_form": form,
             "experiment": experiment,
-            "turnstile_site_key": settings.CLOUDFLARE_TURNSTILE_SITE_KEY,
+            **captcha_context(),
         },
     )
 

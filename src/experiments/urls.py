@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import re_path
 
 from . import cdi, views, webcam
+from .captcha import altcha_challenge_view
 
 app_name = "experiments"
 
@@ -85,6 +86,7 @@ urlpatterns = [
         views.experiment_error,
         name="experimentError",
     ),
+    re_path(r"^captcha/challenge$", altcha_challenge_view, name="captchaChallenge"),
     re_path(r"^$", views.index, name="index"),
     re_path(
         r"^admin/experiments/experiment/(?P<experiment_id>[0-9A-Fa-f-]+)/report$",
