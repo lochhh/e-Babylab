@@ -208,7 +208,7 @@ class TestSubjectFormSubmit:
     ):
         """Verify a valid form submitted with passing Turnstile creates SubjectData."""
         mocker.patch(
-            "experiments.views.requests.post",
+            "experiments.captcha.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": True}),
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
@@ -227,19 +227,25 @@ class TestSubjectFormSubmit:
         )
 
     @pytest.mark.django_db
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret")
-    def test_failed_turnstile_does_not_create_subject(
+    @override_settings(
+        CAPTCHA_PROVIDER="turnstile", CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret"
+    )
+    def test_failed_captcha_does_not_create_subject(
         self, client, simple_experiment, mocker
     ):
-        """Verify a failing Turnstile prevents SubjectData creation."""
+        """Verify a failing CAPTCHA prevents SubjectData creation."""
         mocker.patch(
-            "experiments.views.requests.post",
+            "experiments.captcha.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": False}),
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         response = client.post(
             url,
-            {"resolution_w": 1920, "resolution_h": 1080, "cf-turnstile-response": "bad"},
+            {
+                "resolution_w": 1920,
+                "resolution_h": 1080,
+                "cf-turnstile-response": "bad",
+            },
         )
         assert response.status_code == 200
         assert (
@@ -253,12 +259,13 @@ class TestSubjectFormSubmit:
     ):
         """Verify a successful submission without CDI redirects to run."""
         mocker.patch(
-            "experiments.views.requests.post",
+            "experiments.captcha.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": True}),
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         response = client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
+            url,
+            {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"},
         )
         # NON recording → direct to experimentRun
         assert response.status_code == 302
@@ -270,15 +277,17 @@ class TestSubjectFormSubmit:
     ):
         """Verify subject IDs are assigned sequentially across multiple submissions."""
         mocker.patch(
-            "experiments.views.requests.post",
+            "experiments.captcha.requests.post",
             return_value=mocker.Mock(json=lambda: {"success": True}),
         )
         url = reverse("experiments:subjectFormSubmit", args=[simple_experiment.pk])
         client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
+            url,
+            {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"},
         )
         client.post(
-            url, {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"}
+            url,
+            {"resolution_w": 0, "resolution_h": 0, "cf-turnstile-response": "token"},
         )
         ids = list(
             exp_models.SubjectData.objects.filter(experiment=simple_experiment)

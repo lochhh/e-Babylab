@@ -300,7 +300,7 @@ class TestExperimentExport:
         assert "attachment" in response["Content-Disposition"]
 
     def test_exported_zip_contains_experiment_key(self, client, experiment_factory):
-        """Verify the exported ZIP's experiment.json contains experiment and lists keys."""
+        """Verify exported ZIP's experiment.json has experiment and lists keys."""
         import io
         import zipfile
 
@@ -313,7 +313,7 @@ class TestExperimentExport:
         assert "lists" in data
 
     def test_returns_404_for_nonexistent_experiment(self, client):
-        """Verify a 404 is returned for an export request on a nonexistent experiment."""
+        """Verify a 404 is returned for an export of a nonexistent experiment."""
         url = reverse("experiments:experimentExport", args=(str(uuid.uuid4()),))
         response = client.get(url)
         assert response.status_code == 404
@@ -344,7 +344,7 @@ class TestExperimentImport:
         self, client, user, experiment_factory, mocker
     ):
         """Verify a POST with a valid ZIP file calls import_from_zip and redirects."""
-        exp = _simple_experiment(experiment_factory)
+        _simple_experiment(experiment_factory)
         mock_import = mocker.patch("experiments.views.import_from_zip")
         url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -537,7 +537,7 @@ class TestSubjectFormSubmit:
         return reverse("experiments:subjectFormSubmit", args=(str(exp.pk),))
 
     def _base_post_data(self, extra=None):
-        """Return a base POST dict with resolution and Turnstile fields."""
+        """Return a base POST dict with resolution and CAPTCHA fields."""
         data = {
             "resolution_w": "1920",
             "resolution_h": "1080",
@@ -547,12 +547,12 @@ class TestSubjectFormSubmit:
             data.update(extra)
         return data
 
-    def test_valid_form_turnstile_success_no_instrument_redirects(
+    def test_valid_form_captcha_success_no_instrument_redirects(
         self, client, experiment_factory, mocker
     ):
-        """Verify a valid Turnstile submission redirects to the experiment run."""
+        """Verify a valid CAPTCHA submission redirects to the experiment run."""
         exp = _simple_experiment(experiment_factory)
-        mock_post = mocker.patch("experiments.views.requests.post")
+        mock_post = mocker.patch("experiments.captcha.requests.post")
         mock_post.return_value.json.return_value = {"success": True}
         response = client.post(self._url(exp), self._base_post_data())
         assert response.status_code == 302
@@ -560,35 +560,37 @@ class TestSubjectFormSubmit:
         # recording_option is NON by default → experimentRun
         assert "run" in location
 
-    def test_valid_form_turnstile_success_with_instrument_redirects_to_cdi(
+    def test_valid_form_captcha_success_with_instrument_redirects_to_cdi(
         self, client, experiment_factory, instrument_factory, mocker
     ):
         """Verify a valid submission with an instrument redirects to the CDI page."""
         exp = _simple_experiment(experiment_factory)
         exp.instrument = instrument_factory()
         exp.save()
-        mock_post = mocker.patch("experiments.views.requests.post")
+        mock_post = mocker.patch("experiments.captcha.requests.post")
         mock_post.return_value.json.return_value = {"success": True}
         response = client.post(self._url(exp), self._base_post_data())
         assert response.status_code == 302
         assert "vocab" in response["Location"]
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="")
-    def test_turnstile_bypassed_when_no_secret_key(self, client, experiment_factory):
-        """Verify Turnstile is skipped entirely when no secret key is configured."""
+    @override_settings(CAPTCHA_PROVIDER="none")
+    def test_captcha_bypassed_when_provider_is_none(self, client, experiment_factory):
+        """Verify CAPTCHA is skipped entirely when provider is none."""
         exp = _simple_experiment(experiment_factory)
         response = client.post(self._url(exp), self._base_post_data())
         assert response.status_code == 302
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret")
-    def test_turnstile_failure_renders_demographic_page(
+    @override_settings(
+        CAPTCHA_PROVIDER="turnstile", CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret"
+    )
+    def test_captcha_failure_renders_demographic_page(
         self, client, experiment_factory, mocker
     ):
-        """Verify a failing Turnstile failure re-renders the demographic page."""
+        """Verify a CAPTCHA failure re-renders the demographic page."""
         exp = _simple_experiment(experiment_factory)
         exp.demographic_data_page_tpl = "DEMOG_PAGE"
         exp.save()
-        mock_post = mocker.patch("experiments.views.requests.post")
+        mock_post = mocker.patch("experiments.captcha.requests.post")
         mock_post.return_value.json.return_value = {"success": False}
         response = client.post(self._url(exp), self._base_post_data())
         assert response.status_code == 200
@@ -625,7 +627,7 @@ class TestSubjectFormSubmit:
     ):
         """Verify a valid submission creates a SubjectData record in the database."""
         exp = _simple_experiment(experiment_factory)
-        mock_post = mocker.patch("experiments.views.requests.post")
+        mock_post = mocker.patch("experiments.captcha.requests.post")
         mock_post.return_value.json.return_value = {"success": True}
         assert exp_models.SubjectData.objects.filter(experiment=exp).count() == 0
         client.post(self._url(exp), self._base_post_data())

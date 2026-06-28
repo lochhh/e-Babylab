@@ -21,14 +21,14 @@ def _post_consent(client, exp, consent_questions, all_yes=True):
 
 
 def _post_subject_form(client, exp, mocker):
-    """POST to subjectFormSubmit with reCAPTCHA mocked to succeed."""
+    """POST to subjectFormSubmit with CAPTCHA mocked to succeed."""
     mocker.patch(
-        "experiments.views.requests.post",
+        "experiments.captcha.requests.post",
         return_value=mocker.Mock(json=lambda: {"success": True}),
     )
     return client.post(
         reverse("experiments:subjectFormSubmit", args=[exp.pk]),
-        {"resolution_w": 1920, "resolution_h": 1080, "g-recaptcha-response": "token"},
+        {"resolution_w": 1920, "resolution_h": 1080, "cf-turnstile-response": "token"},
     )
 
 
