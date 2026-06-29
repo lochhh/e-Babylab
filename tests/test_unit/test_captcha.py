@@ -155,6 +155,13 @@ class TestAltchaProvider:
     def test_post_field_name(self):
         assert AltchaProvider().get_post_field_name() == "altcha"
 
+    def test_scripts_html_contains_altcha_cdn(self):
+        html = AltchaProvider().get_scripts_html()
+        assert "altcha.min.js" in html
+
+    def test_form_attrs(self):
+        assert AltchaProvider().get_form_attrs() == {"data-captcha-provider": "altcha"}
+
 
 # ---------------------------------------------------------------------------
 # TrustSigProvider
@@ -230,6 +237,11 @@ class TestTrustSigProvider:
     def test_post_field_name(self):
         assert TrustSigProvider().get_post_field_name() == "trustsig-response"
 
+    def test_form_attrs(self):
+        assert TrustSigProvider().get_form_attrs() == {
+            "data-captcha-provider": "trustsig"
+        }
+
 
 # ---------------------------------------------------------------------------
 # NoneProvider
@@ -253,6 +265,9 @@ class TestNoneProvider:
 
     def test_form_attrs_empty(self):
         assert NoneProvider().get_form_attrs() == {}
+
+    def test_post_field_name_empty(self):
+        assert NoneProvider().get_post_field_name() == ""
 
 
 # ---------------------------------------------------------------------------
