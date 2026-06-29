@@ -196,11 +196,11 @@ Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following:
 
 | | ALTCHA (default) | Turnstile | TrustSig | None |
 |---|---|---|---|---|
-| **Compliance** | Universal (self-hosted, no data leaves your server) | US-based | EU-based (Germany) | N/A |
+| **Compliance** | [Universal](https://altcha.org/docs/v2/compliance/) (self-hosted, no data leaves your server) | [US-based](https://www.cloudflare.com/en-au/trust-hub/compliance-resources/) | [EU-based](https://trustsig.eu/eu-captcha/) (Germany) | N/A |
 | **User friction** | Invisible (proof-of-work) | Low (checkbox) | Invisible (hardware signals) | None |
 | **Third-party data** | None | Cloudflare (US) | TrustSig (EU) | None |
-| **Cookies** | Zero | Some | Zero | None |
-| **Cost** | [Free forever (MIT)](https://altcha.org/) | [Free](https://www.cloudflare.com/en-gb/products/turnstile/) | [Free 50k/mo, then from €9/mo](https://trustsig.eu/#pricing) | Free |
+| **Cookies** | None | Some | None | None |
+| **Cost** | [Free](https://altcha.org/) | [Free tier available](https://developers.cloudflare.com/turnstile/plans/) | [Free tier available](https://trustsig.eu/#pricing) | Free |
 | **Best for** | GDPR/privacy-first deployments | Zero server maintenance, easy setup | EU institutions wanting invisible protection | Dev/testing only |
 
 ::::{tab-set}
