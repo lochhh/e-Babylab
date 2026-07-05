@@ -47,6 +47,50 @@ class TestGetCaptchaProvider:
             get_captcha_provider()
 
 
+class TestCheckCaptchaConfig:
+    """Tests for the check_captcha_config system check."""
+
+    @pytest.mark.parametrize(
+        ("provider", "settings_override", "expect_error"),
+        [
+            ("altcha", {"ALTCHA_HMAC_KEY": "k"}, False),
+            ("altcha", {"ALTCHA_HMAC_KEY": ""}, True),
+            (
+                "turnstile",
+                {
+                    "CLOUDFLARE_TURNSTILE_SECRET_KEY": "k",
+                    "CLOUDFLARE_TURNSTILE_SITE_KEY": "k",
+                },
+                False,
+            ),
+            (
+                "turnstile",
+                {
+                    "CLOUDFLARE_TURNSTILE_SECRET_KEY": "k",
+                    "CLOUDFLARE_TURNSTILE_SITE_KEY": "",
+                },
+                True,
+            ),
+            ("none", {}, False),
+            ("bogus", {}, True),
+        ],
+        ids=[
+            "altcha-ok",
+            "altcha-missing-key",
+            "turnstile-ok",
+            "turnstile-missing-key",
+            "none-always-ok",
+            "unknown-provider",
+        ],
+    )
+    def test_check(self, provider, settings_override, expect_error):
+        from experiments.captcha import check_captcha_config
+
+        with override_settings(CAPTCHA_PROVIDER=provider, **settings_override):
+            errors = check_captcha_config(app_configs=None)
+            assert bool(errors) is expect_error
+
+
 # ---------------------------------------------------------------------------
 # TurnstileProvider
 # ---------------------------------------------------------------------------
@@ -55,7 +99,10 @@ class TestGetCaptchaProvider:
 class TestTurnstileProvider:
     """Tests for TurnstileProvider."""
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="secret")
+    @override_settings(
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="secret",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="pk_test",
+    )
     def test_is_enabled(self):
         assert TurnstileProvider().is_enabled()
 
@@ -67,20 +114,29 @@ class TestTurnstileProvider:
     def test_verify_bypassed_when_disabled(self):
         assert TurnstileProvider().verify({})
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="secret")
+    @override_settings(
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="secret",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="pk_test",
+    )
     @patch("experiments.captcha.requests.post")
     def test_verify_success(self, mock_post):
         mock_post.return_value.json.return_value = {"success": True}
         assert TurnstileProvider().verify({"cf-turnstile-response": "token"})
         mock_post.assert_called_once()
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="secret")
+    @override_settings(
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="secret",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="pk_test",
+    )
     @patch("experiments.captcha.requests.post")
     def test_verify_failure(self, mock_post):
         mock_post.return_value.json.return_value = {"success": False}
         assert not TurnstileProvider().verify({"cf-turnstile-response": "token"})
 
-    @override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="secret")
+    @override_settings(
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="secret",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="pk_test",
+    )
     @patch("experiments.captcha.requests.post", side_effect=Exception("timeout"))
     def test_verify_exception_returns_false(self, mock_post):
         assert not TurnstileProvider().verify({"cf-turnstile-response": "token"})
@@ -171,7 +227,9 @@ class TestAltchaProvider:
 class TestTrustSigProvider:
     """Tests for TrustSigProvider. Verifies fail-closed behaviour."""
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     def test_is_enabled(self):
         assert TrustSigProvider().is_enabled()
 
@@ -183,11 +241,15 @@ class TestTrustSigProvider:
     def test_verify_bypassed_when_disabled(self):
         assert TrustSigProvider().verify({})
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     def test_verify_missing_token_returns_false(self):
         assert not TrustSigProvider().verify({})
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     @patch("experiments.captcha.requests.post")
     def test_verify_allow(self, mock_post):
         mock_post.return_value.json.return_value = {
@@ -197,7 +259,9 @@ class TestTrustSigProvider:
         }
         assert TrustSigProvider().verify({"trustsig-response": "token"})
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     @patch("experiments.captcha.requests.post")
     def test_verify_block_returns_false(self, mock_post):
         mock_post.return_value.json.return_value = {
@@ -207,7 +271,9 @@ class TestTrustSigProvider:
         }
         assert not TrustSigProvider().verify({"trustsig-response": "token"})
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     @patch("experiments.captcha.requests.post")
     def test_verify_challenge_returns_false(self, mock_post):
         """CHALLENGE verdict must also be rejected (fail closed)."""
@@ -218,7 +284,9 @@ class TestTrustSigProvider:
         }
         assert not TrustSigProvider().verify({"trustsig-response": "token"})
 
-    @override_settings(TRUSTSIG_SECRET_KEY="sk_live_test")
+    @override_settings(
+        TRUSTSIG_SECRET_KEY="sk_live_test", TRUSTSIG_SITE_KEY="pk_live_test"
+    )
     @patch("experiments.captcha.requests.post", side_effect=Exception("timeout"))
     def test_verify_exception_returns_false(self, mock_post):
         """Network errors must fail closed."""

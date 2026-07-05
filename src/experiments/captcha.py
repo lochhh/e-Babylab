@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 
 import requests
 from django.conf import settings
+from django.core.checks import Error, register
 from django.http import JsonResponse
 from django.templatetags.static import static
 from django.utils.safestring import mark_safe
@@ -96,10 +97,13 @@ class CaptchaProvider(ABC):
 
 @_register("turnstile")
 class TurnstileProvider(CaptchaProvider):
-    """Cloudflare Turnstile — checkbox-style, hosted by Cloudflare (US)."""
+    """Cloudflare Turnstile — mostly invisible, hosted by Cloudflare (US)."""
 
     def is_enabled(self):
-        return bool(getattr(settings, "CLOUDFLARE_TURNSTILE_SECRET_KEY", ""))
+        return bool(
+            getattr(settings, "CLOUDFLARE_TURNSTILE_SECRET_KEY", "")
+            and getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
+        )
 
     def get_widget_html(self):
         site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
@@ -194,7 +198,10 @@ class TrustSigProvider(CaptchaProvider):
     """
 
     def is_enabled(self):
-        return bool(getattr(settings, "TRUSTSIG_SECRET_KEY", ""))
+        return bool(
+            getattr(settings, "TRUSTSIG_SECRET_KEY", "")
+            and getattr(settings, "TRUSTSIG_SITE_KEY", "")
+        )
 
     def get_widget_html(self):
         return ""
@@ -271,3 +278,30 @@ def altcha_challenge_view(request):
         hmac_secret=settings.ALTCHA_HMAC_KEY,
     )
     return JsonResponse(challenge.to_dict())
+
+
+@register()
+def check_captcha_config(app_configs, **kwargs):
+    """Error if the selected CAPTCHA provider is missing its required key(s).
+
+    Each provider's ``is_enabled()`` silently no-ops verification rather than
+    raising, so a missing key would otherwise fail open with no warning.
+    """
+    try:
+        provider = get_captcha_provider()
+    except ValueError as exc:
+        return [Error(str(exc), id="experiments.E001")]
+
+    provider_name = getattr(settings, "CAPTCHA_PROVIDER", "") or "altcha"
+
+    if isinstance(provider, NoneProvider) or provider.is_enabled():
+        return []
+
+    return [
+        Error(
+            f"CAPTCHA_PROVIDER={provider_name!r} is set but its required key(s) "
+            "are missing, so CAPTCHA verification is silently disabled.",
+            hint="Set the provider's key(s) in .env, or use CAPTCHA_PROVIDER=none.",
+            id="experiments.E002",
+        )
+    ]
