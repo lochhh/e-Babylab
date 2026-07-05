@@ -23,6 +23,7 @@ def _register(name: str):
     """Decorate a provider class `name` to be registered."""
 
     def decorator(cls):
+        cls.name = name
         _REGISTRY[name] = cls
         return cls
 
@@ -48,10 +49,13 @@ def captcha_context() -> dict[str, str]:
     """Build template context for the active CAPTCHA provider."""
     provider = get_captcha_provider()
     if not provider.is_enabled():
-        return {"captcha_form_attrs": "", "captcha_widget": "", "captcha_scripts": ""}
-    attrs = " ".join(f'{k}="{v}"' for k, v in provider.get_form_attrs().items())
+        return {
+            "captcha_provider_name": "",
+            "captcha_widget": "",
+            "captcha_scripts": "",
+        }
     return {
-        "captcha_form_attrs": mark_safe(attrs),
+        "captcha_provider_name": provider.name,
         "captcha_widget": mark_safe(provider.get_widget_html()),
         "captcha_scripts": mark_safe(provider.get_scripts_html()),
     }
@@ -65,6 +69,8 @@ def captcha_context() -> dict[str, str]:
 class CaptchaProvider(ABC):
     """Strategy interface for CAPTCHA providers."""
 
+    name: str
+
     @abstractmethod
     def is_enabled(self) -> bool:
         """Return True if this provider is configured and active."""
@@ -76,10 +82,6 @@ class CaptchaProvider(ABC):
     @abstractmethod
     def get_scripts_html(self) -> str:
         """Return ``<script>`` tags needed by this provider."""
-
-    @abstractmethod
-    def get_form_attrs(self) -> dict[str, str]:
-        """Return extra ``data-*`` attributes for the ``<form>`` tag."""
 
     @abstractmethod
     def verify(self, request_post: dict) -> bool:
@@ -120,9 +122,6 @@ class TurnstileProvider(CaptchaProvider):
             "async defer></script>\n"
             f'<script type="module" src="{handler_url}"></script>'
         )
-
-    def get_form_attrs(self):
-        return {"data-captcha-provider": "turnstile"}
 
     def verify(self, request_post):
         if not self.is_enabled():
@@ -165,9 +164,6 @@ class AltchaProvider(CaptchaProvider):
             '<script async defer type="module" '
             'src="https://cdn.jsdelivr.net/npm/altcha/dist/altcha.min.js"></script>'
         )
-
-    def get_form_attrs(self):
-        return {"data-captcha-provider": "altcha"}
 
     def verify(self, request_post):
         if not self.is_enabled():
@@ -213,9 +209,6 @@ class TrustSigProvider(CaptchaProvider):
             f'data-site-key="{site_key}" data-auto-scan="true"></script>'
         )
 
-    def get_form_attrs(self):
-        return {"data-captcha-provider": "trustsig"}
-
     def verify(self, request_post):
         if not self.is_enabled():
             return True
@@ -252,9 +245,6 @@ class NoneProvider(CaptchaProvider):
 
     def get_scripts_html(self):
         return ""
-
-    def get_form_attrs(self):
-        return {}
 
     def verify(self, request_post):
         return True

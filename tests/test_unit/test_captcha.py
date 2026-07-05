@@ -150,10 +150,8 @@ class TestTurnstileProvider:
     def test_post_field_name(self):
         assert TurnstileProvider().get_post_field_name() == "cf-turnstile-response"
 
-    def test_form_attrs(self):
-        assert TurnstileProvider().get_form_attrs() == {
-            "data-captcha-provider": "turnstile"
-        }
+    def test_name(self):
+        assert TurnstileProvider().name == "turnstile"
 
 
 # ---------------------------------------------------------------------------
@@ -215,8 +213,8 @@ class TestAltchaProvider:
         html = AltchaProvider().get_scripts_html()
         assert "altcha.min.js" in html
 
-    def test_form_attrs(self):
-        assert AltchaProvider().get_form_attrs() == {"data-captcha-provider": "altcha"}
+    def test_name(self):
+        assert AltchaProvider().name == "altcha"
 
 
 # ---------------------------------------------------------------------------
@@ -305,10 +303,8 @@ class TestTrustSigProvider:
     def test_post_field_name(self):
         assert TrustSigProvider().get_post_field_name() == "trustsig-response"
 
-    def test_form_attrs(self):
-        assert TrustSigProvider().get_form_attrs() == {
-            "data-captcha-provider": "trustsig"
-        }
+    def test_name(self):
+        assert TrustSigProvider().name == "trustsig"
 
 
 # ---------------------------------------------------------------------------
@@ -331,9 +327,6 @@ class TestNoneProvider:
     def test_scripts_html_empty(self):
         assert NoneProvider().get_scripts_html() == ""
 
-    def test_form_attrs_empty(self):
-        assert NoneProvider().get_form_attrs() == {}
-
     def test_post_field_name_empty(self):
         assert NoneProvider().get_post_field_name() == ""
 
@@ -349,7 +342,7 @@ class TestCaptchaContext:
     @override_settings(CAPTCHA_PROVIDER="none")
     def test_none_provider_returns_empty_strings(self):
         ctx = captcha_context()
-        assert ctx["captcha_form_attrs"] == ""
+        assert ctx["captcha_provider_name"] == ""
         assert ctx["captcha_widget"] == ""
         assert ctx["captcha_scripts"] == ""
 
@@ -360,7 +353,7 @@ class TestCaptchaContext:
     )
     def test_turnstile_returns_populated_context(self):
         ctx = captcha_context()
-        assert "data-captcha-provider" in str(ctx["captcha_form_attrs"])
+        assert ctx["captcha_provider_name"] == "turnstile"
         assert "cf-turnstile" in str(ctx["captcha_widget"])
         assert "turnstile" in str(ctx["captcha_scripts"])
 
