@@ -209,9 +209,11 @@ class TestAltchaProvider:
     def test_post_field_name(self):
         assert AltchaProvider().get_post_field_name() == "altcha"
 
-    def test_scripts_html_contains_altcha_cdn(self):
+    def test_scripts_html_contains_vendored_widget_and_worker(self):
         html = AltchaProvider().get_scripts_html()
-        assert "altcha.min.js" in html
+        assert "vendor/altcha.min.js" in html
+        assert "vendor/altcha-pbkdf2-worker.js" in html
+        assert "PBKDF2/SHA-256" in html
 
     def test_name(self):
         assert AltchaProvider().name == "altcha"
@@ -375,5 +377,5 @@ class TestAltchaChallengeView:
         assert response.status_code == 200
         data = json.loads(response.content)
         assert "parameters" in data
-        assert data["parameters"]["algorithm"] == "SHA-256"
+        assert data["parameters"]["algorithm"] == "PBKDF2/SHA-256"
         assert "signature" in data

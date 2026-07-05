@@ -160,9 +160,13 @@ class AltchaProvider(CaptchaProvider):
         )
 
     def get_scripts_html(self):
+        widget_url = static("experiments/js/vendor/altcha.min.js")
+        worker_url = static("experiments/js/vendor/altcha-pbkdf2-worker.js")
         return (
-            '<script async defer type="module" '
-            'src="https://cdn.jsdelivr.net/npm/altcha@3.1.0/dist/external/altcha.min.js">'
+            f'<script type="module" src="{widget_url}"></script>\n'
+            '<script type="module">\n'
+            "  globalThis.$altcha.algorithms.set("
+            f"'PBKDF2/SHA-256', () => new Worker('{worker_url}'));\n"
             "</script>"
         )
 
@@ -264,7 +268,7 @@ def altcha_challenge_view(request):
     import altcha
 
     challenge = altcha.create_challenge(
-        algorithm="SHA-256",
+        algorithm="PBKDF2/SHA-256",
         cost=50000,
         hmac_secret=settings.ALTCHA_HMAC_KEY,
     )
