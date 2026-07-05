@@ -40,3 +40,23 @@ test('demographic form submits after solving the CAPTCHA', async ({ page }) => {
   await page.waitForURL(url => !url.pathname.endsWith('/form/'), { timeout: 15000 })
   expect(errors, `JS errors: ${errors.join('; ')}`).toHaveLength(0)
 })
+
+test('demographic form rejects a tampered CAPTCHA solution', async ({ page }) => {
+  await page.goto(`/${EXP_NON}/form/`)
+  await page.waitForLoadState('networkidle')
+
+  const provider = await page.getAttribute('#subjectForm', 'data-captcha-provider')
+  test.skip(provider !== 'altcha', `${provider} not covered here`)
+
+  await page.route('**/captcha/challenge', async route => {
+    const response = await route.fetch()
+    const json = await response.json()
+    json.signature = `tampered${json.signature}`
+    await route.fulfill({ response, json })
+  })
+
+  await page.click('button[type="submit"]')
+  await page.waitForLoadState('networkidle')
+  await expect(page).toHaveURL(/\/form\/$/)
+  await expect(page.locator('.alert-danger')).toContainText('Security check failed')
+})
