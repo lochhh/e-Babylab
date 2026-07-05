@@ -325,11 +325,7 @@ body:has(#trials-data) {
     display: none;
 }
 
-/* CAPTCHA badge */
+/* CAPTCHA widget: hidden until challenge triggered by captcha-handler.js */
 .captcha-badge {
     display: none;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
 }

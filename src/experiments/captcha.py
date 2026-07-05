@@ -111,7 +111,7 @@ class TurnstileProvider(CaptchaProvider):
         site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
         return (
             f'<div class="cf-turnstile captcha-badge" '
-            f'data-sitekey="{site_key}" data-size="compact" '
+            f'data-sitekey="{site_key}" '
             f'data-execution="execute" data-callback="onCaptchaVerified"></div>'
         )
 
