@@ -201,9 +201,9 @@ class TestAltchaProvider:
     def test_verify_exception_returns_false(self, mock_verify):
         assert not AltchaProvider().verify({"altcha": "payload"})
 
-    def test_widget_html_contains_challengeurl(self):
+    def test_widget_html_contains_challenge_url(self):
         html = AltchaProvider().get_widget_html()
-        assert "challengeurl" in html
+        assert 'challenge="/captcha/challenge"' in html
         assert "altcha-widget" in html
 
     def test_post_field_name(self):

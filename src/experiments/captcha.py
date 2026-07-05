@@ -154,7 +154,7 @@ class AltchaProvider(CaptchaProvider):
 
     def get_widget_html(self):
         return (
-            '<altcha-widget challengeurl="/captcha/challenge" '
+            '<altcha-widget challenge="/captcha/challenge" '
             'name="altcha" auto="onsubmit" '
             'class="captcha-badge"></altcha-widget>'
         )
@@ -162,7 +162,8 @@ class AltchaProvider(CaptchaProvider):
     def get_scripts_html(self):
         return (
             '<script async defer type="module" '
-            'src="https://cdn.jsdelivr.net/npm/altcha/dist/altcha.min.js"></script>'
+            'src="https://cdn.jsdelivr.net/npm/altcha@3.1.0/dist/external/altcha.min.js">'
+            "</script>"
         )
 
     def verify(self, request_post):
