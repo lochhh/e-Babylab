@@ -228,7 +228,9 @@ class TestSubjectFormSubmit:
 
     @pytest.mark.django_db
     @override_settings(
-        CAPTCHA_PROVIDER="turnstile", CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret"
+        CAPTCHA_PROVIDER="turnstile",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="test-site",
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret",
     )
     def test_failed_captcha_does_not_create_subject(
         self, client, simple_experiment, mocker

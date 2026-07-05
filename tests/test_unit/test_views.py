@@ -581,7 +581,9 @@ class TestSubjectFormSubmit:
         assert response.status_code == 302
 
     @override_settings(
-        CAPTCHA_PROVIDER="turnstile", CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret"
+        CAPTCHA_PROVIDER="turnstile",
+        CLOUDFLARE_TURNSTILE_SITE_KEY="test-site",
+        CLOUDFLARE_TURNSTILE_SECRET_KEY="test-secret",
     )
     def test_captcha_failure_renders_demographic_page(
         self, client, experiment_factory, mocker
