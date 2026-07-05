@@ -136,7 +136,13 @@ class TurnstileProvider(CaptchaProvider):
                 },
                 timeout=10,
             ).json()
-            return result.get("success", False)
+            success = result.get("success", False)
+            if success:
+                logger.info("Turnstile verification succeeded")
+            else:
+                errors = result.get("error-codes")
+                logger.warning(f"Turnstile verification failed: {errors}")
+            return success
         except Exception:
             logger.exception("Turnstile verification request failed")
             return False
@@ -182,7 +188,15 @@ class AltchaProvider(CaptchaProvider):
             result = altcha.verify_solution(
                 payload, hmac_secret=settings.ALTCHA_HMAC_KEY
             )
-            return result.verified and not result.expired
+            success = result.verified and not result.expired
+            if success:
+                logger.info("ALTCHA verification succeeded")
+            else:
+                logger.warning(
+                    f"ALTCHA verification failed: verified={result.verified} "
+                    f"expired={result.expired} error={result.error}"
+                )
+            return success
         except Exception:
             logger.exception("ALTCHA verification failed")
             return False
@@ -229,7 +243,13 @@ class TrustSigProvider(CaptchaProvider):
                 },
                 timeout=10,
             ).json()
-            return result.get("action") == "ALLOW"
+            action = result.get("action")
+            success = action == "ALLOW"
+            if success:
+                logger.info("TrustSig verification succeeded")
+            else:
+                logger.warning(f"TrustSig verification failed: action={action}")
+            return success
         except Exception:
             logger.exception("TrustSig verification request failed")
             return False

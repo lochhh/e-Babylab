@@ -171,7 +171,9 @@ def subject_form_submit(request, experiment_id):
     if form.is_valid():
         provider = get_captcha_provider()
         if not provider.verify(request.POST):
-            logger.info("CAPTCHA verification failed for experiment %s", experiment_id)
+            logger.warning(
+                "CAPTCHA verification failed for experiment %s", experiment_id
+            )
             return _render_tpl(
                 request,
                 experiment.demographic_data_page_tpl,
