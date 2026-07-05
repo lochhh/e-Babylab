@@ -11,6 +11,16 @@ from filer.models.filemodels import File as FilerFile
 from experiments import models as exp_models
 
 
+@pytest.fixture(autouse=True)
+def _captcha_disabled_by_default(settings):
+    """Disable CAPTCHA unless a test opts in via override_settings.
+
+    Prevents whatever real CAPTCHA_PROVIDER/keys are set in the developer's
+    .env from leaking into tests that don't expect a challenge.
+    """
+    settings.CAPTCHA_PROVIDER = "none"
+
+
 @pytest.fixture(autouse=True, scope="session")
 def _tmp_media(tmp_path_factory):
     """Redirect filer file storage to a temp directory, auto-cleaned after session."""
@@ -42,29 +52,28 @@ def _tmp_media(tmp_path_factory):
         storage.__dict__.pop("base_location", None)
         storage.__dict__.pop("location", None)
 
-_NORWEGIAN_WS = (
-    pathlib.Path(__file__).parent / "data" / "norwegian-ws-production"
-)
+
+_NORWEGIAN_WS = pathlib.Path(__file__).parent / "data" / "norwegian-ws-production"
 _NORWEGIAN_WS_FILES = {
-    "words_list":   "word_list-norwegian-ws-production.csv",
-    "irt_params":   "irt_parameters-norwegian-ws.csv",
+    "words_list": "word_list-norwegian-ws-production.csv",
+    "irt_params": "irt_parameters-norwegian-ws.csv",
     "f_lm_np_mean": "np_m-female-norwegian-ws.csv",
-    "f_lm_np_sd":   "np_sd-female-norwegian-ws.csv",
-    "f_lm_p_mean":  "p_m-female-norwegian-ws.csv",
-    "f_lm_p_sd":    "p_sd-female-norwegian-ws.csv",
-    "f_bmin":       "bmin-female-norwegian-ws.csv",
-    "f_slope":      "slope-female-norwegian-ws.csv",
+    "f_lm_np_sd": "np_sd-female-norwegian-ws.csv",
+    "f_lm_p_mean": "p_m-female-norwegian-ws.csv",
+    "f_lm_p_sd": "p_sd-female-norwegian-ws.csv",
+    "f_bmin": "bmin-female-norwegian-ws.csv",
+    "f_slope": "slope-female-norwegian-ws.csv",
     "m_lm_np_mean": "np_m-male-norwegian-ws.csv",
-    "m_lm_np_sd":   "np_sd-male-norwegian-ws.csv",
-    "m_lm_p_mean":  "p_m-male-norwegian-ws.csv",
-    "m_lm_p_sd":    "p_sd-male-norwegian-ws.csv",
-    "m_bmin":       "bmin-male-norwegian-ws.csv",
-    "m_slope":      "slope-male-norwegian-ws.csv",
+    "m_lm_np_sd": "np_sd-male-norwegian-ws.csv",
+    "m_lm_p_mean": "p_m-male-norwegian-ws.csv",
+    "m_lm_p_sd": "p_sd-male-norwegian-ws.csv",
+    "m_bmin": "bmin-male-norwegian-ws.csv",
+    "m_slope": "slope-male-norwegian-ws.csv",
 }
 
 
 def _make_filer_file(filename):
-    """Create a minimal filer File object for use in tests that don't read file content."""
+    """Create a minimal filer File object for tests that don't read file content."""
     f = FilerFile(original_filename=filename)
     f.file.save(filename, ContentFile(b""), save=True)
     return f
@@ -100,6 +109,7 @@ def real_instrument(django_db_setup, django_db_blocker, _tmp_media):
     and reused across all tests. No test mutates this fixture.
     """
     with django_db_blocker.unblock():
+
         def _filer(csv_filename):
             content = (_NORWEGIAN_WS / csv_filename).read_bytes()
             f = FilerFile(original_filename=csv_filename)
@@ -216,15 +226,15 @@ def trialitem_factory(db, blockitem_factory):
 def subjectdata_factory(db, experiment_factory, listitem_factory):
     """Return a factory that creates SubjectData instances."""
 
-    def _create(id=None, experiment=None, listitem=None, participant_id=1):
+    def _create(subject_id=None, experiment=None, listitem=None, participant_id=1):
         if experiment is None:
             experiment = experiment_factory()
         if listitem is None:
             listitem = listitem_factory(experiment=experiment)
-        if id is None:
-            id = str(uuid.uuid4())
+        if subject_id is None:
+            subject_id = str(uuid.uuid4())
         return exp_models.SubjectData.objects.create(
-            id=id,
+            id=subject_id,
             participant_id=participant_id,
             experiment=experiment,
             listitem=listitem,
