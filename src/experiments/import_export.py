@@ -5,6 +5,7 @@ import json
 import zipfile
 from typing import Any
 
+from django.contrib.auth.models import Group
 from django.core import serializers
 from django.core.files.base import ContentFile
 from django.db.models import Q
@@ -27,6 +28,7 @@ from .models import (
 
 # Filer fields on TrialItem and Experiment that are bundled in the ZIP.
 _TRIAL_FILE_FIELDS = ("audio_file", "visual_file")
+
 
 def export_to_zip(experiment_id: Any) -> bytes:
     """Bundle an experiment's full hierarchy and all referenced media files into a ZIP.
@@ -255,8 +257,11 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             ),
             **(
                 _resolve_media(
-                    instr_media, instruments_root, instr_name,
-                    zip_file, request.user,
+                    instr_media,
+                    instruments_root,
+                    instr_name,
+                    zip_file,
+                    request.user,
                 )
                 if instr_name
                 else {}
@@ -271,9 +276,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         if existing_instr is not None:
             new_instr_pk = existing_instr.pk
         else:
-            for instr in serializers.deserialize(
-                "json", json.dumps(raw["instrument"])
-            ):
+            for instr in serializers.deserialize("json", json.dumps(raw["instrument"])):
                 instr.object.id = None
                 for field_name in Instrument._CSV_FILE_FIELDS:
                     _remap_fk(instr.object, field_name, media_pk_map)
@@ -291,9 +294,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
 
     # Step 4: Import the experiment hierarchy with direct FK remapping.
     exp_pk_map: dict = {}
-    for exp_obj in serializers.deserialize(
-        "json", json.dumps(raw["experiment"])
-    ):
+    for exp_obj in serializers.deserialize("json", json.dumps(raw["experiment"])):
         old_pk = exp_obj.object.pk
         exp_obj.object.id = None
         exp_obj.object.created_on = timezone.now()
@@ -302,13 +303,21 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         _remap_fk(exp_obj.object, "loading_image", media_pk_map)
         if new_instr_pk is not None:
             exp_obj.object.instrument_id = new_instr_pk
+        requested_group_pks = exp_obj.m2m_data.get("sharing_groups", [])
+        if requested_group_pks:
+            valid_group_pks = set(
+                Group.objects.filter(pk__in=requested_group_pks).values_list(
+                    "pk", flat=True
+                )
+            )
+            if valid_group_pks != set(requested_group_pks):
+                exp_obj.object.sharing_option = Experiment.PUBLIC
+                exp_obj.m2m_data["sharing_groups"] = []
         exp_obj.save()
         exp_pk_map[old_pk] = exp_obj.object.pk
 
     list_pk_map: dict = {}
-    for list_item in serializers.deserialize(
-        "json", json.dumps(raw["lists"])
-    ):
+    for list_item in serializers.deserialize("json", json.dumps(raw["lists"])):
         old_pk = list_item.object.pk
         list_item.object.id = None
         _remap_fk(list_item.object, "experiment", exp_pk_map)
@@ -316,9 +325,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         list_pk_map[old_pk] = list_item.object.pk
 
     outerblock_pk_map: dict = {}
-    for outer in serializers.deserialize(
-        "json", json.dumps(raw["outerblocks"])
-    ):
+    for outer in serializers.deserialize("json", json.dumps(raw["outerblocks"])):
         old_pk = outer.object.pk
         outer.object.id = None
         _remap_fk(outer.object, "listitem", list_pk_map)
@@ -326,9 +333,7 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         outerblock_pk_map[old_pk] = outer.object.pk
 
     block_pk_map: dict = {}
-    for inner in serializers.deserialize(
-        "json", json.dumps(raw["innerblocks"])
-    ):
+    for inner in serializers.deserialize("json", json.dumps(raw["innerblocks"])):
         old_pk = inner.object.pk
         inner.object.id = None
         _remap_fk(inner.object, "outerblockitem", outerblock_pk_map)
@@ -342,16 +347,12 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
             _remap_fk(trial.object, field_name, media_pk_map)
         trial.save()
 
-    for question in serializers.deserialize(
-        "json", json.dumps(raw["questions"])
-    ):
+    for question in serializers.deserialize("json", json.dumps(raw["questions"])):
         question.object.id = None
         _remap_fk(question.object, "experiment", exp_pk_map)
         question.save()
 
-    for cq in serializers.deserialize(
-        "json", json.dumps(raw["consentquestions"])
-    ):
+    for cq in serializers.deserialize("json", json.dumps(raw["consentquestions"])):
         cq.object.id = None
         _remap_fk(cq.object, "experiment", exp_pk_map)
         cq.save()
