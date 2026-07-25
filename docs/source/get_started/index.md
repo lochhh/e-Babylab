@@ -183,16 +183,18 @@ Then connect to `localhost:5432` with the credentials from your `.env` file. pgA
 
 3. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
-4. Configure a CAPTCHA provider (see [](target-captcha-config) below).
+4. Configure a [CAPTCHA](https://www.cloudflare.com/learning/bots/how-captchas-work/) provider (see [](target-captcha-config) below).
 
 5. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
 
 (target-captcha-config)=
 ### CAPTCHA Configuration
 
-CAPTCHA protects the participant form from automated submissions that can pollute your study data. We recommend keeping CAPTCHA enabled in production. Disabling it (`CAPTCHA_PROVIDER=none`) is suitable for development and testing but leaves your study open to automated submissions in production.
+[CAPTCHA](https://www.cloudflare.com/learning/bots/how-captchas-work/) protects the participant form from automated submissions that can pollute your study data.
+**We strongly recommend keeping CAPTCHA enabled in production.**
+Disabling it (`CAPTCHA_PROVIDER=none`) is suitable for development and testing only and leaves your study vulnerable to bot traffic.
 
-Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following:
+Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following.
 
 | | ALTCHA (default) | Turnstile | TrustSig | None |
 |---|---|---|---|---|
@@ -203,11 +205,15 @@ Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following:
 | **Cost** | [Free](https://altcha.org/) | [Free tier available](https://developers.cloudflare.com/turnstile/plans/) | [Free tier available](https://trustsig.eu/#pricing) | N/A |
 | **Best for** | Privacy-first deployments | Zero server maintenance, easy setup | EU institutions wanting invisible protection | Dev/testing only |
 
+CAPTCHA is enabled by setting `CAPTCHA_PROVIDER` and adding provider‑specific keys in your `.env` file.
+The tabs below outline the setup steps for each provider, where to obtain or generate keys, and how to disable CAPTCHA.
+
 ::::{tab-set}
-:::{tab-item} ALTCHA (recommended)
+:::{tab-item} ALTCHA
 Self-hosted proof-of-work — no third-party requests, no cookies, universally compliant with GDPR, CCPA, LGPD, and PIPL. No account needed.
 
 ```bash
+# .env file
 CAPTCHA_PROVIDER=altcha
 ALTCHA_HMAC_KEY=<generate with: openssl rand -hex 32>
 ```
@@ -215,9 +221,11 @@ ALTCHA_HMAC_KEY=<generate with: openssl rand -hex 32>
 :::{tab-item} Turnstile
 Cloudflare's checkbox-style CAPTCHA. Easy setup, zero server maintenance.
 
-Register at the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile), click **Add widget**, enter your domain, and copy the keys. For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
+Register at the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile), click **Add widget**, enter your domain, and copy the Site Key and Secret Key.
+For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
 
 ```bash
+# .env file
 CAPTCHA_PROVIDER=turnstile
 CLOUDFLARE_TURNSTILE_SITE_KEY=<your site key>
 CLOUDFLARE_TURNSTILE_SECRET_KEY=<your secret key>
@@ -226,9 +234,11 @@ CLOUDFLARE_TURNSTILE_SECRET_KEY=<your secret key>
 :::{tab-item} TrustSig
 Invisible hardware-signal bot protection, hosted in Germany (EU). Zero cookies, GDPR compliant.
 
-Register at [trustsig.eu](https://trustsig.eu/) and copy the keys from your dashboard. Add your production domain to the Allowed Domains list.
+Register at [trustsig.eu](https://trustsig.eu/), create a new project on the [dashboard](https://trustsig.eu/dashboard/projects/), and add your production domain to the Allowed Domains list (for local development, no extra setup is needed — `localhost` and private-network origins are auto-allowed).
+Then copy the Site Key and Secret Key.
 
 ```bash
+# .env file
 CAPTCHA_PROVIDER=trustsig
 TRUSTSIG_SITE_KEY=<your pk_live_ key>
 TRUSTSIG_SECRET_KEY=<your sk_live_ key>
@@ -238,6 +248,7 @@ TRUSTSIG_SECRET_KEY=<your sk_live_ key>
 Disable CAPTCHA entirely. Only use for development/testing.
 
 ```bash
+# .env file
 CAPTCHA_PROVIDER=none
 ```
 :::
