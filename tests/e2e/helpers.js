@@ -93,6 +93,18 @@ export function stubBrowserAPIs() {
     }
   }
 
+  // Playwright's WebKit build has no working audio backend in this environment:
+  // <audio>/<video> elements load fully (loadeddata fires) but readyState never
+  // advances past HAVE_CURRENT_DATA, so 'canplay' never fires and experiment.js's
+  // trial flow (which waits on it) hangs forever. Real Safari has no such issue.
+  // Force 'canplay' shortly after 'loadeddata' as a test-only workaround.
+  document.addEventListener('loadeddata', e => {
+    const media = e.target
+    setTimeout(() => {
+      if (media.readyState < 3) media.dispatchEvent(new Event('canplay'))
+    }, 50)
+  }, true)
+
   // getUserMedia — avoids real camera/mic permission dialogs
   const fakeStream = {
     getTracks: () => [{ stop: () => {} }],

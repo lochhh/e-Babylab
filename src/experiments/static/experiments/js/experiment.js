@@ -350,6 +350,10 @@ export function init() {
         if (load) video.load();
     };
 
+    // WebKit refuses to fire 'canplay' when <source type> doesn't match the actual
+    // file (Chromium sniffs content and tolerates the mismatch, WebKit does not).
+    const AUDIO_MIME_TYPES = { mp3: 'audio/mpeg', wav: 'audio/wav' };
+
     /**
      * Load and play audio trial.
      * @param {object} trialObj
@@ -357,7 +361,10 @@ export function init() {
     const playTrialAudio = function (trialObj) {
         return new Promise((resolve, reject) => {
             const audio = document.querySelector('.trial-audio audio');
-            audio.querySelector('source').src = trialObj.audio_file;
+            const source = audio.querySelector('source');
+            source.src = trialObj.audio_file;
+            const extension = trialObj.audio_file.split('.').pop().toLowerCase();
+            source.type = AUDIO_MIME_TYPES[extension] ?? 'audio/mpeg';
             const handler = function () {
                 audio.removeEventListener('canplay', handler);
                 setTimeout(() => {
