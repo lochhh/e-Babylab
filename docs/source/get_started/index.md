@@ -201,7 +201,7 @@ Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following.
 | **Compliance** | [Universal](https://altcha.org/docs/v2/compliance/) (self-hosted, no data leaves your server) | [US-based](https://www.cloudflare.com/en-au/trust-hub/compliance-resources/) | [EU-based](https://trustsig.eu/eu-captcha/) (Germany) | N/A |
 | **User friction** | Invisible (proof-of-work) | Mostly invisible (occasional checkbox if flagged) | Invisible (hardware signals) | N/A |
 | **Third-party data** | None | Cloudflare (US) | TrustSig (EU) | N/A |
-| **Cookies** | None | Some | None | N/A |
+| **Cookies** | None | Yes | None | N/A |
 | **Cost** | [Free](https://altcha.org/) | [Free tier available](https://developers.cloudflare.com/turnstile/plans/) | [Free tier available](https://trustsig.eu/#pricing) | N/A |
 | **Best for** | Privacy-first deployments | Zero server maintenance, easy setup | EU institutions wanting invisible protection | Dev/testing only |
 
@@ -215,6 +215,12 @@ Self-hosted proof-of-work — no third-party requests, no cookies, universally c
 ```bash
 # .env file
 CAPTCHA_PROVIDER=altcha
+```
+
+Works out of the box — the HMAC key defaults to one derived from `SECRET_KEY`.
+To rotate it independently, set `ALTCHA_HMAC_KEY` explicitly:
+
+```bash
 ALTCHA_HMAC_KEY=<generate with: openssl rand -hex 32>
 ```
 :::

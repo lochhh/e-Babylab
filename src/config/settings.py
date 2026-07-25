@@ -1,5 +1,6 @@
 """Django settings for the project."""
 
+import hashlib
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -10,7 +11,13 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 CAPTCHA_PROVIDER = os.getenv("CAPTCHA_PROVIDER", "")
 CLOUDFLARE_TURNSTILE_SITE_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "")
 CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "")
-ALTCHA_HMAC_KEY = os.getenv("ALTCHA_HMAC_KEY", "")
+# Falls back to a key derived from SECRET_KEY so ALTCHA works with zero .env
+# config out of the box. Set ALTCHA_HMAC_KEY explicitly to rotate it
+# independently of SECRET_KEY.
+ALTCHA_HMAC_KEY = (
+    os.getenv("ALTCHA_HMAC_KEY")
+    or hashlib.sha256(f"{SECRET_KEY}:altcha".encode()).hexdigest()
+)
 TRUSTSIG_SITE_KEY = os.getenv("TRUSTSIG_SITE_KEY", "")
 TRUSTSIG_SECRET_KEY = os.getenv("TRUSTSIG_SECRET_KEY", "")
 
