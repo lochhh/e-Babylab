@@ -5,7 +5,7 @@ import json
 import zipfile
 
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from filer.models import Folder
 from filer.models.filemodels import File as FilerFile
@@ -31,7 +31,10 @@ def _make_experiments_root(db):
 
 
 class MockRequest:
+    """Minimal stand-in for an ``HttpRequest`` exposing only ``.user``."""
+
     def __init__(self, user):
+        """Store *user* as the request's user."""
         self.user = user
 
 
@@ -51,6 +54,8 @@ def _make_zip_with_media(files_meta):
 
 
 class TestResolveMedia:
+    """Tests for the ``_resolve_media`` all-or-nothing reuse strategy."""
+
     @pytest.fixture(autouse=True)
     def _root(self, db):
         self.root, _ = Folder.objects.get_or_create(name="resolve-root", parent=None)
@@ -178,6 +183,8 @@ class TestResolveMedia:
 
 
 class TestExportToZip:
+    """Tests for ``export_to_zip``."""
+
     @pytest.mark.django_db
     def test_export_produces_zip(
         self,
@@ -310,6 +317,8 @@ class TestExportToZip:
 
 
 class TestImportFromZip:
+    """Tests for ``import_from_zip``."""
+
     @pytest.fixture(autouse=True)
     def _experiments_root(self, db):
         self.experiments_root = _make_experiments_root(db)
@@ -512,7 +521,8 @@ class TestImportFromZip:
         import_from_zip(mock_request, zip_bytes)
 
         # Both files should have been (re)created fresh under experiments/<exp_name>/.
-        # The folder uses the original exp_name from the ZIP, not the copy-suffixed name.
+        # The folder uses the original exp_name from the ZIP, not the copy-suffixed
+        # name.
         exp_folder = Folder.objects.get(
             name="PartialMatch", parent=self.experiments_root
         )
@@ -692,6 +702,29 @@ class TestImportFromZip:
         assert imported.loading_image is None
 
     @pytest.mark.django_db
+    def test_import_missing_sharing_group_defaults_to_public(
+        self, experiment_factory, mock_request
+    ):
+        """Sharing group absent on this instance → sharing defaults to public."""
+        group = Group.objects.create(name="missing-group")
+        exp = experiment_factory(exp_name="GroupShared")
+        exp.sharing_option = Experiment.MEMBERSONLY
+        exp.sharing_groups.set([group])
+        exp.save()
+
+        zip_bytes = export_to_zip(exp.pk)
+        group.delete()
+
+        import_from_zip(mock_request, zip_bytes)
+
+        imported = Experiment.objects.filter(
+            user=mock_request.user, exp_name="GroupShared copy"
+        ).first()
+        assert imported is not None
+        assert imported.sharing_option == Experiment.PUBLIC
+        assert imported.sharing_groups.count() == 0
+
+    @pytest.mark.django_db
     def test_import_invalid_zip_raises(self, mock_request):
         """Non-ZIP bytes raise ValueError with a descriptive message."""
         with pytest.raises(ValueError, match="not a valid ZIP"):
@@ -703,5 +736,5 @@ class TestImportFromZip:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
             zf.writestr("other.txt", "irrelevant")
-        with pytest.raises(ValueError, match="experiment.json not found"):
+        with pytest.raises(ValueError, match=r"experiment\.json not found"):
             import_from_zip(mock_request, buf.getvalue())

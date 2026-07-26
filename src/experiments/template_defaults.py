@@ -139,7 +139,7 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
                 {{ error_message }}
             </div>
             {% endif %}
-            <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate data-turnstile-site-key="{{turnstile_site_key}}">
+            <form id="subjectForm" action="{% url 'experiments:subjectFormSubmit' experiment.id %}" method="post" novalidate data-captcha-provider="{{captcha_provider_name}}">
                 {% csrf_token %}
                 <p class="card-text">
                     Please fill out the fields below. You must fill out at least all fields marked with * in order to participate in the study.
@@ -167,7 +167,7 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
                 </div>
                 {% endif %}
                 {% endfor %}
-                <div class="cf-turnstile turnstile-badge" data-sitekey="{{turnstile_site_key}}" data-size="compact" data-execution="execute" data-callback="onTurnstileVerified"></div>
+                {{captcha_widget}}
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">Next</button>
                 </div>
@@ -175,9 +175,8 @@ demographic_data_page_content = """{% extends "experiments/base.html" %}
         </div>
     </div>
 </div>
-<script src='https://challenges.cloudflare.com/turnstile/v0/api.js' async defer></script>
+{{captcha_scripts}}
 <script type="module" src="{% static 'experiments/js/resolution.js' %}"></script>
-<script type="module" src="{% static 'experiments/js/turnstile-handler.js' %}"></script>
 {% endblock %}"""
 
 webcam_check_page_content = """{% extends "experiments/base.html" %}

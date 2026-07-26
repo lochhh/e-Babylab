@@ -183,25 +183,82 @@ Then connect to `localhost:5432` with the credentials from your `.env` file. pgA
 
 3. Copy the generated key and paste it into the `SECRET_KEY` field in your `.env` file.
 
-4. Register for [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/) to obtain the site key and secret key:
+4. Configure a [CAPTCHA](https://www.cloudflare.com/learning/bots/how-captchas-work/) provider (see [](target-captcha-config) below).
 
-    ::::{tab-set}
-    :::{tab-item} Local development
-    For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) — no account needed.
-    :::
-    :::{tab-item} Production
-    Go to the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile) and click **Add widget**, then fill in:
+5. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
 
-    - **Widget name**: e.g. `e-Babylab`
-    - **Hostname**: your domain (e.g. `your-domain.com`)
+(target-captcha-config)=
+### CAPTCHA Configuration
 
-    Leave all other options at their defaults and click **Create** to generate the keys.
-    :::
-    ::::
+[CAPTCHA](https://www.cloudflare.com/learning/bots/how-captchas-work/) protects the participant form from automated submissions that can pollute your study data.
+**We strongly recommend keeping CAPTCHA enabled in production.**
+Disabling it (`CAPTCHA_PROVIDER=none`) is suitable for development and testing only and leaves your study vulnerable to bot traffic.
 
-5. Copy the site key to `CLOUDFLARE_TURNSTILE_SITE_KEY` and the secret key to `CLOUDFLARE_TURNSTILE_SECRET_KEY` in your `.env` file.
+Set `CAPTCHA_PROVIDER` in your `.env` file to one of the following.
 
-6. The database connection values (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`) are pre-filled with defaults that work for local development. If you are deploying to production, make sure to set a strong `DB_PASSWORD`.
+| | ALTCHA (default) | Turnstile | TrustSig | None |
+|---|---|---|---|---|
+| **Compliance** | [Universal](https://altcha.org/docs/v2/compliance/) (self-hosted, no data leaves your server) | [US-based](https://www.cloudflare.com/en-au/trust-hub/compliance-resources/) | [EU-based](https://trustsig.eu/eu-captcha/) (Germany) | N/A |
+| **User friction** | Invisible (proof-of-work) | Mostly invisible (occasional checkbox if flagged) | Invisible (hardware signals) | N/A |
+| **Third-party data** | None | Cloudflare (US) | TrustSig (EU) | N/A |
+| **Cookies** | None | Yes | None | N/A |
+| **Cost** | [Free](https://altcha.org/) | [Free tier available](https://developers.cloudflare.com/turnstile/plans/) | [Free tier available](https://trustsig.eu/#pricing) | N/A |
+| **Best for** | Privacy-first deployments | Zero server maintenance, easy setup | EU institutions wanting invisible protection | Dev/testing only |
+
+CAPTCHA is enabled by setting `CAPTCHA_PROVIDER` and adding provider‑specific keys in your `.env` file.
+The tabs below outline the setup steps for each provider, where to obtain or generate keys, and how to disable CAPTCHA.
+
+::::{tab-set}
+:::{tab-item} ALTCHA
+Self-hosted proof-of-work — no third-party requests, no cookies, universally compliant with GDPR, CCPA, LGPD, and PIPL. No account needed.
+
+```bash
+# .env file
+CAPTCHA_PROVIDER=altcha
+```
+
+Works out of the box — the HMAC key defaults to one derived from `SECRET_KEY`.
+To rotate it independently, set `ALTCHA_HMAC_KEY` explicitly:
+
+```bash
+ALTCHA_HMAC_KEY=<generate with: openssl rand -hex 32>
+```
+:::
+:::{tab-item} Turnstile
+Cloudflare's checkbox-style CAPTCHA. Easy setup, zero server maintenance.
+
+Register at the [Cloudflare Turnstile dashboard](https://dash.cloudflare.com/?to=/:account/turnstile), click **Add widget**, enter your domain, and copy the Site Key and Secret Key.
+For local development, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
+
+```bash
+# .env file
+CAPTCHA_PROVIDER=turnstile
+CLOUDFLARE_TURNSTILE_SITE_KEY=<your site key>
+CLOUDFLARE_TURNSTILE_SECRET_KEY=<your secret key>
+```
+:::
+:::{tab-item} TrustSig
+Invisible hardware-signal bot protection, hosted in Germany (EU). Zero cookies, GDPR compliant.
+
+Register at [trustsig.eu](https://trustsig.eu/), create a new project on the [dashboard](https://trustsig.eu/dashboard/projects/), and add your production domain to the Allowed Domains list (for local development, no extra setup is needed — `localhost` and private-network origins are auto-allowed).
+Then copy the Site Key and Secret Key.
+
+```bash
+# .env file
+CAPTCHA_PROVIDER=trustsig
+TRUSTSIG_SITE_KEY=<your pk_live_ key>
+TRUSTSIG_SECRET_KEY=<your sk_live_ key>
+```
+:::
+:::{tab-item} None
+Disable CAPTCHA entirely. Only use for development/testing.
+
+```bash
+# .env file
+CAPTCHA_PROVIDER=none
+```
+:::
+::::
 
 :::{toctree}
 :maxdepth: 1

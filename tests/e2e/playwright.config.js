@@ -5,6 +5,7 @@ export default defineConfig({
   globalSetup: './global-setup.js',
   globalTeardown: './global-teardown.js',
   fullyParallel: true,
+  workers: 4,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {

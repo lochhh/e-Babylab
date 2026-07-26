@@ -19,6 +19,8 @@ pre-commit install
 
 ## Running Tests
 
+The dev server must already be running for any of the commands below (`docker compose -f docker-compose.dev.yml up -d` — see [Try It Locally](index.md#try-it-locally)).
+
 ### Python (pytest)
 
 Run the Python test suite inside the Docker container:
@@ -35,7 +37,7 @@ docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests/t
 
 ### JavaScript (Vitest) and End-to-End Tests (Playwright)
 
-JS tests run directly on your machine (no Docker needed). Requires [Node.js](https://nodejs.org/).
+JS tests run directly on your machine via [Node.js](https://nodejs.org/), not inside Docker. Vitest unit tests need nothing else running; Playwright e2e tests drive the dev server, so the Docker `web` container must be up.
 
 **Install dependencies once** (installs both Vitest and Playwright deps):
 
@@ -60,7 +62,9 @@ npm test            # both suites in sequence
 cd tests && npm run test:watch
 ```
 
-**E2e tests** require the dev server to be running (see [Try It Locally](index.md#try-it-locally)).
+:::{note}
+Locally, e2e tests run against whatever `web` container is already up, using its live `.env` — they don't create an isolated environment the way CI does. Tests that depend on a specific config (e.g. `CAPTCHA_PROVIDER`) read it at runtime and skip themselves if it doesn't match, rather than fail. CI always starts from a fresh `.env.template` copy, so it's the authoritative, deterministic run.
+:::
 
 **Run a single browser:**
 
@@ -222,11 +226,17 @@ docker compose -f docker-compose.dev.yml exec web bash
 
 ### Restart a service
 
-For example, restart the `web` (Django) service after `.env` changes:
-
 ```bash
 docker compose -f docker-compose.dev.yml restart web
 ```
+
+:::{important}
+`restart` does **not** pick up `.env` changes — `env_file` is only read when a container is created, not on restart. After editing `.env`, recreate the container instead:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --force-recreate web
+```
+:::
 
 ### Wipe and reset the database
 

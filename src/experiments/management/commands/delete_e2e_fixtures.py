@@ -7,13 +7,6 @@ from filer.models.filemodels import File as FilerFile
 
 from experiments.models import Experiment, SubjectData, TrialResult
 
-SUBJECT_IDS = [
-    "b0e2e000-0000-0000-0000-000000000001",
-    "b0e2e000-0000-0000-0000-000000000002",
-    "b0e2e000-0000-0000-0000-000000000003",
-    "b0e2e000-0000-0000-0000-000000000004",
-    "b0e2e000-0000-0000-0000-000000000005",
-]
 EXP_IDS = [
     "a0e2e000-0000-0000-0000-000000000001",
     "a0e2e000-0000-0000-0000-000000000002",
@@ -30,8 +23,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Delete all e2e test objects."""
-        TrialResult.objects.filter(subject_id__in=SUBJECT_IDS).delete()
-        SubjectData.objects.filter(id__in=SUBJECT_IDS).delete()
+        TrialResult.objects.filter(subject__experiment_id__in=EXP_IDS).delete()
+        SubjectData.objects.filter(experiment_id__in=EXP_IDS).delete()
         Experiment.objects.filter(id__in=EXP_IDS).delete()
         User.objects.filter(username="e2euser").delete()
 

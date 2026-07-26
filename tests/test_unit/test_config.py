@@ -63,6 +63,32 @@ class TestSettings:
         assert isinstance(s.SECRET_KEY, str)
         assert len(s.SECRET_KEY) > 0
 
+    def test_altcha_hmac_key_derives_from_secret_key_when_unset(self, monkeypatch):
+        """Without ALTCHA_HMAC_KEY, it falls back to a hash of SECRET_KEY."""
+        import hashlib
+
+        import config.settings as s
+
+        monkeypatch.delenv("ALTCHA_HMAC_KEY", raising=False)
+        importlib.reload(s)
+        try:
+            expected = hashlib.sha256(f"{s.SECRET_KEY}:altcha".encode()).hexdigest()
+            assert expected == s.ALTCHA_HMAC_KEY
+        finally:
+            importlib.reload(s)
+
+    def test_altcha_hmac_key_uses_env_var_when_set(self, monkeypatch):
+        """An explicit ALTCHA_HMAC_KEY env var overrides the derived default."""
+        import config.settings as s
+
+        monkeypatch.setenv("ALTCHA_HMAC_KEY", "explicit-key")
+        importlib.reload(s)
+        try:
+            assert s.ALTCHA_HMAC_KEY == "explicit-key"
+        finally:
+            monkeypatch.delenv("ALTCHA_HMAC_KEY", raising=False)
+            importlib.reload(s)
+
     def test_db_port_is_integer(self):
         """Database PORT is cast to int."""
         import config.settings as s

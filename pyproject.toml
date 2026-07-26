@@ -31,6 +31,7 @@ dependencies = [
 	"numexpr>=2.8.3",
 	"tqdm>=4.64.0",
 	"requests",
+	"altcha",
 ]
 
 [tool.ruff]
@@ -42,7 +43,8 @@ select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q",
 ignore = ["D203", "D213", "RUF012"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D205"] # missing-blank-line-after-summary
+"tests/**" = ["D205", "D102"] # missing-blank-line-after-summary, override docstrings
+"**/captcha.py" = ["D102"] # abstract base already documents the interface
 "**/template_defaults.py" = ["E501"] # line-too-long (HTML template strings)
 "**/migrations/*.py" = ["D"] # auto-generated files
 
