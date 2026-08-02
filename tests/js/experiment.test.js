@@ -95,10 +95,21 @@ function makeEnv({
   })
   const ModalClass = bootstrapModal || class { constructor() {} show() {} }
   vi.stubGlobal('bootstrap', { Modal: ModalClass })
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok:   true,
-    json: () => Promise.resolve({ resultId: 42 }),
-    text: () => Promise.resolve(''),
+  const pendingTrials = trials.slice(1)
+  vi.stubGlobal('fetch', vi.fn((url) => {
+    if (String(url).includes('/run/nexttrial')) {
+      const trial = pendingTrials.shift()
+      return Promise.resolve({
+        ok:   true,
+        json: () => Promise.resolve(trial ? { done: false, trial } : { done: true }),
+        text: () => Promise.resolve(''),
+      })
+    }
+    return Promise.resolve({
+      ok:   true,
+      json: () => Promise.resolve({ resultId: 42 }),
+      text: () => Promise.resolve(''),
+    })
   }))
 
   vi.mocked(webcam.initStream).mockResolvedValue({})
