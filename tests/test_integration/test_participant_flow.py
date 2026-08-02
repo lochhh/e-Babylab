@@ -313,8 +313,9 @@ class TestTrialOrdering:
         outerblock_factory,
         blockitem_factory,
         trialitem_factory,
+        trialresult_factory,
     ):
-        """Verify trials with randomise_trials=False appear in their defined order."""
+        """Verify trials with randomise_trials=False are served in position order via nexttrial."""
         exp = experiment_factory()
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
         for f in [
@@ -340,16 +341,28 @@ class TestTrialOrdering:
         block.randomise_trials = False
         block.save()
 
-        _t1 = trialitem_factory(blockitem=block, label="First", position=1)
-        _t2 = trialitem_factory(blockitem=block, label="Second", position=2)
-        _t3 = trialitem_factory(blockitem=block, label="Third", position=3)
+        t1 = trialitem_factory(blockitem=block, label="First", position=1)
+        t2 = trialitem_factory(blockitem=block, label="Second", position=2)
+        t3 = trialitem_factory(blockitem=block, label="Third", position=3)
 
         sd = subjectdata_factory(experiment=exp, listitem=li)
         import json
 
-        response = client.get(reverse("experiments:experimentRun", args=[sd.pk]))
-        trials = json.loads(response.content.decode())
-        labels = [t["label"] for t in trials]
+        nexttrial_url = reverse("experiments:nextTrial", args=[sd.pk])
+
+        # Simulate the frontend: collect the full sequence via nexttrial calls,
+        # storing a TrialResult after each one.
+        labels = []
+        for trial_item in (t1, t2, t3):
+            data = json.loads(client.post(nexttrial_url).content)
+            assert data["done"] is False
+            labels.append(data["trial"]["label"])
+            trialresult_factory(subject=sd, trialitem=trial_item)
+
+        # All done
+        data = json.loads(client.post(nexttrial_url).content)
+        assert data == {"done": True}
+
         assert labels == ["First", "Second", "Third"]
 
     @pytest.mark.django_db
