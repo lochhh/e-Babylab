@@ -36,7 +36,7 @@ e-Babylab currently pre-generates the full ordered trial sequence on the server 
 
 **No model changes** in this stage.
 
-**Verification:** Existing Playwright e2e tests must pass unchanged. Run `npm run test:e2e` and `uv run pytest`.
+**Verification:** Existing Playwright e2e tests must pass unchanged. Run `cd tests && npm test` and `uv run pytest`.
 
 ---
 
@@ -233,6 +233,6 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 | PR 5 | Stage 5: Gaze-triggered stimulus selection (`selectstimulus` endpoint, stimulus pairs) | Large |
 | PR 6 | Stage 6: Native text stimuli | Small — new field type, frontend rendering |
 
-**Minimum viable set for most common research designs:** PR 1 + PR 2a + PR 3.  
-PR 2b (interactive flowchart editor) significantly improves usability but is not required for correct behaviour.  
+**Minimum viable set for most common research designs:** PR 1 + PR 2a + PR 3.
+PR 2b (interactive flowchart editor) significantly improves usability but is not required for correct behaviour.
 PR 5 (gaze-triggered) is needed for looking-while-listening and active learning designs.
