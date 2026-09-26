@@ -250,7 +250,8 @@ export function createWebcam() {
 			headers: { 'X-CSRFToken': getCsrfToken() },
 			body: formData,
 			// A request orphaned by a dropped connection may never settle; fail it so it is retried.
-			signal: AbortSignal.timeout(uploadTimeout),
+			// ponytail: no timeout on browsers without AbortSignal.timeout (Chrome <103, Firefox <100, Safari <16).
+			signal: AbortSignal.timeout?.(uploadTimeout),
 		}).then(response => {
 			if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
 			return response.status === 204 ? null : response.json();
