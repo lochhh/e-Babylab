@@ -215,6 +215,9 @@ class TestAltchaProvider:
         assert "vendor/altcha-pbkdf2-worker.js" in html
         assert "PBKDF2/SHA-256" in html
 
+    def test_scripts_html_loads_submit_guard(self):
+        assert "captcha-handler.js" in AltchaProvider().get_scripts_html()
+
     def test_name(self):
         assert AltchaProvider().name == "altcha"
 

@@ -33,19 +33,18 @@ describe('captcha-handler.js', () => {
     expect(window.turnstile.execute).toHaveBeenCalled()
   })
 
-  it('does not intercept form submit for altcha provider', async () => {
+  it.each([
+    ['blocks', '', true],
+    ['allows', 'solved-payload', false],
+  ])('%s altcha submit when payload is %j', async (_, payload, prevented) => {
     document.body.innerHTML =
-      '<form id="subjectForm" data-captcha-provider="altcha"><button type="submit">Go</button></form>'
+      '<form id="subjectForm" data-captcha-provider="altcha">' +
+      `<input type="hidden" name="altcha" value="${payload}"><button type="submit">Go</button></form>`
     await loadHandler()
 
-    const form = document.getElementById('subjectForm')
-    const submitSpy = vi.fn()
-    form.addEventListener('submit', submitSpy)
-
     const event = new Event('submit', { cancelable: true })
-    form.dispatchEvent(event)
-    // Should not prevent default — altcha widget handles submission
-    expect(event.defaultPrevented).toBe(false)
+    document.getElementById('subjectForm').dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(prevented)
   })
 
   it('does not intercept form submit for trustsig provider', async () => {
