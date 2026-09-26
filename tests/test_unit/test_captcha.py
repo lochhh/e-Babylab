@@ -212,6 +212,7 @@ class TestAltchaProvider:
     def test_scripts_html_contains_vendored_widget_and_worker(self):
         html = AltchaProvider().get_scripts_html()
         assert "vendor/altcha.min.js" in html
+        assert "vendor/altcha.css" in html
         assert "vendor/altcha-pbkdf2-worker.js" in html
         assert "PBKDF2/SHA-256" in html
 

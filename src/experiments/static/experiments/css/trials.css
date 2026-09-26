@@ -340,4 +340,8 @@ body:has(#trials-data) {
 /* CAPTCHA widget: hidden until captcha-handler.js reveals it while verifying */
 .captcha-badge {
     display: none;
+    /* Set apart from the questions so it doesn't read as another form field */
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
 }

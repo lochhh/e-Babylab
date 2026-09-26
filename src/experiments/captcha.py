@@ -167,9 +167,12 @@ class AltchaProvider(CaptchaProvider):
 
     def get_scripts_html(self):
         widget_url = static("experiments/js/vendor/altcha.min.js")
+        # The vendored "external" build (altcha@3.1.0) ships its styles separately
+        css_url = static("experiments/js/vendor/altcha.css")
         worker_url = static("experiments/js/vendor/altcha-pbkdf2-worker.js")
         handler_url = static("experiments/js/captcha-handler.js")
         return (
+            f'<link rel="stylesheet" href="{css_url}">\n'
             f'<script type="module" src="{widget_url}"></script>\n'
             '<script type="module">\n'
             "  globalThis.$altcha.algorithms.set("
