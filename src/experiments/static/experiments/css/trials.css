@@ -272,6 +272,18 @@ body:has(#trials-data) {
     overflow: hidden;
 }
 
+/* WebGazer instructions: hidden until initWebgazer() shows them. */
+#webgazer-init {
+    display: none;
+}
+
+/* WebGazer creates its video container with inline top/left 0 during begin(),
+   before initWebgazer() can move it; !important keeps it centred from the start. */
+#webgazerVideoContainer {
+    top: 10% !important;
+    left: calc(50% - 160px) !important;
+}
+
 /* Trial image: fills the viewport, centred, aspect-ratio preserved */
 .trial-image {
     position: fixed;

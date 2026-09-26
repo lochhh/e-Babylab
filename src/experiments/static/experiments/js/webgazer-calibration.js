@@ -77,8 +77,6 @@ export let initWebgazer = function () {
                         const videoContainer = document.getElementById('webgazerVideoContainer');
                         if (videoContainer) {
                             document.querySelector('#webgazer-init .col')?.prepend(videoContainer);
-                            videoContainer.style.left = 'calc(50% - 160px)';
-                            videoContainer.style.top = '10%';
                         }
                     };
                     setup();
@@ -302,10 +300,10 @@ export let calculateAccuracy = function (past50Array, numPredictions, targetX, t
 
 /**
  * Calculates precision as RMS distance between successive gaze locations.
-Since such inter-sample distances only compare 
- * temporally adjacent samples, they may be less sensitive to large overall spatial 
+Since such inter-sample distances only compare
+ * temporally adjacent samples, they may be less sensitive to large overall spatial
  * dispersion of the data.
- * 
+ *
  * See Holmqvist, K., Nystroem, M., Andersson, R., Dewhurst, R., Halszka, J., & van de Weijer, J. (2011).
  * @param {Array} past50Array
  * @param {number} numPredictions
@@ -325,7 +323,7 @@ export let calculatePrecisionRMS = function (past50Array, numPredictions) {
 /**
  * Calculates precision as population SD of gaze locations in X and Y separately.
  * This measures how dispersed samples are from their mean value.
- * 
+ *
  * See Holmqvist, K., Nystroem, M., Andersson, R., Dewhurst, R., Halszka, J., & van de Weijer, J. (2011).
   * @param {Array} past50Array
  * @param {number} numPredictions
