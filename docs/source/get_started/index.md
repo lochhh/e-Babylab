@@ -45,13 +45,7 @@ Run a local instance of e-Babylab for testing or development.
     docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
     ```
 
-5. Expose static files (e.g. JavaScript files):
-
-    ```bash
-    docker compose -f docker-compose.dev.yml exec web uv run python manage.py collectstatic
-    ```
-
-6. Create an admin account for logging into the admin interface:
+5. Create an admin account for logging into the admin interface:
 
     ```bash
     docker compose -f docker-compose.dev.yml exec web uv run python manage.py createsuperuser
