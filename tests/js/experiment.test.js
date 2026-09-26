@@ -84,7 +84,14 @@ function makeEnv({
   trialsEl.dataset.recordingOption = recordingOption
   trialsEl.dataset.globalTimeout = globalTimeout
   trialsEl.dataset.includePausePage = includePausePage
-  document.getElementById('trials-data').textContent = JSON.stringify(trials)
+  // Mirrors experiment_run: first pending trial, the one after it, and every pending video
+  document.getElementById('trials-data').textContent = JSON.stringify({
+    trial: trials[0] ?? null,
+    upcoming: trials[1] ?? null,
+    videos: trials
+      .filter(t => t.trial_type === 'video')
+      .map(t => ({ trial_id: t.trial_id, visual_file: t.visual_file })),
+  })
 
   const locationReplace = vi.fn()
   vi.stubGlobal('location', { replace: locationReplace, href: '', assign: vi.fn() })
@@ -99,9 +106,10 @@ function makeEnv({
   vi.stubGlobal('fetch', vi.fn((url) => {
     if (String(url).includes('/run/nexttrial')) {
       const trial = pendingTrials.shift()
+      const upcoming = pendingTrials[0] ?? null
       return Promise.resolve({
         ok:   true,
-        json: () => Promise.resolve(trial ? { done: false, trial } : { done: true }),
+        json: () => Promise.resolve(trial ? { done: false, trial, upcoming } : { done: true }),
         text: () => Promise.resolve(''),
       })
     }
@@ -328,6 +336,50 @@ describe('experiment.js — video trial', () => {
       expect.objectContaining({ method: 'POST' }),
     )
     expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+
+  it('creates and unlocks an element for every pending video in the fullscreen tap', async () => {
+    const play = vi.fn().mockReturnValue(Promise.resolve())
+    HTMLVideoElement.prototype.play = play
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [
+        makeTrial({ trial_id: 1 }),
+        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
+        makeTrial({ trial_id: 3, trial_type: 'video', visual_file: '/media/b.mp4' }),
+      ],
+    })
+    await flush()
+    const videos = ['#video-container-2 > video', '#video-container-3 > video']
+      .map(sel => document.querySelector(sel))
+    expect(videos).not.toContain(null)
+    document.getElementById('fullscreen-button').click()
+    // iOS only allows later play() on elements played inside the user gesture
+    expect(play.mock.contexts).toEqual(videos)
+  })
+
+  it('preloads the upcoming video while the current trial runs', async () => {
+    HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
+    const load = vi.fn()
+    HTMLVideoElement.prototype.load = load
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [
+        makeTrial({ trial_id: 1, max_duration: 500 }),
+        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
+      ],
+    })
+    await flush()
+    const video = document.querySelector('#video-container-2 > video')
+    expect(video.preload).toBe('none')  // no data fetched before the tap
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(1)  // past visual_onset(0)
+    await flush()
+    // Trial 1 (image) is on screen; trial 2's video is loading behind it
+    expect(document.querySelector('.trial-image')).not.toBeNull()
+    expect(video.preload).toBe('auto')
+    expect(load.mock.contexts).toContain(video)
   })
 })
 

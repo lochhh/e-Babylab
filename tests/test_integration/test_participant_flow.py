@@ -315,7 +315,9 @@ class TestTrialOrdering:
         trialitem_factory,
         trialresult_factory,
     ):
-        """Verify trials with randomise_trials=False are served in position order via nexttrial."""
+        """Verify trials with randomise_trials=False are served in position order
+        via nexttrial.
+        """
         exp = experiment_factory()
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
         for f in [
@@ -379,8 +381,7 @@ class TestTrialOrdering:
         import json
 
         response = client.get(reverse("experiments:experimentRun", args=[sd.pk]))
-        trials = json.loads(response.content.decode())
-        assert all(t["trial_id"] != trial.pk for t in trials)
+        assert json.loads(response.content.decode())["trial"] is None
 
 
 # ---------------------------------------------------------------------------

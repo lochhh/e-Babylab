@@ -205,22 +205,15 @@ def subject_form_submit(request, experiment_id):
     )
 
 
-def _get_next_pending_trial(subject_data):
-    """Return (TrialItem, BlockItem, trial_number) for the next pending trial, or None.
+def _trial_sequence(subject_data):
+    """Yield (TrialItem, BlockItem, trial_number) in the subject's presentation order.
 
-    Iterates the shuffled sequence in subject-UUID-seeded order, skipping completed
-    trials (counting them to keep trial_number stable), and returns as soon as the
-    first pending trial is found.
+    Shuffles are seeded by the subject UUID, so the order is the same on every call
+    and trial_number is stable. Blocks are queried lazily as the caller iterates.
     """
     rng = _random.Random(uuid.UUID(str(subject_data.id)).int)
-
-    list_item = subject_data.listitem
-    outer_block_items = list_item.outerblockitem_set.all().order_by("position")
-
-    completed_trial_ids = set(
-        TrialResult.objects.filter(subject=subject_data)
-        .exclude(key_pressed="PAUSE")
-        .values_list("trialitem_id", flat=True)
+    outer_block_items = subject_data.listitem.outerblockitem_set.all().order_by(
+        "position"
     )
 
     trial_number = 1
@@ -233,11 +226,32 @@ def _get_next_pending_trial(subject_data):
             if block.randomise_trials:
                 rng.shuffle(trial_items)
             for trial in trial_items:
-                if trial.id not in completed_trial_ids:
-                    return (trial, block, trial_number)
-                trial_number += 1  # count completed slots to keep numbering stable
+                yield trial, block, trial_number
+                trial_number += 1
 
-    return None
+
+def _pending_trials(subject_data):
+    """Yield the subject's trials that have no (non-PAUSE) result yet, in order."""
+    completed_trial_ids = set(
+        TrialResult.objects.filter(subject=subject_data)
+        .exclude(key_pressed="PAUSE")
+        .values_list("trialitem_id", flat=True)
+    )
+    for trial, block, trial_number in _trial_sequence(subject_data):
+        if trial.id not in completed_trial_ids:
+            yield trial, block, trial_number
+
+
+def _next_trials(subject_data):
+    """Return the next pending trial dict and the one after it, either may be None.
+
+    The second one lets the frontend preload its video during the current trial.
+    """
+    pending = _pending_trials(subject_data)
+    return [
+        create_trial_dict(*t) if t else None
+        for t in (next(pending, None), next(pending, None))
+    ]
 
 
 def create_trial_dict(trial, block, trial_number):
@@ -299,11 +313,14 @@ def experiment_run(request, run_uuid):
             subject_data.listitem = experiment.get_list_item()
             subject_data.save()
 
-        next_trial_tuple = _get_next_pending_trial(subject_data)
-        first_trials = []
-        if next_trial_tuple:
-            trial, block, trial_number = next_trial_tuple
-            first_trials = [create_trial_dict(trial, block, trial_number)]
+        first, upcoming = _next_trials(subject_data)
+        # Every pending video trial, so the page can create and unlock (iOS)
+        # a video element for each before the participant's fullscreen tap
+        videos = [
+            {"trial_id": d["trial_id"], "visual_file": d["visual_file"]}
+            for d in (create_trial_dict(*t) for t in _pending_trials(subject_data))
+            if d["trial_type"] == "video"
+        ]
 
     except (
         KeyError,
@@ -329,7 +346,9 @@ def experiment_run(request, run_uuid):
                 "include_pause_page": experiment.include_pause_page,
                 "recording_option": experiment.recording_option,
                 "show_gaze_estimations": experiment.show_gaze_estimations,
-                "trials": json.dumps(first_trials),
+                "trials": json.dumps(
+                    {"trial": first, "upcoming": upcoming, "videos": videos}
+                ),
             },
         )
 
@@ -339,12 +358,12 @@ def next_trial(request, run_uuid):
     """Return the next pending trial for a subject as JSON.
 
     Called by the frontend after each trial result is stored. Returns
-    {"done": true} when no trials remain, or {"done": false, "trial": {...}}
-    with the next trial dict.
+    {"done": true} when no trials remain, or {"done": false, "trial": {...},
+    "upcoming": {...} | null} with the next trial dict and the one after it.
     """
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     try:
-        next_trial_tuple = _get_next_pending_trial(subject_data)
+        trial, upcoming = _next_trials(subject_data)
     except (
         KeyError,
         AttributeError,
@@ -355,13 +374,10 @@ def next_trial(request, run_uuid):
         logger.exception("Failed to fetch next trial: " + str(e))
         return JsonResponse({"error": str(e)}, status=500)
 
-    if not next_trial_tuple:
+    if not trial:
         return JsonResponse({"done": True})
 
-    trial, block, trial_number = next_trial_tuple
-    return JsonResponse(
-        {"done": False, "trial": create_trial_dict(trial, block, trial_number)}
-    )
+    return JsonResponse({"done": False, "trial": trial, "upcoming": upcoming})
 
 
 @require_POST

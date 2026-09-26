@@ -14,8 +14,10 @@ export function init() {
     const trialsEl = document.getElementById('trials');
     if (!trialsEl) return;
     const config = trialsEl.dataset;
-    const trials = JSON.parse(document.getElementById('trials-data').textContent);
-    const firstTrial = trials[0]; // first pending trial, or undefined if experiment already complete
+    // {trial, upcoming, videos}: first pending trial (null if experiment already complete),
+    // the one after it, and every pending video trial
+    const initial = JSON.parse(document.getElementById('trials-data').textContent);
+    const firstTrial = initial.trial;
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
     const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
@@ -143,9 +145,13 @@ export function init() {
     /**
      * Present a trial and, when it completes, fetch and present the next one.
      * @param {object} trialObj - trial dict from the server
+     * @param {object|null} upcoming - the trial expected after this one; its video is
+     *   loaded while this trial runs
      */
-    const showNextTrial = function (trialObj) {
+    const showNextTrial = function (trialObj, upcoming) {
         body.style.backgroundColor = trialObj.background_colour;
+        preloadVideo(trialObj);
+        if (upcoming) preloadVideo(upcoming);
 
         trialObj.webgazer_data = [];
         resetGazeData();
@@ -231,8 +237,7 @@ export function init() {
             if (data.done) {
                 finishExperiment();
             } else {
-                preloadVideo(data.trial);
-                showNextTrial(data.trial);
+                showNextTrial(data.trial, data.upcoming);
             }
         }).catch(e => {
             clearTimeout(globaltimer);
@@ -276,8 +281,8 @@ export function init() {
      * @param {object} trialObj
      * @param {boolean} load - true: set preload=auto and call video.load() (fetch data).
      *   false: create the element with preload=none so it can be gesture-unlocked on iOS
-     *   before any data is fetched. showNextTrial upgrades elements to load=true as trials
-     *   approach, preserving the original 1-2 trial lookahead window.
+     *   before any data is fetched. showNextTrial upgrades the current and upcoming
+     *   trial's elements to load=true.
      */
     const preloadVideo = function (trialObj, load = true) {
         if (trialObj.trial_type !== 'video') return;
@@ -473,7 +478,7 @@ export function init() {
             delete videoEndedHandlerRefs[trialObj.trial_id];
         }
         video.pause();
-        document.querySelector('.trial-video').outerHTML = '';
+        document.querySelector(`#video-container-${trialObj.trial_id}`).remove();
     };
 
     /**
@@ -600,20 +605,20 @@ export function init() {
         }
         return Promise.resolve();
     }).then(() => {
-        // Pre-create the first trial's video element (load=false) so the fullscreen
-        // gesture handler can unlock it for iOS before any data is fetched.
-        if (firstTrial) preloadVideo(firstTrial, false);
+        // Create elements for all pending video trials (no data fetch yet) so the
+        // fullscreen tap can unlock each one for iOS.
+        initial.videos.forEach(v => preloadVideo({ ...v, trial_type: 'video' }, false));
         return new Promise((resolve, reject) => {
             document.getElementById('fullscreen-button').addEventListener('click', function () {
                 const docElem = document.documentElement;
                 docElem.requestFullscreen?.() ?? docElem.mozRequestFullScreen?.() ??
                     docElem.webkitRequestFullScreen?.() ?? docElem.msRequestFullscreen?.();
                 document.getElementById('fullscreen-message')?.remove();
-                // Unlock the first trial's video for iOS Safari.
-                if (firstTrial && firstTrial.trial_type === 'video') {
-                    const videoEl = document.querySelector(`#video-container-${firstTrial.trial_id} > video`);
-                    if (videoEl) videoEl.play().then(() => videoEl.pause()).catch(() => {});
-                }
+                // Unlock every video element for iOS: one play() inside a gesture handler
+                // allows all subsequent play() calls on the same element without a gesture.
+                document.querySelectorAll('.trial-video video').forEach(videoEl => {
+                    videoEl.play().then(() => videoEl.pause()).catch(() => {});
+                });
                 resolve();
             });
         });
@@ -626,8 +631,7 @@ export function init() {
         return Promise.resolve();
     }).then(() => {
         if (firstTrial) {
-            preloadVideo(firstTrial); // upgrade to load=true now that gesture is done
-            showNextTrial(firstTrial);
+            showNextTrial(firstTrial, initial.upcoming);
         } else {
             finishExperiment();
         }

@@ -770,7 +770,7 @@ class TestExperimentRun:
     ):
         """Verify already-completed trials are excluded from the run response."""
         exp = _simple_experiment(experiment_factory)
-        exp.experiment_page_tpl = "{{ trials }}"
+        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
         exp.save()
         li = listitem_factory(experiment=exp)
         ob = outerblock_factory(listitem=li)
@@ -781,9 +781,8 @@ class TestExperimentRun:
         trialresult_factory(subject=sd, trialitem=ti)
         response = client.get(reverse("experiments:experimentRun", args=(sd.pk,)))
         assert response.status_code == 200
-        # The completed trial should not appear in the rendered trials list
-        trials = json.loads(response.content.decode())
-        assert all(t["trial_id"] != ti.pk for t in trials)
+        # The only trial is completed, so there is nothing left to present
+        assert json.loads(response.content.decode())["trial"] is None
 
     def test_randomised_inner_blocks_does_not_crash(
         self,
