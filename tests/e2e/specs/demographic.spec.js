@@ -53,13 +53,30 @@ test('demographic form submits when Next is clicked again while the CAPTCHA is s
   test.skip(provider !== 'altcha', `${provider} not covered here`)
 
   await expect(page.locator('input[name="resolution_w"]')).not.toHaveValue('')
-  // The widget is hidden, so a participant gets no feedback during the solve
-  // and clicks again. The widget ignores submits once it is verifying, so
-  // without a guard the second click posts an empty solution.
+  // A participant may click again during the solve. The widget ignores
+  // submits once it is verifying, so without a guard the second click
+  // posts an empty solution.
   await page.click('button[type="submit"]')
   await page.waitForTimeout(300)
   await page.click('button[type="submit"]', { noWaitAfter: true }).catch(() => {})
   await page.waitForURL(url => !url.pathname.includes('/form/'), { timeout: 30000 })
+})
+
+test('demographic form shows the CAPTCHA widget while it is verifying', async ({ page }) => {
+  await page.goto(`/${EXP_NON}/form/`)
+  await page.waitForLoadState('networkidle')
+
+  const provider = await page.getAttribute('#subjectForm', 'data-captcha-provider')
+  test.skip(provider !== 'altcha', `${provider} not covered here`)
+
+  // Hold the challenge so the widget stays in its verifying state long enough to assert on
+  await page.route('**/captcha/challenge', async route => {
+    await new Promise(r => setTimeout(r, 3000))
+    await route.continue()
+  })
+  await expect(page.locator('input[name="resolution_w"]')).not.toHaveValue('')
+  await page.click('button[type="submit"]')
+  await expect(page.locator('.captcha-badge')).toBeVisible({ timeout: 2000 })
 })
 
 test('demographic form rejects a tampered CAPTCHA solution', async ({ page }) => {

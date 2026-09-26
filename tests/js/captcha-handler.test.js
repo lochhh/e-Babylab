@@ -39,12 +39,27 @@ describe('captcha-handler.js', () => {
   ])('%s altcha submit when payload is %j', async (_, payload, prevented) => {
     document.body.innerHTML =
       '<form id="subjectForm" data-captcha-provider="altcha">' +
+      '<div class="captcha-badge" style="display: none;"></div>' +
       `<input type="hidden" name="altcha" value="${payload}"><button type="submit">Go</button></form>`
     await loadHandler()
 
     const event = new Event('submit', { cancelable: true })
     document.getElementById('subjectForm').dispatchEvent(event)
     expect(event.defaultPrevented).toBe(prevented)
+  })
+
+  it.each([
+    ['verifying', 'block'],
+    ['verified', 'none'],
+  ])('altcha widget visibility on %s state', async (state, display) => {
+    document.body.innerHTML =
+      '<form id="subjectForm" data-captcha-provider="altcha">' +
+      '<div class="captcha-badge" style="display: none;"></div></form>'
+    await loadHandler()
+
+    const widget = document.querySelector('.captcha-badge')
+    widget.dispatchEvent(new CustomEvent('statechange', { detail: { state } }))
+    expect(widget.style.display).toBe(display)
   })
 
   it('does not intercept form submit for trustsig provider', async () => {

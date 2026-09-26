@@ -337,7 +337,7 @@ body:has(#trials-data) {
     display: none;
 }
 
-/* CAPTCHA widget: hidden until challenge triggered by captcha-handler.js */
+/* CAPTCHA widget: hidden until captcha-handler.js reveals it while verifying */
 .captcha-badge {
     display: none;
 }

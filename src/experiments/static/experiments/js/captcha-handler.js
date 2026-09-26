@@ -13,6 +13,13 @@ if (subjectForm) {
             turnstile.execute();
         });
     } else if (provider === 'altcha') {
+        // Reveal the widget so participants see it verifying. Done on its own
+        // event: the widget stops propagation of the submit it intercepts, so
+        // the submit listener below never sees the first click.
+        const widget = subjectForm.querySelector('.captcha-badge');
+        widget.addEventListener('statechange', (e) => {
+            if (e.detail.state === 'verifying') widget.style.display = 'block';
+        });
         // The widget only intercepts submits while unverified, so a second click
         // during the solve would post an empty solution. Its own re-submit after
         // solving carries the payload and passes through.
