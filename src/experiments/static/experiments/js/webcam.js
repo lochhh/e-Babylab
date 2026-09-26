@@ -57,6 +57,9 @@ export function createWebcam() {
 	// Maximum number of upload errors until upload is stopped
 	const maxUploadErrors = 10;
 
+	// Time in ms after which a pending upload request is aborted
+	const uploadTimeout = 30000;
+
 	// List of possible recording codecs for video (from less preferred to most preferred)
 	const contentTypes = [
 		"video/webm",
@@ -246,6 +249,8 @@ export function createWebcam() {
 			method: 'POST',
 			headers: { 'X-CSRFToken': getCsrfToken() },
 			body: formData,
+			// A request orphaned by a dropped connection may never settle; fail it so it is retried.
+			signal: AbortSignal.timeout(uploadTimeout),
 		}).then(response => {
 			if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
 			return response.status === 204 ? null : response.json();
@@ -259,7 +264,8 @@ export function createWebcam() {
 			uploadErrors++;
 			console.error(`Upload of ${chunkFileName} failed.`, error);
 			if (uploadErrors < maxUploadErrors) {
-				uploadChunk();
+				// Back off so a brief outage does not use up all retries at once.
+				uploadTimer = setTimeout(uploadChunk, recordingInterval * uploadErrors);
 			} else {
 				console.error('Too many errors while uploading. Stop uploading.');
 				w.stopUploading();
