@@ -606,7 +606,9 @@ class TestNextTrial:
 
 
 @pytest.fixture
-def dwell_experiment(experiment_with_trials, blockitem_factory, trialitem_factory):
+def dwell_experiment(
+    experiment_with_trials, trialitem_factory, attention_getter_factory
+):
     """EYE experiment: T1 (dwell check 500 ms → AG), T2, and AG in its own block."""
     exp, listitem, trial = experiment_with_trials
     exp.recording_option = "EYE"
@@ -614,14 +616,7 @@ def dwell_experiment(experiment_with_trials, blockitem_factory, trialitem_factor
     second = trialitem_factory(
         blockitem=trial.blockitem, label="Trial2", code="C2", position=2
     )
-    ag_block = blockitem_factory(
-        outerblock=trial.blockitem.outerblockitem, label="AGs", position=2
-    )
-    ag = trialitem_factory(blockitem=ag_block, label="AG", code="AG")
-    ag.is_attention_getter = True
-    ag.save()
-    trial.attention_getter, trial.min_dwell_time = ag, 500
-    trial.save()
+    ag = attention_getter_factory(trial)
     return exp, listitem, trial, second, ag
 
 

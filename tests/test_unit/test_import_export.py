@@ -747,6 +747,7 @@ class TestImportFromZip:
         outerblock_factory,
         blockitem_factory,
         trialitem_factory,
+        attention_getter_factory,
         mock_request,
     ):
         """Imported trials point at the imported attention getter, not the source."""
@@ -754,15 +755,7 @@ class TestImportFromZip:
         outer = outerblock_factory(listitem=listitem_factory(experiment=exp))
         # Trial saved before its AG in pk order, so a naive loop would miss the map
         trial = trialitem_factory(blockitem=blockitem_factory(outerblock=outer))
-        ag = trialitem_factory(
-            blockitem=blockitem_factory(outerblock=outer, label="AGs", position=2),
-            label="AG",
-            code="AG",
-        )
-        ag.is_attention_getter = True
-        ag.save()
-        trial.attention_getter, trial.min_dwell_time = ag, 500
-        trial.save()
+        ag = attention_getter_factory(trial)
 
         import_from_zip(mock_request, export_to_zip(exp.pk))
 

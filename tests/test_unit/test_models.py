@@ -516,15 +516,10 @@ def test_get_list_item_strategies(
 
 
 @pytest.fixture
-def ag_pair(trialitem_factory, blockitem_factory):
+def ag_pair(trialitem_factory, attention_getter_factory):
     """Return a normal trial and a flagged attention getter in the same list."""
     trial = trialitem_factory(label="T1")
-    ag_block = blockitem_factory(
-        outerblock=trial.blockitem.outerblockitem, label="AGs", position=2
-    )
-    ag = trialitem_factory(blockitem=ag_block, label="AG", code="AG")
-    ag.is_attention_getter = True
-    ag.save()
+    ag = attention_getter_factory(trial, link=False)
     return trial, ag
 
 
