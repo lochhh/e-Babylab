@@ -229,6 +229,31 @@ def trialitem_factory(db, blockitem_factory):
 
 
 @pytest.fixture
+def attention_getter_factory(blockitem_factory, trialitem_factory):
+    """Return a factory for a flagged attention getter in a new block of a trial's list.
+
+    By default the trial is linked to it with a dwell check.
+    Usage: attention_getter_factory(trial, label="AG", min_dwell_time=500, link=True)
+    """
+
+    def _create(trial, label="AG", min_dwell_time=500, link=True):
+        block = blockitem_factory(
+            outerblock=trial.blockitem.outerblockitem,
+            label=f"{label} block",
+            position=99,
+        )
+        ag = trialitem_factory(blockitem=block, label=label, code=label)
+        ag.is_attention_getter = True
+        ag.save()
+        if link:
+            trial.attention_getter, trial.min_dwell_time = ag, min_dwell_time
+            trial.save()
+        return ag
+
+    return _create
+
+
+@pytest.fixture
 def subjectdata_factory(db, experiment_factory, listitem_factory):
     """Return a factory that creates SubjectData instances."""
 
