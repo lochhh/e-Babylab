@@ -18,6 +18,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.text import get_valid_filename
 
+from .gaze import roi_cell
 from .models import (
     ANSWER_TYPE_MODEL,
     AnswerBase,
@@ -105,24 +106,17 @@ class Reporter:
 
     def calc_roi_response(self, result, coords):
         """Determine the row and column of a click or gaze within the trial's grid."""
-        width = result.resolution_w
-        height = result.resolution_h
-        boundaries_r = list(range(0, height, int(height / result.trialitem.grid_row)))
-        boundaries_r.append(height)
-        boundaries_c = list(range(0, width, int(width / result.trialitem.grid_col)))
-        boundaries_c.append(width)
-
-        if len(coords) == 2:
-            if coords[0] > max(boundaries_c):
-                col_num = len(boundaries_c) - 1
-            else:
-                col_num = next(i for i, c in enumerate(boundaries_c) if c >= coords[0])
-            if coords[1] > max(boundaries_r):
-                row_num = len(boundaries_r) - 1
-            else:
-                row_num = next(i for i, r in enumerate(boundaries_r) if r >= coords[1])
-            return f"({row_num},{col_num})"
-        return ""
+        if len(coords) != 2:
+            return ""
+        row, col = roi_cell(
+            coords[0],
+            coords[1],
+            result.resolution_w,
+            result.resolution_h,
+            result.trialitem.grid_row,
+            result.trialitem.grid_col,
+        )
+        return f"({row},{col})"
 
     @staticmethod
     def _resolve_answer_value(answer_base, participation_date):

@@ -51,7 +51,7 @@ _CALIBRATION_WEBGAZER_DATA = [
 
 
 def _xlsx_sheet_columns(sheet_index):
-    """Return the header row column names from the given 1-based sheet of the sample xlsx.
+    """Return header row column names from the given 1-based sheet.
 
     Reads the xlsx as a zip of XML to avoid an openpyxl dependency.
     """
@@ -73,7 +73,7 @@ def _xlsx_sheet_columns(sheet_index):
 
 
 class DummyZipFile:
-    """Stub for zipfile.ZipFile that records written entries without touching the filesystem."""
+    """Stub for zipfile.ZipFile that records written entries without filesystem IO."""
 
     def __init__(self, *_, **__):
         """Initialise with an empty list to track written entries."""
@@ -92,7 +92,7 @@ class DummyDF:
     """Stub for pd.DataFrame that records to_excel calls without writing files."""
 
     def __init__(self, data=None, columns=None):
-        """Initialise with optional data and columns, tracking whether to_excel was called."""
+        """Track to_excel calls with optional data and columns."""
         # store so tests can inspect
         self.data = data
         self.columns = columns
@@ -183,8 +183,9 @@ def test_calc_trial_duration_missing(reporter):
         ([99, 99], "(2,2)"),  # bottom-right quadrant
         ([50, 50], "(1,1)"),  # on boundary; x=50 satisfies c >= 50 at index 1 -> col 1
         ([0, 0], "(0,0)"),  # origin
-        ([200, 200], "(2,2)"),  # out of positive bounds
+        ([200, 200], "(0,0)"),  # beyond screen edge → off-screen
         ([-10, -10], "(0,0)"),  # out of negative bounds
+        ([100, 50], "(1,0)"),  # right edge (WebGazer clamp) → off-screen column
         ([], ""),  # required length 2 but empty
         ([10], ""),  # required length 2 but only one coordinate
     ],
