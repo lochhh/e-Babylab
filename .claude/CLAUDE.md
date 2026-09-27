@@ -16,10 +16,12 @@ Admin UI at `http://localhost:8080/admin/`, pgAdmin at `http://localhost:5050`.
 Ensure new code is covered by tests. Run existing tests to verify setup and check for regressions. Use test-driven development wherever possible.
 
 ### Python (pytest)
-Run pytest inside the container. Tests are in `/usr/src/tests/`:
+Run pytest inside the container. Tests are in `/usr/src/tests/`; pass the path explicitly (coverage flags come from `PYTEST_ADDOPTS`):
 ```bash
-docker compose -f docker-compose.dev.yml exec web uv run pytest
+docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests                          # full suite
+docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests/test_unit/test_gaze.py   # one file
 ```
+From Git Bash, prefix with `MSYS_NO_PATHCONV=1` so `/usr/src/...` isn't rewritten to a Windows path.
 
 Before writing new fixtures, check for existing ones in `tests/conftest.py`.
 

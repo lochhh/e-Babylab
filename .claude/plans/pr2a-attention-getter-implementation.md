@@ -15,7 +15,7 @@
 - **Ask the user before every commit.** Show the commit message; commit only on a yes.
 - Commit messages: verb-first summary line, optional `- ` bullets explaining *why*; **no** `Co-Authored-By`, **no** `feat:`-style prefixes.
 - Branch: `dwell-time` (already checked out).
-- All Python commands run in the container: `docker compose -f docker-compose.dev.yml exec web <cmd>` (workdir `/usr/src/app`; tests mounted at `/usr/src/tests`). Focused runs: `docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests/<path> -q --no-cov`.
+- All Python commands run in the container: `docker compose -f docker-compose.dev.yml exec web <cmd>` (workdir `/usr/src/app`; tests mounted at `/usr/src/tests`). Focused runs: `docker compose -f docker-compose.dev.yml exec web uv run pytest /usr/src/tests/<path> -q --no-cov`. Full suite: `... uv run pytest /usr/src/tests -q` (wherever a step below says `uv run pytest -q`, add `/usr/src/tests`). From Git Bash prefix `MSYS_NO_PATHCONV=1`.
 - JS unit tests: `cd tests && npm run test:unit`. E2E: `cd tests && npm run test:e2e` (dev server must be up).
 - Edit frontend JS only in `src/experiments/static/experiments/js/`, never `src/static/`.
 - Public functions in `gaze.py` / `flowchart.py`: precise type hints (no bare `dict`/`list`/`Any`) + Google-style docstrings (`Args:` with `name (type): ...`, `Returns:`).
