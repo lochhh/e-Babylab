@@ -734,6 +734,11 @@ class TrialItem(models.Model):
             errors["min_dwell_time"] = (
                 "Dwell checks are not available on calibration trials."
             )
+        if self.min_dwell_time is not None and not self.record_gaze:
+            errors.setdefault(
+                "min_dwell_time",
+                "Dwell checks need eye-tracking enabled on this trial.",
+            )
         if self.dwell_target_type == self.CELL:
             if self.grid_row == 1 and self.grid_col == 1:
                 errors["dwell_target_type"] = (

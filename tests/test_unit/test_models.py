@@ -567,6 +567,12 @@ def _calibration_with_dwell(t, ag):
     t.is_calibration = True
 
 
+def _record_gaze_off(t, ag):
+    t.attention_getter = ag
+    t.min_dwell_time = 500
+    t.record_gaze = False
+
+
 def _cell_missing_row_col(t, ag):
     # non-square, non-1x1 grid so the "missing row/col" check fires instead
     # of the 1x1-grid check.
@@ -611,6 +617,11 @@ def _grid_row_zero(t, ag):
             id="target-not-flagged",
         ),
         pytest.param(_calibration_with_dwell, "calibration", id="calibration"),
+        pytest.param(
+            _record_gaze_off,
+            "need eye-tracking",
+            id="record-gaze-off",
+        ),
         pytest.param(
             _cell_missing_row_col,
             "target row and column",
