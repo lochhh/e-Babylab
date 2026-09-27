@@ -381,6 +381,28 @@ describe('experiment.js — video trial', () => {
     expect(video.preload).toBe('auto')
     expect(load.mock.contexts).toContain(video)
   })
+
+  it('keeps an attention getter video element (hidden, rewound) for reuse', async () => {
+    HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ trial_type: 'video', require_user_input: 'NO', is_attention_getter: true })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    const video = document.querySelector('#video-container-1 > video')
+    video.dispatchEvent(new Event('canplay'))
+    await vi.advanceTimersByTimeAsync(1)
+    await flush()
+    video.currentTime = 3
+    video.dispatchEvent(new Event('ended'))
+    await flush()
+    const container = document.querySelector('#video-container-1')
+    expect(container).not.toBeNull()          // regular trials remove it
+    expect(container.style.display).toBe('none')
+    expect(video.currentTime).toBe(0)
+  })
 })
 
 describe('experiment.js — keypress response', () => {
