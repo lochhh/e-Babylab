@@ -42,33 +42,58 @@ e-Babylab currently pre-generates the full ordered trial sequence on the server 
 
 ### Stage 2 — Live AOI / Dwell Time + Attention Getter Flow
 
-**Goal:** Move ROI computation from report time to real time in the browser, and support the "launch attention getter if dwell time insufficient" branching rule.
+**Goal:** Support the "show attention getter if dwell time insufficient" rule. Flow: trial → dwell in target AOI < `min_dwell_time` → attention getter (AG) → **continue** to next trial in sequence (no repeat, so no loops).
 
-**New TrialItem fields:**
+**Decision — dwell computed server-side (approach A).** `storeresult` already posts full gaze samples (`webgazer_data`), so `nexttrial` computes dwell in Python from the latest `TrialResult`. No JS port, no `roi_summary` payload. Post-trial decisions (Stages 2–4, incl. habituation) all stay server-side; Stage 5 adds a JS ROI helper for its own mid-trial need. Dropped from original plan as YAGNI: `trial_kind`, `max_attempts`, `SessionState`.
+
+**Decision — AG is a flagged `TrialItem`** (not a separate model): AGs get every trial capability (image/video/audio, onsets, recording, future text stimuli/branching) for free. Flagged trials are skipped by the sequence wherever they live; a dedicated "Attention getters" block is recommended practice (AG uses its block's `background_colour`) but mixed blocks are allowed.
+
+**TrialItem fields (one migration):**
 ```python
-trial_kind = CharField(choices=[('STANDARD', ...), ('REPEATABLE', ...), ('REPEATABLE_LIMITED', ...)], default='STANDARD')
-max_attempts = IntegerField(null=True)      # only for REPEATABLE_LIMITED
-attention_getter = ForeignKey('TrialItem', null=True, related_name='parent_trials')
-min_dwell_time = IntegerField(null=True)   # ms threshold; if AOI dwell < this → show attention_getter
-# Configurable AOI target for dwell check:
-dwell_target_type = CharField(choices=[('ANY', 'Anywhere on screen'), ('SPECIFIC_CELL', 'Specific grid cell')], null=True)
-dwell_target_row = IntegerField(null=True)  # grid row; only used when dwell_target_type='SPECIFIC_CELL'
-dwell_target_col = IntegerField(null=True)  # grid col; only used when dwell_target_type='SPECIFIC_CELL'
+is_attention_getter = BooleanField(default=False)
+attention_getter = ForeignKey("self", null=True, blank=True, on_delete=SET_NULL,
+                              related_name="triggering_trials",
+                              limit_choices_to={"is_attention_getter": True})
+min_dwell_time = PositiveIntegerField("minimum dwell time (ms)", null=True, blank=True)
+dwell_target_type = CharField(choices=[("ANY", "Anywhere on screen"), ("CELL", "Specific grid cell")], default="ANY")
+dwell_target_row = PositiveSmallIntegerField(null=True, blank=True)  # 1-based, matches report "(row,col)"
+dwell_target_col = PositiveSmallIntegerField(null=True, blank=True)
+# existing grid_row/grid_col → PositiveSmallIntegerField + MinValueValidator(1)
 ```
 
-**Live AOI in JS (`webgazer-calibration.js`):**
-- Extract `calc_roi_response()` logic from `reporter.py` → port to JS as `getGazeROI(x, y, gridRow, gridCol, resW, resH)`
-- Accumulate per-cell dwell time during gaze recording
-- At trial end, attach `{roi_summary: {(row,col): dwell_ms, ...}}` to the `postResult()` payload
+**Validation (layered):**
+- DB `CheckConstraint`s (same-row; also guard import/shell): flagged ⇒ no `attention_getter`/`min_dwell_time`; `attention_getter` and `min_dwell_time` set together; grid/dwell row/col ≥ 1.
+- `limit_choices_to` + formfield narrowed to flagged trials in the same ListItem.
+- `TrialItem.clean()` (cross-row): AG in same ListItem; can't unflag a trial still referenced; `CELL` needs row/col within grid; no `min_dwell_time` on calibration trials (their `webgazer_data[0]` is validation data).
+- Inline formset `clean()`: catches unflag-A + point-B-at-A in one save.
+- Runtime: `nexttrial` never runs the dwell check for flagged trials.
 
-**Backend — `nexttrial` logic:**
-- If the posted result includes `roi_summary` and the trial has `min_dwell_time`, check dwell in expected AOI
-- If insufficient → return the `attention_getter` trial (REPEATABLE, so not counted as a unique trial)
-- Track attention getter cycles in a new `SessionState` model (or Django session dict) to avoid infinite loops
+**New module `src/experiments/gaze.py` (pure functions).** Public functions here and in `flowchart.py` get precise type hints and Google-style docstrings (`Args:` with `name (type): ...`, `Returns:`, `Raises:` where relevant). No bare `dict`/`list`/`Any`: `GazeSample = TypedDict("GazeSample", {"x": float, "y": float, "t": float})`, `Cell = tuple[int, int]`, samples as `Sequence[GazeSample]`, dwell target as `Cell | None` (`None` = ANY), `list_flowchart(list_item: ListItem) -> str`.
+- `roi_cell(x, y, width, height, rows, cols) -> (row, col)`, 1-based. `Reporter.calc_roi_response` delegates to it. WebGazer clamps off-screen predictions to the screen edge, so a coordinate at `0` **or** at `width`/`height` → `0` on that axis = "off-screen" (symmetric; today only left/top give 0, right/bottom count as the edge cell, and non-divisible sizes can give nonexistent cell `rows+1`/`cols+1`). Only report change: right/bottom edge samples now show 0 instead of the last cell.
+- `dwell_time(samples, width, height, rows, cols, target) -> ms`: Σ `min(Δt, 100ms)` over consecutive sample pairs whose first sample is in target (`ANY` = any on-screen cell; off-screen samples never count). Cap stops face-lost gaps counting as looking.
 
-**Admin UI:** Add the new fields as an inline fieldset on `TrialItemInline` in `admin.py`. FK dropdowns for `attention_getter` scoped to the same `BlockItem`.
+**Backend — `nexttrial`:**
+1. `last` = subject's latest non-PAUSE `TrialResult`.
+2. If `last.trialitem` has `min_dwell_time`, is not flagged/calibration, `recording_option` ∈ EYE/ALL and `record_gaze` → if `dwell_time(...) < min_dwell_time`, return AG dict (AG's own block for background, `trial_number = last.trial_number`).
+3. Else pending sequence as before.
+Once AG result is stored, `last` is the AG → sequence continues. Idempotent on refetch; pause between trial and AG still shows AG on resume; no gaze samples ⇒ dwell 0 ⇒ AG.
 
-**Verification:** Write a pytest test that simulates low-dwell-time posting and confirms the attention getter trial is returned. Add a Playwright test for the attention getter loop.
+**Knock-on fixes:**
+- `_trial_sequence` skips flagged trials.
+- `experiment_end` completeness counts only non-flagged trials, and *distinct* completed trial items.
+- `experiment_run` `videos` list includes flagged video trials (iOS unlock).
+- Reporter: AG row shares triggering trial's number; uniqueness check (ordinal fallback) ignores flagged rows.
+- Reporter: new "Dwell (ms)" column in Trials sheet for every gaze-recorded non-calibration trial, using the trial's configured target (default `ANY` = on-screen looking time); blank otherwise.
+
+**Admin UI:** `TrialItemInline` split into Grappelli fieldsets — main (label, code, position, `is_attention_getter`), Stimulus, Response, Recording, Eye-tracking calibration (collapsed), Grid, "Dwell check → attention getter (optional)" (collapsed). Small admin JS hides/clears the dwell fieldset when `is_attention_getter` is ticked (event delegation, works for dynamically added inlines); server validation remains the real guard.
+
+**Mermaid flowchart (read-only):** Pure function `list_flowchart(list_item) -> str` in new `src/experiments/flowchart.py`, passed via `ListItemAdmin.change_view` `extra_context` to a template override `admin/experiments/listitem/change_form.html` (collapsible "Flowchart" panel above the inlines). Outer/inner blocks as nested subgraphs; solid arrows = configured order, randomised blocks labelled "(randomised)"; AG nodes distinct shape/class with dashed edges labelled with threshold (+ target cell if `CELL`). Labels escaped. Reflects saved state only. Mermaid loaded from jsdelivr, exact version pinned + SRI hash (no CSP in project); fallback shows raw source in `<pre>` if CDN unreachable.
+
+**Skipped (add when needed):** preloading AG video (loads on fetch; add if delay noticeable). "Repeat trial after AG" option deferred to Stage 3 (shares repeat semantics with `repeat_mode`).
+
+**Verification:** Parametrised pytest for `roi_cell`/`dwell_time`, `list_flowchart`, validation rules (incl. formset unflag case), `nexttrial` (low dwell → AG; sufficient dwell / flagged / no eye recording / calibration → sequence; AG → continue), completeness count, reporter numbering + dwell column. Playwright: admin fieldset toggle; attention getter happy path through to thank-you page.
+
+**Commit sequence (PR 2a):** plan → `gaze.py` + reporter delegation → model fields/constraints/migration/`clean()` → `nexttrial` dwell check + sequence/end/videos fixes → reporter numbering + dwell column → admin fieldsets/scoping/formset clean/toggle JS → Mermaid flowchart → Playwright e2e.
 
 ---
 
@@ -100,6 +125,11 @@ class TrialBranchRule(models.Model):
 **Backend — `nexttrial`:** After storing result, evaluate `TrialBranchRule` → set `is_success`, look up `on_success` or `on_failure` trial FK, return that trial dict (or fall through to sequential if FK is null). Include `feedback_audio` URL in response so frontend plays it before showing next trial.
 
 **Frontend:** If `nexttrial` response includes `feedback_audio`, play it in a small interstitial before calling `showNextTrial()`.
+
+**Repeat semantics (deferred from Stage 2):** Build once here, shared by `repeat_mode` and a new "repeat trial after attention getter" option on `TrialItem` (`after_attention_getter` = CONTINUE/REPEAT, default CONTINUE, + `max_attempts`). Repeat = re-run from start (post-trial check; mid-trial resume would need live JS gaze). Needs:
+- Attempt count = number of non-PAUSE `TrialResult`s for that trial item (no `SessionState`).
+- **Webcam filename attempt suffix** — `…_trial{n}_{label}_…` is identical on repeat and would overwrite the earlier recording (cf. #38).
+- Report "Attempt" column; ordinal-numbering fallback ignores repeats.
 
 **Admin UI:** `TrialBranchRuleInline` inside `TrialItemInline`.
 
@@ -174,6 +204,19 @@ stimulus_pairs = JSONField(null=True)      # [{"aoi_row": r, "aoi_col": c, "audi
 
 ---
 
+### Stage 7 — Project-Wide Type Hints + Google-Style Docstrings
+
+**Goal:** Bring existing Python code up to the standard set for new modules in Stage 2 (`gaze.py`, `flowchart.py`): precise type hints (no bare `dict`/`list`/`Any`) and Google-style docstrings (`Args:`, `Returns:`, `Raises:`). Independent of Stages 3–6; can run any time.
+
+**Approach:**
+- One PR per module (or small group) to keep diffs reviewable: `cdi.py`, `reporter.py`, `views.py`, `models.py`, `admin.py`, `forms.py`, `import_export.py`, `webcam.py`, `captcha.py`, etc.
+- Enforce via ruff once coverage is complete: `[tool.ruff.lint.pydocstyle] convention = "google"`, add `ANN` rules (with per-file ignores during rollout).
+- Optional: static type checking (`mypy` + `django-stubs`, or `pyright`) in CI after hints land.
+
+**No behaviour changes.** Verification: existing test suites pass; ruff clean.
+
+---
+
 ## Branching Rule UI — Flowchart Required from Day One
 
 Researchers confirmed they need a visual flowchart from Stage 2 onward; FK dropdowns alone are not sufficient to reason about branching structures.
@@ -197,7 +240,8 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 
 ## Resolved Design Decisions
 
-1. **AOI target (Stage 2):** Flexible per trial — `dwell_target_type` field (ANY / SPECIFIC_CELL) with `dwell_target_row/col`.
+1. **AOI target (Stage 2):** Flexible per trial — `dwell_target_type` field (ANY / CELL) with `dwell_target_row/col`.
+5. **Dwell computation (Stage 2):** Server-side from stored `webgazer_data`, not live JS. AG flow is "AG then continue" (no repeat).
 2. **Repeat position (Stage 3):** Configurable per branch rule — `repeat_mode` field (IMMEDIATE / ENQUEUE).
 3. **Stage 5 priority:** Needed soon — included in near-term plan alongside Stage 4.
 4. **Branching UI:** Visual flowchart required from day one. Mermaid read-only diagram ships with PR 2a; interactive Reactflow editor ships with PR 2b.
@@ -226,12 +270,13 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 | PR | Stage | Est. scope |
 |----|-------|-----------|
 | PR 1 | Stage 1: Dynamic trial fetching (`nexttrial` API) | Medium — pure refactor, no new features |
-| PR 2a | Stage 2: Live AOI in JS + attention getter fields + Mermaid read-only flowchart | Large |
+| PR 2a | Stage 2: Server-side dwell check + attention getter fields + Mermaid read-only flowchart | Large |
 | PR 2b | Stage 2: Interactive Reactflow admin editor for trial branching | Large — custom admin view + bundled JS |
 | PR 3 | Stage 3: Response-contingent branching (`TrialBranchRule`, feedback audio, `is_success`) | Medium |
 | PR 4 | Stage 4: Block-level accumulated conditions (`BlockTransitionRule`, session accumulators) | Large |
 | PR 5 | Stage 5: Gaze-triggered stimulus selection (`selectstimulus` endpoint, stimulus pairs) | Large |
 | PR 6 | Stage 6: Native text stimuli | Small — new field type, frontend rendering |
+| PR 7+ | Stage 7: Project-wide type hints + Google-style docstrings (one PR per module) | Medium overall — no behaviour change |
 
 **Minimum viable set for most common research designs:** PR 1 + PR 2a + PR 3.
 PR 2b (interactive flowchart editor) significantly improves usability but is not required for correct behaviour.
