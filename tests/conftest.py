@@ -21,6 +21,12 @@ def _captcha_disabled_by_default(settings):
     settings.CAPTCHA_PROVIDER = "none"
 
 
+@pytest.fixture(autouse=True)
+def _fast_password_hashing(settings):
+    """Use a fast hasher; the default PBKDF2 costs ~0.7 s per user created."""
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 @pytest.fixture(autouse=True, scope="session")
 def _tmp_media(tmp_path_factory):
     """Redirect filer file storage to a temp directory, auto-cleaned after session."""
