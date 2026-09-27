@@ -321,7 +321,7 @@ class TestExperimentRun:
     def test_trial_json_included_in_response(
         self, client, subjectdata_factory, experiment_with_trials
     ):
-        """Verify the response contains serialised trial data for the assigned list."""
+        """Verify the response contains the first pending trial and no upcoming one."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
@@ -329,16 +329,39 @@ class TestExperimentRun:
         url = reverse("experiments:experimentRun", args=[sd.pk])
         response = client.get(url)
         assert response.status_code == 200
-        content = response.content.decode()
-        trials = json.loads(content)
-        assert len(trials) == 1
-        assert trials[0]["label"] == trial.label
+        payload = json.loads(response.content.decode())
+        assert payload["trial"]["label"] == trial.label
+        assert payload["upcoming"] is None
+
+    @pytest.mark.django_db
+    def test_only_first_trial_returned_for_multi_trial_experiment(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        experiment_with_trials,
+    ):
+        """Verify experimentRun returns the first trial, with the second
+        only as upcoming.
+        """
+        exp, listitem, first_trial = experiment_with_trials
+        # Add a second trial to the same block
+        block = first_trial.blockitem
+        trialitem_factory(blockitem=block, label="Trial2", code="C2", position=2)
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
+        exp.save()
+        url = reverse("experiments:experimentRun", args=[sd.pk])
+        response = client.get(url)
+        payload = json.loads(response.content.decode())
+        assert payload["trial"]["label"] == first_trial.label
+        assert payload["upcoming"]["label"] == "Trial2"
 
     @pytest.mark.django_db
     def test_completed_trials_excluded(
         self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
     ):
-        """Verify trials with existing TrialResult records are excluded from the run."""
+        """Verify experimentRun returns no trial when the only trial is already done."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         trialresult_factory(subject=sd, trialitem=trial)
@@ -346,8 +369,44 @@ class TestExperimentRun:
         exp.save()
         url = reverse("experiments:experimentRun", args=[sd.pk])
         response = client.get(url)
-        trials = json.loads(response.content.decode())
-        assert trials == []
+        payload = json.loads(response.content.decode())
+        assert payload == {"trial": None, "upcoming": None, "videos": []}
+
+    @pytest.mark.django_db
+    def test_videos_lists_pending_video_trials(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        trialresult_factory,
+        filer_file_factory,
+        experiment_with_trials,
+    ):
+        """Verify videos lists every pending video trial, so the page can unlock
+        them up front.
+        """
+        exp, listitem, image_trial = experiment_with_trials
+        block = image_trial.blockitem
+        image_trial.visual_file = filer_file_factory("picture.jpg")
+        image_trial.save()
+        done_video = trialitem_factory(
+            blockitem=block, label="V1", code="C2", position=2
+        )
+        pending_video = trialitem_factory(
+            blockitem=block, label="V2", code="C3", position=3
+        )
+        for t, name in [(done_video, "done.mp4"), (pending_video, "pending.webm")]:
+            t.visual_file = filer_file_factory(name)
+            t.save()
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=done_video)
+        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
+        exp.save()
+        url = reverse("experiments:experimentRun", args=[sd.pk])
+        payload = json.loads(client.get(url).content.decode())
+        assert payload["videos"] == [
+            {"trial_id": pending_video.pk, "visual_file": pending_video.visual_file.url}
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +453,151 @@ class TestStoreResult:
         url = reverse("experiments:storeResult", args=[sd.pk])
         response = client.get(url)
         assert response.status_code == 405
+
+
+# ---------------------------------------------------------------------------
+# nextTrial
+# ---------------------------------------------------------------------------
+
+
+class TestNextTrial:
+    """Tests for the nextTrial view."""
+
+    @pytest.mark.django_db
+    def test_get_returns_405(self, client, subjectdata_factory, simple_experiment):
+        """Verify a GET request to nextTrial returns 405 Method Not Allowed."""
+        sd = subjectdata_factory(experiment=simple_experiment)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.get(url)
+        assert response.status_code == 405
+
+    @pytest.mark.django_db
+    def test_returns_first_trial_when_none_completed(
+        self, client, subjectdata_factory, experiment_with_trials
+    ):
+        """Verify nextTrial returns the first pending trial when nothing is complete."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        assert response.status_code == 200
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == trial.pk
+        assert data["trial"]["label"] == trial.label
+
+    @pytest.mark.django_db
+    def test_returns_second_trial_after_first_completed(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        trialresult_factory,
+        experiment_with_trials,
+    ):
+        """Verify nextTrial returns the second trial after the first is stored."""
+        exp, listitem, first_trial = experiment_with_trials
+        block = first_trial.blockitem
+        second_trial = trialitem_factory(
+            blockitem=block, label="Trial2", code="C2", position=2
+        )
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=first_trial)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == second_trial.pk
+        assert data["upcoming"] is None
+
+    @pytest.mark.django_db
+    def test_returns_upcoming_trial_after_next(
+        self, client, subjectdata_factory, trialitem_factory, experiment_with_trials
+    ):
+        """Verify nextTrial returns the trial after the next one as upcoming,
+        numbered after it.
+        """
+        exp, listitem, first_trial = experiment_with_trials
+        second_trial = trialitem_factory(
+            blockitem=first_trial.blockitem, label="Trial2", code="C2", position=2
+        )
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        data = json.loads(client.post(url).content)
+        assert data["trial"]["trial_id"] == first_trial.pk
+        assert data["upcoming"]["trial_id"] == second_trial.pk
+        assert data["upcoming"]["trial_number"] == 2
+
+    @pytest.mark.django_db
+    def test_returns_500_when_trial_lookup_fails(
+        self, client, subjectdata_factory, experiment_with_trials
+    ):
+        """Verify nextTrial reports a JSON error when the subject has
+        no list assigned.
+        """
+        exp, listitem, _ = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        exp_models.SubjectData.objects.filter(pk=sd.pk).update(listitem=None)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        assert response.status_code == 500
+        assert "error" in json.loads(response.content)
+
+    @pytest.mark.django_db
+    def test_returns_done_when_all_trials_complete(
+        self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
+    ):
+        """Verify nextTrial returns done=true when all trials have TrialResults."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=trial)
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data == {"done": True}
+
+    @pytest.mark.django_db
+    def test_pause_result_does_not_count_as_completed(
+        self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
+    ):
+        """Verify PAUSE TrialResults do not exclude the trial from nexttrial."""
+        exp, listitem, trial = experiment_with_trials
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        trialresult_factory(subject=sd, trialitem=trial)
+        # Overwrite with PAUSE key
+        exp_models.TrialResult.objects.filter(subject=sd).update(key_pressed="PAUSE")
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        response = client.post(url)
+        data = json.loads(response.content)
+        assert data["done"] is False
+        assert data["trial"]["trial_id"] == trial.pk
+
+    @pytest.mark.django_db
+    def test_trial_number_stable_across_calls(
+        self,
+        client,
+        subjectdata_factory,
+        trialitem_factory,
+        trialresult_factory,
+        experiment_with_trials,
+    ):
+        """Verify trial_number for a given trial is the same before and
+        after another trial completes.
+        """
+        exp, listitem, first_trial = experiment_with_trials
+        block = first_trial.blockitem
+        trialitem_factory(blockitem=block, label="Trial2", code="C2", position=2)
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+
+        # Before completing anything: first trial should have trial_number=1
+        url = reverse("experiments:nextTrial", args=[sd.pk])
+        data_before = json.loads(client.post(url).content)
+        assert data_before["trial"]["trial_number"] == 1
+
+        # Complete the first trial; second trial should have trial_number=2
+        trialresult_factory(subject=sd, trialitem=first_trial)
+        data_after = json.loads(client.post(url).content)
+        assert data_after["trial"]["trial_number"] == 2
 
 
 # ---------------------------------------------------------------------------

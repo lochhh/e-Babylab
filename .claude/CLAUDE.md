@@ -3,18 +3,6 @@
 ## Project
 e-Babylab is a Django web application for running unmoderated online experiments. Researchers use the admin UI to design multi-stage experiments; participants run them in a browser. Features include no-code experiment authoring, multimedia stimuli, CDI (Communicative Development Inventory) assessments, and webcam-based eye tracking (WebGazer).
 
-## graphify
-- **graphify** (`.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-
 ## Environment Setup
 Requires Docker Desktop.
 The dev compose file is `docker-compose.dev.yml`. All Django and pytest commands run inside the container:
@@ -87,3 +75,9 @@ Experiments and data are shared within Django `Group`s, reflecting real research
 
 ### Settings
 All secrets and DB config come from `.env`.
+
+### Static files — two directories, do not confuse them
+- **`src/experiments/static/experiments/`** — source JS/CSS tracked in git (Django app static convention). Edit files here.
+- **`src/static/`** — `collectstatic` output, gitignored via `src/static/**`. Never edit or commit files here; they are overwritten at deploy time.
+
+When editing frontend JS, always work in `src/experiments/static/experiments/js/`, not `src/static/`.

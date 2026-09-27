@@ -14,7 +14,10 @@ export function init() {
     const trialsEl = document.getElementById('trials');
     if (!trialsEl) return;
     const config = trialsEl.dataset;
-    const trials = JSON.parse(document.getElementById('trials-data').textContent);
+    // {trial, upcoming, videos}: first pending trial (null if experiment already complete),
+    // the one after it, and every pending video trial
+    const initial = JSON.parse(document.getElementById('trials-data').textContent);
+    const firstTrial = initial.trial;
     const loading_image = config.loadingImage;
     const global_timeout = config.globalTimeout;
     const include_pause_page = config.includePausePage?.toLowerCase() === 'true';
@@ -47,9 +50,6 @@ export function init() {
 
     // Global timeout reference
     let globaltimer;
-
-    // Current trial index
-    let currentTrial = 0;
 
     // Media stream object
     let mediaStream;
@@ -116,148 +116,155 @@ export function init() {
     };
 
     /**
-     * Show next trial.
+     * Navigate to the thank-you page once all trials are done.
      */
-    const showNextTrial = function () {
-        if (currentTrial >= trials.length) { // No more trials
-            clearTimeout(globaltimer);
+    const finishExperiment = function () {
+        clearTimeout(globaltimer);
+        webgazer.pause();
+        waitForWebcamUploadToFinish().then(() => {
+            webcam.stopUploading();
+            window.location.replace(`/${subjectUuid}/run/thankyou`);
+        });
+    };
 
+    /**
+     * Ask the server for the next pending trial.
+     * Resolves with {done: true} or {done: false, trial: {...}}.
+     */
+    const fetchNextTrial = function () {
+        return fetch(`/${subjectUuid}/run/nexttrial`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            body: '',
+        }).then(r => {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+        });
+    };
+
+    /**
+     * Present a trial and, when it completes, fetch and present the next one.
+     * @param {object} trialObj - trial dict from the server
+     * @param {object|null} upcoming - the trial expected after this one; its video is
+     *   loaded while this trial runs
+     */
+    const showNextTrial = function (trialObj, upcoming) {
+        body.style.backgroundColor = trialObj.background_colour;
+        preloadVideo(trialObj);
+        if (upcoming) preloadVideo(upcoming);
+
+        trialObj.webgazer_data = [];
+        resetGazeData();
+        const trialSetupPromises = [];
+        if (trialObj.audio_file !== '') {
+            trialSetupPromises.push(playTrialAudio(trialObj));
+        }
+        if (trialObj.trial_type === 'video') {
+            trialSetupPromises.push(playTrialVideo(trialObj));
+        } else {
+            trialSetupPromises.push(showTrialImage(trialObj));
+        }
+
+        if (recording_option !== 'NON' && recording_option !== 'EYE' && trialObj.record_media) {
+            trialSetupPromises.push(webcam.startRecording(
+                `${subjectId}_trial${trialObj.trial_number}_${trialObj.label}_${subjectUuid}`,
+                recording_option,
+                mediaStream
+            ));
+        }
+
+        if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
+            trialSetupPromises.push(webgazer.resume().then(() => {
+                if (trialObj.record_gaze) {
+                    startGazeRecording();
+                }
+            }));
+        }
+
+        if (trialObj.require_user_input === 'YES') {
+            const waitTime = parseInt(general_onset);
+            trialSetupPromises.push(waitPromise(waitTime, trialObj));
+        }
+
+        Promise.all(trialSetupPromises).then(values => {
+            const trialObj = values[0];
+
+            trialObj.start_time = performance.now();
+
+            const trialDonePromises = [];
+            if (trialObj.trial_type === 'video' && trialObj.require_user_input === 'NO') {
+                trialDonePromises.push(setupVideoEnd(trialObj));
+            }
+            if ((trialObj.trial_type === 'image' && !trialObj.is_calibration) || (trialObj.trial_type === 'video' && trialObj.require_user_input === 'YES')) {
+                trialDonePromises.push(setupMaxDuration(trialObj));
+            }
+            if (trialObj.require_user_input === 'YES' && !trialObj.is_calibration) {
+                trialDonePromises.push(setupKeyPresses(trialObj));
+            }
+            if (trialObj.is_calibration && (recording_option === 'EYE' || recording_option === 'ALL')) {
+                trialDonePromises.push(calibrate(trialObj));
+            }
+            return Promise.race(trialDonePromises);
+
+        }).then(trialObj => {
+            console.log(trialObj);
+            if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+            if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
+            if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
+                stopGazeRecording();
+            }
             webgazer.pause();
 
-            waitForWebcamUploadToFinish().then(() => {
-                webcam.stopUploading();
-                window.location.replace(`/${subjectUuid}/run/thankyou`);
-            });
+            trialObj.end_time = performance.now();
+            trialObj.webgazer_data = trialObj.webgazer_data.concat(getGazeData());
 
-        } else { // Start trial
-            const trialObj = trials[currentTrial];
-
-            // Preload first trial video
-            if (currentTrial === 0) {
-                preloadVideo(trialObj);
-            }
-
-            // Preload next trial video
-            if (currentTrial + 1 < trials.length) {
-                preloadVideo(trials[currentTrial + 1]);
-            }
-
-            body.style.backgroundColor = trialObj.background_colour;
-
-            // Set up trial
-            trialObj.webgazer_data = [];
-            resetGazeData();
-            const trialSetupPromises = [];
             if (trialObj.audio_file !== '') {
-                trialSetupPromises.push(playTrialAudio(trialObj));
+                removeTrialAudio();
             }
             if (trialObj.trial_type === 'video') {
-                trialSetupPromises.push(playTrialVideo(trialObj));
+                removeTrialVideo(trialObj);
             } else {
-                trialSetupPromises.push(showTrialImage(trialObj));
+                removeTrialImage();
             }
 
-            // Start webcam recording if recording_option is aud, vid, or all
-            if (recording_option !== 'NON' && recording_option !== 'EYE' && trialObj.record_media) {
-                trialSetupPromises.push(webcam.startRecording(
-                    `${subjectId}_trial${trialObj.trial_number}_${trialObj.label}_${subjectUuid}`,
-                    recording_option,
-                    mediaStream
-                ));
-            }
+            return postResult(trialObj);
 
-            // Resume webgazer and start gaze recording
+        }).then(trialObj => {
+            return webcam.stopRecording(trialObj.resultId);
+        }).then(() => {
+            return fetchNextTrial();
+        }).then(data => {
+            if (data.done) {
+                finishExperiment();
+            } else {
+                showNextTrial(data.trial, data.upcoming);
+            }
+        }).catch(e => {
+            clearTimeout(globaltimer);
+
+            webcam.stopUploading();
+            webcam.stopRecording("");
+
             if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
-                trialSetupPromises.push(webgazer.resume().then(() => {
-                    if (trialObj.record_gaze) {
-                        startGazeRecording();
-                    }
-                }));
+                stopGazeRecording();
             }
+            webgazer.pause();
 
-            // Wait before accepting user input
-            if (trialObj.require_user_input === 'YES') {
-                const waitTime = parseInt(general_onset);
-                trialSetupPromises.push(waitPromise(waitTime, trialObj));
-            }
+            if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+            document.removeEventListener('mozfullscreenchange', onFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+            document.removeEventListener('fullscreenchange', onFullscreenChange);
+            exitFullscreen();
 
-            Promise.all(trialSetupPromises).then(values => {
-                const trialObj = values[0];
+            fetch(`/${subjectUuid}/run/error`)
+                .then(r => r.text())
+                .then(data => {
+                    document.body.innerHTML = data;
+                    document.querySelector('div.alert').innerHTML = String(e);
+                });
 
-                trialObj.start_time = performance.now();
-
-                // Register promise to determine end of trial
-                const trialDonePromises = [];
-
-                if (trialObj.trial_type === 'video' && trialObj.require_user_input === 'NO') {
-                    trialDonePromises.push(setupVideoEnd(trialObj));
-                }
-                if ((trialObj.trial_type === 'image' && !trialObj.is_calibration) || (trialObj.trial_type === 'video' && trialObj.require_user_input === 'YES')) {
-                    trialDonePromises.push(setupMaxDuration(trialObj));
-                }
-                if (trialObj.require_user_input === 'YES' && !trialObj.is_calibration) {
-                    trialDonePromises.push(setupKeyPresses(trialObj));
-                }
-                if (trialObj.is_calibration && (recording_option === 'EYE' || recording_option === 'ALL')) {
-                    trialDonePromises.push(calibrate(trialObj));
-                }
-                return Promise.race(trialDonePromises);
-
-            }).then(trialObj => {
-                console.log(trialObj);
-                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
-                if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
-                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
-                    stopGazeRecording();
-                }
-                webgazer.pause();
-
-                trialObj.end_time = performance.now();
-                trialObj.webgazer_data = trialObj.webgazer_data.concat(getGazeData());
-
-                if (trialObj.audio_file !== '') {
-                    removeTrialAudio();
-                }
-                if (trialObj.trial_type === 'video') {
-                    removeTrialVideo(trialObj);
-                } else {
-                    removeTrialImage();
-                }
-
-                return postResult(trialObj);
-
-            }).then(trialObj => {
-                return webcam.stopRecording(trialObj.resultId);
-            }).then(() => {
-                currentTrial++;
-                showNextTrial();
-            }).catch(e => {
-                clearTimeout(globaltimer);
-
-                webcam.stopUploading();
-                webcam.stopRecording("");
-
-                if ((trialObj.is_calibration || trialObj.record_gaze) && (recording_option === 'EYE' || recording_option === 'ALL')) {
-                    stopGazeRecording();
-                }
-                webgazer.pause();
-
-                if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
-                document.removeEventListener('mozfullscreenchange', onFullscreenChange);
-                document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
-                document.removeEventListener('fullscreenchange', onFullscreenChange);
-                exitFullscreen();
-
-                fetch(`/${subjectUuid}/run/error`)
-                    .then(r => r.text())
-                    .then(data => {
-                        document.body.innerHTML = data;
-                        document.querySelector('div.alert').innerHTML = String(e);
-                    });
-
-                console.error("Error during experiment:", e);
-            });
-        }
+            console.error("Error during experiment:", e);
+        });
     };
 
     /**
@@ -270,36 +277,12 @@ export function init() {
     };
 
     /**
-     * Preload images of all trials.
-     */
-    const preloadImages = function () {
-        const p_list = [];
-
-        for (let t in trials) {
-            if (t.trial_type === 'image') {
-                const p = new Promise((resolve, reject) => {
-                    const image = new Image();
-                    image.onload = () => { resolve(); };
-                    image.src = t.visual_file;
-                });
-                p_list.push(p);
-            }
-        }
-
-        return Promise.all(p_list);
-    };
-
-    /**
-     * Preload video for trial.
-     * @param {object} trialObj
-     */
-    /**
      * Create or upgrade a video element for the given trial.
      * @param {object} trialObj
      * @param {boolean} load - true: set preload=auto and call video.load() (fetch data).
      *   false: create the element with preload=none so it can be gesture-unlocked on iOS
-     *   before any data is fetched. showNextTrial upgrades elements to load=true as trials
-     *   approach, preserving the original 1-2 trial lookahead window.
+     *   before any data is fetched. showNextTrial upgrades the current and upcoming
+     *   trial's elements to load=true.
      */
     const preloadVideo = function (trialObj, load = true) {
         if (trialObj.trial_type !== 'video') return;
@@ -495,7 +478,7 @@ export function init() {
             delete videoEndedHandlerRefs[trialObj.trial_id];
         }
         video.pause();
-        document.querySelector('.trial-video').outerHTML = '';
+        document.querySelector(`#video-container-${trialObj.trial_id}`).remove();
     };
 
     /**
@@ -613,8 +596,6 @@ export function init() {
 
     // Insert empty audio element
     createAudioContainer().then(() => {
-        return preloadImages();
-    }).then(() => {
         // Prompt webcam/microphone access
         if (recording_option !== 'NON') {
             mediaStream = webcam.initStream(recording_option);
@@ -624,10 +605,9 @@ export function init() {
         }
         return Promise.resolve();
     }).then(() => {
-        // Create DOM elements for all video trials (no data fetch yet) so the gesture
-        // handler can unlock each element. showNextTrial will upgrade them to load=true
-        // as trials approach, preserving the original 1-2 trial lookahead window.
-        trials.forEach(trial => preloadVideo(trial, false));
+        // Create elements for all pending video trials (no data fetch yet) so the
+        // fullscreen tap can unlock each one for iOS.
+        initial.videos.forEach(v => preloadVideo({ ...v, trial_type: 'video' }, false));
         return new Promise((resolve, reject) => {
             document.getElementById('fullscreen-button').addEventListener('click', function () {
                 const docElem = document.documentElement;
@@ -636,10 +616,8 @@ export function init() {
                 document.getElementById('fullscreen-message')?.remove();
                 // Unlock every video element for iOS: one play() inside a gesture handler
                 // allows all subsequent play() calls on the same element without a gesture.
-                trials.forEach(trial => {
-                    if (trial.trial_type !== 'video') return;
-                    const videoEl = document.querySelector(`#video-container-${trial.trial_id} > video`);
-                    if (videoEl) videoEl.play().then(() => videoEl.pause()).catch(() => {});
+                document.querySelectorAll('.trial-video video').forEach(videoEl => {
+                    videoEl.play().then(() => videoEl.pause()).catch(() => {});
                 });
                 resolve();
             });
@@ -652,8 +630,11 @@ export function init() {
         }
         return Promise.resolve();
     }).then(() => {
-        // Start first trial
-        showNextTrial();
+        if (firstTrial) {
+            showNextTrial(firstTrial, initial.upcoming);
+        } else {
+            finishExperiment();
+        }
         setGlobalTimer();
     });
 
