@@ -76,7 +76,7 @@ dwell_target_col = PositiveSmallIntegerField(null=True, blank=True)
 1. `last` = subject's latest non-PAUSE `TrialResult`.
 2. If `last.trialitem` has `min_dwell_time`, is not flagged/calibration, `recording_option` ∈ EYE/ALL and `record_gaze` → if `dwell_time(...) < min_dwell_time`, return AG dict (AG's own block for background, `trial_number = last.trial_number`).
 3. Else pending sequence as before.
-Once AG result is stored, `last` is the AG → sequence continues. Idempotent on refetch; pause between trial and AG still shows AG on resume; no gaze samples ⇒ dwell 0 ⇒ AG.
+Once AG result is stored, `last` is the AG → sequence continues. Idempotent on refetch; pause between trial and AG still shows AG on resume; no gaze samples ⇒ dwell 0 ⇒ AG. No AG after the final trial of the experiment (nothing left to regain attention for) — the run finishes; block boundaries still show it.
 
 **Knock-on fixes:**
 - `_trial_sequence` skips flagged trials.

@@ -478,7 +478,15 @@ export function init() {
             delete videoEndedHandlerRefs[trialObj.trial_id];
         }
         video.pause();
-        document.querySelector(`#video-container-${trialObj.trial_id}`).remove();
+        const container = document.querySelector(`#video-container-${trialObj.trial_id}`);
+        if (trialObj.is_attention_getter) {
+            // Attention getters can be shown again; keep the element that was
+            // unlocked for autoplay (iOS) rather than creating a fresh one.
+            container.style.display = 'none';
+            video.currentTime = 0;
+        } else {
+            container.remove();
+        }
     };
 
     /**

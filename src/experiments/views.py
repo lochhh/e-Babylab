@@ -5,6 +5,7 @@ import logging
 import os.path
 import random as _random
 import uuid
+from itertools import chain
 from pathlib import Path
 
 from django.conf import settings
@@ -19,6 +20,7 @@ from django.views.decorators.http import require_POST
 from .captcha import captcha_context, get_captcha_provider
 from .decorators import login_required
 from .forms import ConsentForm, ImportForm, SubjectDataForm
+from .gaze import dwell_time, parse_samples
 from .import_export import export_to_zip, import_from_zip
 from .models import (
     BlockItem,
@@ -210,6 +212,7 @@ def _trial_sequence(subject_data):
 
     Shuffles are seeded by the subject UUID, so the order is the same on every call
     and trial_number is stable. Blocks are queried lazily as the caller iterates.
+    Attention getters are never part of the sequence.
     """
     rng = _random.Random(uuid.UUID(str(subject_data.id)).int)
     outer_block_items = subject_data.listitem.outerblockitem_set.all().order_by(
@@ -222,7 +225,11 @@ def _trial_sequence(subject_data):
         if ob.randomise_inner_blocks:
             rng.shuffle(inner_blocks)
         for block in inner_blocks:
-            trial_items = list(block.trialitem_set.all().order_by("position"))
+            trial_items = list(
+                block.trialitem_set.filter(is_attention_getter=False).order_by(
+                    "position"
+                )
+            )
             if block.randomise_trials:
                 rng.shuffle(trial_items)
             for trial in trial_items:
@@ -242,16 +249,63 @@ def _pending_trials(subject_data):
             yield trial, block, trial_number
 
 
-def _next_trials(subject_data):
-    """Return the next pending trial dict and the one after it, either may be None.
+_EYE_TRACKING_OPTIONS = ("EYE", "ALL")
 
-    The second one lets the frontend preload its video during the current trial.
+
+def _attention_getter_dict(subject_data):
+    """Return the attention getter trial dict if the last trial failed its dwell check.
+
+    Only the latest non-PAUSE result is checked, so once the attention getter's
+    own result is stored the sequence simply continues. It keeps the triggering
+    trial's number so report rows pair up.
+    """
+    last = (
+        TrialResult.objects.filter(subject=subject_data)
+        .exclude(key_pressed="PAUSE")
+        .select_related("trialitem__attention_getter__blockitem")
+        .order_by("-pk")
+        .first()
+    )
+    if last is None:
+        return None
+    trial = last.trialitem
+    if (
+        trial.attention_getter is None
+        or trial.is_calibration
+        or not trial.record_gaze
+        or subject_data.experiment.recording_option not in _EYE_TRACKING_OPTIONS
+    ):
+        return None
+    dwell = dwell_time(
+        parse_samples(last.webgazer_data),
+        last.resolution_w,
+        last.resolution_h,
+        trial.grid_row,
+        trial.grid_col,
+        trial.dwell_target,
+    )
+    if dwell >= trial.min_dwell_time:
+        return None
+    ag = trial.attention_getter
+    return create_trial_dict(ag, ag.blockitem, last.trial_number)
+
+
+def _next_trials(subject_data):
+    """Return the next trial dict and the one after it, either may be None.
+
+    The next trial is the last trial's attention getter if its dwell check
+    failed and trials remain, otherwise the next pending trial. The second
+    one lets the frontend preload its video during the current trial.
     """
     pending = _pending_trials(subject_data)
-    return [
+    first, second = (
         create_trial_dict(*t) if t else None
         for t in (next(pending, None), next(pending, None))
-    ]
+    )
+    attention_getter = _attention_getter_dict(subject_data)
+    if attention_getter and first:
+        return [attention_getter, first]
+    return [first, second]
 
 
 def create_trial_dict(trial, block, trial_number):
@@ -293,6 +347,7 @@ def create_trial_dict(trial, block, trial_number):
         "record_gaze": trial.record_gaze,
         "is_calibration": trial.is_calibration,
         "calibration_points": trial.calibration_points if trial.is_calibration else [],
+        "is_attention_getter": trial.is_attention_getter,
     }
     return trial_dict
 
@@ -314,11 +369,19 @@ def experiment_run(request, run_uuid):
             subject_data.save()
 
         first, upcoming = _next_trials(subject_data)
-        # Every pending video trial, so the page can create and unlock (iOS)
-        # a video element for each before the participant's fullscreen tap
+        # Every pending video trial plus every attention getter video, so the page
+        # can create and unlock (iOS) a video element for each before the
+        # participant's fullscreen tap
+        attention_getters = TrialItem.objects.filter(
+            blockitem__outerblockitem__listitem=subject_data.listitem,
+            is_attention_getter=True,
+        ).select_related("blockitem")
         videos = [
             {"trial_id": d["trial_id"], "visual_file": d["visual_file"]}
-            for d in (create_trial_dict(*t) for t in _pending_trials(subject_data))
+            for d in chain(
+                (create_trial_dict(*t) for t in _pending_trials(subject_data)),
+                (create_trial_dict(ag, ag.blockitem, 0) for ag in attention_getters),
+            )
             if d["trial_type"] == "video"
         ]
 
@@ -444,11 +507,16 @@ def experiment_end(request, run_uuid):
 
     if subject_data.listitem:
         tr_count = TrialItem.objects.filter(
-            blockitem__outerblockitem__listitem=subject_data.listitem
+            blockitem__outerblockitem__listitem=subject_data.listitem,
+            is_attention_getter=False,
         ).count()
         completed_count = (
-            TrialResult.objects.filter(subject=run_uuid)
+            TrialResult.objects.filter(
+                subject=run_uuid, trialitem__is_attention_getter=False
+            )
             .exclude(key_pressed="PAUSE")
+            .values("trialitem")
+            .distinct()
             .count()
         )
         if completed_count < tr_count:

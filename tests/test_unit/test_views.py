@@ -54,6 +54,7 @@ def _mock_trial(
     audio_onset=0,
     max_duration=1000,
     tid=1,
+    is_attention_getter=False,
 ):
     from unittest.mock import MagicMock
 
@@ -71,6 +72,7 @@ def _mock_trial(
     trial.visual_onset = visual_onset
     trial.audio_onset = audio_onset
     trial.max_duration = max_duration
+    trial.is_attention_getter = is_attention_getter
     return trial
 
 
@@ -225,6 +227,7 @@ class TestCreateTrialDict:
             "record_gaze",
             "is_calibration",
             "calibration_points",
+            "is_attention_getter",
         }
         assert expected_keys == set(result.keys())
 
