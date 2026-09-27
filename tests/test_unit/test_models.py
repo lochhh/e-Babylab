@@ -13,6 +13,8 @@ These tests exercise:
 import pytest
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 
 from experiments import models as exp_models
 
@@ -73,8 +75,13 @@ def test_instrument_str(instrument_factory):
 
 
 @pytest.mark.django_db
-def test_deleting_instrument_nullifies_experiment_fk(instrument_factory, experiment_factory):
-    """Deleting an Instrument sets experiment.instrument to NULL, not cascade-deletes the experiment."""
+def test_deleting_instrument_nullifies_experiment_fk(
+    instrument_factory, experiment_factory
+):
+    """Deleting an Instrument sets experiment.instrument to NULL, not cascade-deletes.
+
+    The experiment itself must survive the deletion of its instrument.
+    """
     instr = instrument_factory()
     exp = experiment_factory()
     exp.instrument = instr
@@ -501,3 +508,194 @@ def test_get_list_item_strategies(
         )
     result = ex.get_list_item()
     assert result == lists[expected_idx]
+
+
+# ---------------------------------------------------------------------------
+# TrialItem attention getter / dwell check
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def ag_pair(trialitem_factory, blockitem_factory):
+    """Return a normal trial and a flagged attention getter in the same list."""
+    trial = trialitem_factory(label="T1")
+    ag_block = blockitem_factory(
+        outerblock=trial.blockitem.outerblockitem, label="AGs", position=2
+    )
+    ag = trialitem_factory(blockitem=ag_block, label="AG", code="AG")
+    ag.is_attention_getter = True
+    ag.save()
+    return trial, ag
+
+
+@pytest.mark.django_db
+def test_trialitem_clean_accepts_dwell_check(ag_pair, filer_file_factory):
+    """A trial with an attention getter and a minimum dwell time is valid."""
+    trial, ag = ag_pair
+    trial.visual_file = filer_file_factory("image.jpg")
+    trial.attention_getter = ag
+    trial.min_dwell_time = 500
+    trial.full_clean()
+
+
+def _other_list_ag(trial, ag, trialitem_factory):
+    other = trialitem_factory(label="AG2", code="AG2")  # new experiment/list
+    other.is_attention_getter = True
+    other.save()
+    trial.attention_getter = other
+    trial.min_dwell_time = 500
+
+
+def _ag_without_dwell(t, ag):
+    t.attention_getter = ag
+
+
+def _dwell_without_ag(t, ag):
+    t.min_dwell_time = 500
+
+
+def _target_not_flagged(t, ag):
+    ag.is_attention_getter = False
+    ag.save()
+    t.attention_getter = ag
+    t.min_dwell_time = 500
+
+
+def _calibration_with_dwell(t, ag):
+    t.attention_getter = ag
+    t.min_dwell_time = 500
+    t.is_calibration = True
+
+
+def _cell_missing_row_col(t, ag):
+    # non-square, non-1x1 grid so the "missing row/col" check fires instead
+    # of the 1x1-grid check.
+    t.grid_row, t.grid_col = 1, 2
+    t.dwell_target_type = "CELL"
+
+
+def _cell_row_out_of_grid(t, ag):
+    t.grid_row, t.grid_col = 1, 2
+    t.dwell_target_type = "CELL"
+    t.dwell_target_row, t.dwell_target_col = 2, 1
+
+
+def _cell_col_out_of_grid(t, ag):
+    t.grid_row, t.grid_col = 2, 1
+    t.dwell_target_type = "CELL"
+    t.dwell_target_row, t.dwell_target_col = 1, 2
+
+
+def _cell_on_1x1_grid(t, ag):
+    t.dwell_target_type = "CELL"  # grid stays the factory default, 1x1
+
+
+def _ag_nested_dwell(t, ag):
+    ag.attention_getter = ag
+    ag.min_dwell_time = 500
+
+
+def _grid_row_zero(t, ag):
+    t.grid_row = 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "mutate,message",
+    [
+        pytest.param(_ag_without_dwell, "or neither", id="ag-without-dwell"),
+        pytest.param(_dwell_without_ag, "or neither", id="dwell-without-ag"),
+        pytest.param(
+            _target_not_flagged,
+            "marked as an attention getter",
+            id="target-not-flagged",
+        ),
+        pytest.param(_calibration_with_dwell, "calibration", id="calibration"),
+        pytest.param(
+            _cell_missing_row_col,
+            "target row and column",
+            id="cell-missing-row-col",
+        ),
+        pytest.param(
+            _cell_row_out_of_grid, "only has 1 row", id="cell-row-out-of-grid"
+        ),
+        pytest.param(
+            _cell_col_out_of_grid,
+            "only has 1 column",
+            id="cell-col-out-of-grid",
+        ),
+        pytest.param(_cell_on_1x1_grid, "grid rows/columns", id="cell-on-1x1-grid"),
+        pytest.param(
+            _ag_nested_dwell,
+            "cannot have its own dwell check",
+            id="ag-nested",
+        ),
+        pytest.param(_grid_row_zero, "greater than or equal to 1", id="grid-row-zero"),
+    ],
+)
+def test_trialitem_clean_rejects_invalid_dwell_config(ag_pair, mutate, message):
+    """Invalid dwell-check configurations raise a ValidationError naming the problem."""
+    trial, ag = ag_pair
+    mutate(trial, ag)
+    target = ag if ag.attention_getter_id else trial
+    with pytest.raises(ValidationError, match=message):
+        target.full_clean()
+
+
+@pytest.mark.django_db
+def test_trialitem_clean_rejects_attention_getter_from_other_list(
+    ag_pair, trialitem_factory
+):
+    """The attention getter must belong to the same list as the trial."""
+    trial, ag = ag_pair
+    _other_list_ag(trial, ag, trialitem_factory)
+    with pytest.raises(ValidationError, match="same list"):
+        trial.full_clean()
+
+
+@pytest.mark.django_db
+def test_trialitem_clean_rejects_unflagging_referenced_attention_getter(ag_pair):
+    """A trial cannot stop being an attention getter while trials still use it."""
+    trial, ag = ag_pair
+    trial.attention_getter, trial.min_dwell_time = ag, 500
+    trial.save()
+    ag.is_attention_getter = False
+    with pytest.raises(ValidationError, match="T1"):
+        ag.full_clean()
+
+
+@pytest.mark.django_db
+def test_trialitem_db_constraint_rejects_half_dwell_check(ag_pair):
+    """The database refuses a dwell threshold without an attention getter."""
+    trial, _ = ag_pair
+    with pytest.raises(IntegrityError), transaction.atomic():
+        type(trial).objects.filter(pk=trial.pk).update(min_dwell_time=500)
+
+
+@pytest.mark.django_db
+def test_deleting_referenced_attention_getter_is_protected(ag_pair):
+    """An attention getter in use cannot be deleted."""
+    trial, ag = ag_pair
+    trial.attention_getter, trial.min_dwell_time = ag, 500
+    trial.save()
+    with pytest.raises(ProtectedError):
+        ag.delete()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "target_type,row,col,expected",
+    [
+        pytest.param("ANY", None, None, None, id="any"),
+        pytest.param("CELL", 1, 2, (1, 2), id="cell"),
+    ],
+)
+def test_trialitem_dwell_target(trialitem_factory, target_type, row, col, expected):
+    """dwell_target is None for ANY and the (row, col) cell for CELL."""
+    trial = trialitem_factory()
+    trial.dwell_target_type, trial.dwell_target_row, trial.dwell_target_col = (
+        target_type,
+        row,
+        col,
+    )
+    assert trial.dwell_target == expected
