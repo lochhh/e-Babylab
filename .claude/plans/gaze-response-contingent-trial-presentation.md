@@ -236,3 +236,9 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 **Minimum viable set for most common research designs:** PR 1 + PR 2a + PR 3.
 PR 2b (interactive flowchart editor) significantly improves usability but is not required for correct behaviour.
 PR 5 (gaze-triggered) is needed for looking-while-listening and active learning designs.
+
+## Release Tagging
+
+- Stage 1 shipped and tagged `v2.0.0a3` (#31 dynamic trial fetching, plus #35, #36, #38).
+- **Reminder:** `pyproject.toml` `version` is stale (`"2.0.0.a1"`; not bumped for a2 or a3). Bump it to the new version in the commit being tagged *before* creating the next tag (e.g. `2.0.0a4`).
+- Stay on alpha (`aN`) while stages can still change behaviour/data model; move to `b1` once 2.0 is feature-complete.
