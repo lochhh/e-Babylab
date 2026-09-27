@@ -738,3 +738,41 @@ class TestImportFromZip:
             zf.writestr("other.txt", "irrelevant")
         with pytest.raises(ValueError, match=r"experiment\.json not found"):
             import_from_zip(mock_request, buf.getvalue())
+
+    @pytest.mark.django_db
+    def test_import_remaps_attention_getter_to_copied_trial(
+        self,
+        experiment_factory,
+        listitem_factory,
+        outerblock_factory,
+        blockitem_factory,
+        trialitem_factory,
+        mock_request,
+    ):
+        """Imported trials point at the imported attention getter, not the source."""
+        exp = experiment_factory(exp_name="AGExp")
+        outer = outerblock_factory(listitem=listitem_factory(experiment=exp))
+        # Trial saved before its AG in pk order, so a naive loop would miss the map
+        trial = trialitem_factory(blockitem=blockitem_factory(outerblock=outer))
+        ag = trialitem_factory(
+            blockitem=blockitem_factory(outerblock=outer, label="AGs", position=2),
+            label="AG",
+            code="AG",
+        )
+        ag.is_attention_getter = True
+        ag.save()
+        trial.attention_getter, trial.min_dwell_time = ag, 500
+        trial.save()
+
+        import_from_zip(mock_request, export_to_zip(exp.pk))
+
+        copy = TrialItem.objects.get(
+            blockitem__outerblockitem__listitem__experiment__exp_name="AGExp copy",
+            label=trial.label,
+        )
+        assert copy.attention_getter.label == "AG"
+        assert copy.attention_getter.pk != ag.pk
+        assert (
+            copy.attention_getter.blockitem.outerblockitem.listitem.experiment.exp_name
+            == "AGExp copy"
+        )

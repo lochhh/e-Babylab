@@ -340,12 +340,22 @@ def import_from_zip(request: HttpRequest, zip_bytes: bytes) -> None:
         inner.save()
         block_pk_map[old_pk] = inner.object.pk
 
-    for trial in serializers.deserialize("json", json.dumps(raw["trials"])):
+    # Attention getters first, so each trial's attention_getter can be remapped
+    # to the already-imported copy as it is saved.
+    trials = sorted(
+        serializers.deserialize("json", json.dumps(raw["trials"])),
+        key=lambda t: not t.object.is_attention_getter,
+    )
+    trial_pk_map: dict[Any, Any] = {}
+    for trial in trials:
+        old_pk = trial.object.pk
         trial.object.id = None
         _remap_fk(trial.object, "blockitem", block_pk_map)
+        _remap_fk(trial.object, "attention_getter", trial_pk_map)
         for field_name in _TRIAL_FILE_FIELDS:
             _remap_fk(trial.object, field_name, media_pk_map)
         trial.save()
+        trial_pk_map[old_pk] = trial.object.pk
 
     for question in serializers.deserialize("json", json.dumps(raw["questions"])):
         question.object.id = None
