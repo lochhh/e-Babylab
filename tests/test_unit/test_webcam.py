@@ -227,6 +227,55 @@ class TestWebcamUpload:
         trial_result.refresh_from_db()
         assert trial_result.webcam_file.name == "trial.webm"
 
+    def test_post_merge_retry_keeps_already_merged_file(
+        self,
+        client,
+        subjectdata_factory,
+        trialresult_factory,
+        experiment_factory,
+        tmp_path,
+        monkeypatch,
+    ):
+        """A retried merge (chunks already merged and deleted) keeps the merged file."""
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        trial_result = trialresult_factory(subject=subject)
+        (tmp_path / "trial.webm").write_bytes(b"part0part1")
+
+        response = client.post(
+            _webcam_upload_url(subject.id),
+            data={"filename": "trial", "trialResultId": str(trial_result.id)},
+        )
+        assert response.status_code == 204
+        assert (tmp_path / "trial.webm").read_bytes() == b"part0part1"
+        trial_result.refresh_from_db()
+        assert trial_result.webcam_file.name == "trial.webm"
+
+    def test_post_merge_without_chunks_saves_no_file(
+        self,
+        client,
+        subjectdata_factory,
+        trialresult_factory,
+        experiment_factory,
+        tmp_path,
+        monkeypatch,
+    ):
+        """A merge with no uploaded chunks does not attach an empty video."""
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        trial_result = trialresult_factory(subject=subject)
+
+        response = client.post(
+            _webcam_upload_url(subject.id),
+            data={"filename": "trial", "trialResultId": str(trial_result.id)},
+        )
+        assert response.status_code == 204
+        assert not (tmp_path / "trial.webm").exists()
+        trial_result.refresh_from_db()
+        assert not trial_result.webcam_file
+
     def test_post_merge_invalid_trial_result_id_returns_400(
         self, client, subjectdata_factory, experiment_factory, tmp_path, monkeypatch
     ):
@@ -329,9 +378,17 @@ class TestMergeFiles:
         merge_files("output.webm", ["chunk-0.webm"])
         assert (tmp_path / "output.webm").read_bytes() == b"new content"
 
-    def test_empty_file_list_creates_empty_target(self, tmp_path, monkeypatch):
-        """Merging an empty list of files creates an empty target file."""
+    @pytest.mark.parametrize("existing", [None, b"merged content"])
+    def test_empty_file_list_leaves_target_untouched(
+        self, tmp_path, monkeypatch, existing
+    ):
+        """Merging an empty list neither creates nor overwrites the target file."""
         monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
-        merge_files("empty.webm", [])
-        assert (tmp_path / "empty.webm").exists()
-        assert (tmp_path / "empty.webm").read_bytes() == b""
+        target = tmp_path / "output.webm"
+        if existing is not None:
+            target.write_bytes(existing)
+        merge_files("output.webm", [])
+        if existing is None:
+            assert not target.exists()
+        else:
+            assert target.read_bytes() == existing

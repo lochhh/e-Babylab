@@ -94,10 +94,11 @@ def _upload_merge(request, run_uuid):
     """Merge uploaded chunks into a single file and associate it with a TrialResult."""
     fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
     base_filename = get_valid_filename(request.POST["filename"])
+    target = base_filename + ".webm"
     logger.info(f"Received last file of {base_filename}, merge files.")
 
     webcam_files = find_files(base_filename)
-    merge_files(base_filename + ".webm", webcam_files)
+    merge_files(target, webcam_files)
     for webcam_file in webcam_files:
         fs.delete(webcam_file)
 
@@ -107,7 +108,10 @@ def _upload_merge(request, run_uuid):
         logger.exception("Failed to retrieve trial result ID: " + str(e))
         return HttpResponseBadRequest("Invalid trialResultId.")
     trial_result = get_object_or_404(TrialResult, pk=trial_result_id, subject=run_uuid)
-    trial_result.webcam_file = base_filename + ".webm"
+    if not fs.exists(target):
+        logger.warning(f"No webcam chunks received for {base_filename}.")
+        return HttpResponse(status=204)
+    trial_result.webcam_file = target
     trial_result.save()
     logger.info("Successfully saved webcam file to trial result.")
     return HttpResponse(status=204)
@@ -131,7 +135,14 @@ def find_files(base_filename):
 
 
 def merge_files(target, files):
-    """Merge chunk files into a single target file."""
+    """Merge chunk files into a single target file.
+
+    An existing target is overwritten. If ``files`` is empty, nothing is
+    written and any existing target is left untouched, so a retried merge
+    (whose chunks were already merged and deleted) keeps the merged file.
+    """
+    if not files:
+        return
     root = Path(settings.WEBCAM_ROOT)
     destination = root / target
 
