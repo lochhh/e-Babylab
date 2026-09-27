@@ -51,7 +51,7 @@ e-Babylab currently pre-generates the full ordered trial sequence on the server 
 **TrialItem fields (one migration):**
 ```python
 is_attention_getter = BooleanField(default=False)
-attention_getter = ForeignKey("self", null=True, blank=True, on_delete=SET_NULL,
+attention_getter = ForeignKey("self", null=True, blank=True, on_delete=PROTECT,  # SET_NULL would violate the both-or-neither constraint
                               related_name="triggering_trials",
                               limit_choices_to={"is_attention_getter": True})
 min_dwell_time = PositiveIntegerField("minimum dwell time (ms)", null=True, blank=True)
