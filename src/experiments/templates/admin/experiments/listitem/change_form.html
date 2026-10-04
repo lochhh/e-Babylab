@@ -1,0 +1,20 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_field_sets %}
+{{ block.super }}
+{% if flowchart %}
+<fieldset class="grp-module grp-collapse grp-open">
+  <h2 class="grp-collapse-handler">Flowchart</h2>
+  <div class="grp-row">
+    <p class="grp-help">Saved structure only. Dashed arrows lead to attention getters; randomised parts have no order arrows.</p>
+    {# Falls back to the raw Mermaid source if the CDN is unreachable #}
+    <pre class="mermaid">{{ flowchart }}</pre>
+  </div>
+</fieldset>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js"
+        integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous"></script>
+<script>
+  if (window.mermaid) { mermaid.initialize({ startOnLoad: true, securityLevel: "strict" }); }
+</script>
+{% endif %}
+{% endblock %}

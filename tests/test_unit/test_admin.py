@@ -1662,3 +1662,16 @@ def test_formset_accepts_valid_dwell_check(admin_site, rf, user, ag_block_setup)
     formset.save()
     trial.refresh_from_db()
     assert trial.attention_getter == ag
+
+
+@pytest.mark.django_db
+def test_listitem_change_view_renders_flowchart(client, listitem_factory):
+    """The list change page includes the Mermaid flowchart source."""
+    listitem = listitem_factory()
+    admin_user = User.objects.create_superuser("flowadmin", "f@x.org", "pw")
+    client.force_login(admin_user)
+    url = reverse("admin:experiments_listitem_change", args=[listitem.pk])
+    response = client.get(url)
+    assert response.status_code == 200
+    assert b'class="mermaid"' in response.content
+    assert b"flowchart TD" in response.content

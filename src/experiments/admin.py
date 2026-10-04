@@ -8,6 +8,7 @@ from django.forms import BaseInlineFormSet, Script, Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 
+from .flowchart import list_flowchart
 from .forms import ExperimentForm, QuestionInlineFormSet
 from .models import (
     AnswerInteger,
@@ -610,6 +611,14 @@ class ListItemAdmin(
         "list_name",
         "experiment",
     )
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        """Add the list's Mermaid flowchart to the change page."""
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj is not None:
+            extra_context["flowchart"] = list_flowchart(obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
 
 class OuterBlockItemAdmin(
