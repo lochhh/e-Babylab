@@ -18,7 +18,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.text import get_valid_filename
 
-from .gaze import roi_cell
+from .gaze import dwell_time, parse_samples, roi_cell
 from .models import (
     ANSWER_TYPE_MODEL,
     AnswerBase,
@@ -75,6 +75,7 @@ class Reporter:
             "Screen Width",
             "Screen Height",
             "Record Gaze",
+            "Dwell (ms)",
         ]
 
         # Define report folders
@@ -117,6 +118,28 @@ class Reporter:
             result.trialitem.grid_col,
         )
         return f"({row},{col})"
+
+    def calc_dwell(self, result):
+        """Return gaze dwell (ms) in the trial's target, or "" if not recorded."""
+        trial = result.trialitem
+        recording = trial.blockitem.outerblockitem.listitem.experiment.recording_option
+        if (
+            recording not in ("EYE", "ALL")
+            or not trial.record_gaze
+            or trial.is_calibration
+            or result.key_pressed == "PAUSE"
+        ):
+            return ""
+        return round(
+            dwell_time(
+                parse_samples(result.webgazer_data),
+                result.resolution_w,
+                result.resolution_h,
+                trial.grid_row,
+                trial.grid_col,
+                trial.dwell_target,
+            )
+        )
 
     @staticmethod
     def _resolve_answer_value(answer_base, participation_date):
@@ -200,7 +223,10 @@ class Reporter:
         qs = TrialResult.objects.filter(
             trialitem__blockitem__pk__in=block_pks, subject_id=subject.id
         ).order_by("pk", "trial_number")
-        trial_numbers = qs.values_list("trial_number", flat=True)
+        # Attention getter rows share their trigger's number by design
+        trial_numbers = qs.exclude(trialitem__is_attention_getter=True).values_list(
+            "trial_number", flat=True
+        )
         unique = len(trial_numbers) == len(set(trial_numbers))
         return qs, unique
 
@@ -263,6 +289,7 @@ class Reporter:
                         in ["EYE", "ALL"]
                         and result.trialitem.record_gaze
                     ),
+                    self.calc_dwell(result),
                 ]
             )
 

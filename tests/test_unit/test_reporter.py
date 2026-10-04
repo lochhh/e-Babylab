@@ -152,8 +152,6 @@ def test_reporter_init(monkeypatch, tmp_path, experiment_factory):
     assert rep.output_folder == str(tmp_path)
     assert rep.output_file == "results_myexp.zip"
     assert isinstance(rep.zip_file, DummyZipFile)
-    assert isinstance(rep.trial_columns, list)
-    assert len(rep.trial_columns) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -721,3 +719,99 @@ def test_create_webgazer_worksheet_calibration_trial(
     assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
     assert list(validation.columns) == _xlsx_sheet_columns(4)  # EyeTrackingValidation
+
+
+# ---------------------------------------------------------------------------
+# calc_dwell / attention getter numbering
+# ---------------------------------------------------------------------------
+
+
+def _dwell_result(recording="EYE", record_gaze=True, is_calibration=False, key=""):
+    samples = [{"x": 10, "y": 10, "t": t} for t in (0, 34, 68)]
+    return SimpleNamespace(
+        key_pressed=key,
+        resolution_w=100,
+        resolution_h=100,
+        webgazer_data=samples,
+        trialitem=SimpleNamespace(
+            record_gaze=record_gaze,
+            is_calibration=is_calibration,
+            grid_row=1,
+            grid_col=1,
+            dwell_target=None,
+            blockitem=SimpleNamespace(
+                outerblockitem=SimpleNamespace(
+                    listitem=SimpleNamespace(
+                        experiment=SimpleNamespace(recording_option=recording)
+                    )
+                )
+            ),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected",
+    [
+        pytest.param({}, 68, id="eye"),
+        pytest.param({"recording": "ALL"}, 68, id="all"),
+        pytest.param({"recording": "VID"}, "", id="video-only"),
+        pytest.param({"record_gaze": False}, "", id="record-gaze-off"),
+        pytest.param({"is_calibration": True}, "", id="calibration"),
+        pytest.param({"key": "PAUSE"}, "", id="pause"),
+    ],
+)
+def test_calc_dwell(reporter, kwargs, expected):
+    """Dwell is reported for gaze-recorded, non-calibration, non-pause rows only."""
+    assert reporter.calc_dwell(_dwell_result(**kwargs)) == expected
+
+
+def test_trial_columns(reporter):
+    """Trial columns are exactly these, in order (new columns go last)."""
+    assert reporter.trial_columns == [
+        "Outer Block",
+        "Inner Block",
+        "Randomized",
+        "Trial Number",
+        "Trial Label",
+        "Trial Code",
+        "Visual Onset (ms)",
+        "Audio Onset (ms)",
+        "Visual Presented",
+        "Audio Presented",
+        "Max Duration (ms)",
+        "User Input",
+        "Response Keys",
+        "Nrows",
+        "Ncols",
+        "Area Clicked (row,col)",
+        "Response Time (ms)",
+        "Record Media",
+        "Webcam File",
+        "Screen Width",
+        "Screen Height",
+        "Record Gaze",
+        "Dwell (ms)",
+    ]
+
+
+@pytest.mark.django_db
+def test_attention_getter_rows_keep_trial_numbers_unique(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    trialitem_factory,
+    attention_getter_factory,
+):
+    """An AG row is kept and its shared trial number doesn't force ordinal numbering."""
+    trial = trialitem_factory(label="T1")
+    ag = attention_getter_factory(trial)
+    listitem = trial.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    for t in (trial, ag):
+        rpt.TrialResult.objects.create(subject=sd, trialitem=t, trial_number=1)
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    qs, unique = rep._get_trial_results(sd)
+    assert unique is True
+    assert list(qs.values_list("trialitem", flat=True)) == [trial.pk, ag.pk]
