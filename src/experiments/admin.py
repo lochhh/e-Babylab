@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.db import models
 from django.db.models import Q
-from django.forms import Textarea
+from django.forms import BaseInlineFormSet, Script, Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -164,6 +164,36 @@ class ExperimentScopedPermissionMixin:
 # ---------------------------------------------------------------------------
 
 
+class TrialItemInlineFormSet(BaseInlineFormSet):
+    """Cross-row checks that per-form validation can't see within a single save."""
+
+    def clean(self):
+        """Reject pointing at an attention getter being unflagged or deleted now."""
+        super().clean()
+        live = [f for f in self.forms if getattr(f, "cleaned_data", None)]
+        removed = {
+            f.instance.pk
+            for f in live
+            if f.instance.pk
+            and (
+                f.cleaned_data.get("DELETE")
+                or not f.cleaned_data.get("is_attention_getter")
+            )
+        }
+        for form in live:
+            ag = form.cleaned_data.get("attention_getter")
+            if (
+                ag is not None
+                and not form.cleaned_data.get("DELETE")
+                and ag.pk in removed
+            ):
+                form.add_error(
+                    "attention_getter",
+                    f"'{ag.label}' is being unmarked as an attention getter or"
+                    " deleted in this save.",
+                )
+
+
 class TrialItemInline(admin.StackedInline):
     """Inline admin for editing trial items within a block item."""
 
@@ -173,31 +203,88 @@ class TrialItemInline(admin.StackedInline):
     verbose_name_plural = "Trials"
     inline_classes = ["grp-collapse grp-open"]
     sortable_field_name = "position"
+    formset = TrialItemInlineFormSet
     fieldsets = (
+        (None, {"fields": ("label", "code", "position", "is_attention_getter")}),
         (
-            None,
+            "Stimulus",
             {
                 "fields": (
-                    "label",
-                    "code",
                     "visual_onset",
                     "visual_file",
                     "audio_onset",
                     "audio_file",
-                    "user_input",
-                    "response_keys",
                     "max_duration",
-                    "record_media",
-                    "record_gaze",
-                    "is_calibration",
-                    "calibration_points",
-                    ("grid_row", "grid_col"),
-                    "position",
-                ),
+                )
+            },
+        ),
+        ("Response", {"fields": ("user_input", "response_keys")}),
+        ("Recording", {"fields": ("record_media", "record_gaze")}),
+        (
+            "Eye-tracking calibration",
+            {
+                "classes": ("grp-collapse", "grp-closed"),
+                "fields": ("is_calibration", "calibration_points"),
+            },
+        ),
+        (
+            "Grid",
+            {
+                "fields": (("grid_row", "grid_col"),),
                 "description": f'<div class="help">{GRID_LAYOUT_HELP_TEXT}</div>',
             },
         ),
+        (
+            "Gaze dwell time and attention getter",
+            {
+                "classes": ("grp-collapse", "grp-closed", "dwell-check"),
+                "fields": (
+                    "min_dwell_time",
+                    "dwell_target_type",
+                    ("dwell_target_row", "dwell_target_col"),
+                    "attention_getter",
+                ),
+                "description": (
+                    '<div class="help">If gaze dwell in the target is below the'
+                    " minimum, the attention getter is shown before the next trial."
+                    " Requires eye-tracking.</div>"
+                ),
+            },
+        ),
     )
+
+    class Media:
+        """Hide the dwell fieldset for attention getters."""
+
+        js = (Script("experiments/js/admin/attention-getter-toggle.js", type="module"),)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Offer only attention getters from the same list as the edited block."""
+        if db_field.name == "attention_getter":
+            match = getattr(request, "resolver_match", None)
+            object_id = match.kwargs.get("object_id") if match else None
+            listitem_id = (
+                BlockItem.objects.filter(pk=object_id)
+                .values_list("outerblockitem__listitem", flat=True)
+                .first()
+                if object_id
+                else None
+            )
+            kwargs["queryset"] = TrialItem.objects.filter(
+                is_attention_getter=True,
+                blockitem__outerblockitem__listitem=listitem_id,
+            ).select_related("blockitem__outerblockitem")
+        field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "attention_getter":
+            field.help_text = (
+                f"{field.help_text} Lists every trial marked as an attention"
+                " getter in this list, from any block."
+            ).strip()
+            field.label_from_instance = lambda t: (
+                f"{t.label} — {t.blockitem.outerblockitem.outer_block_name}"
+                f" › {t.blockitem.label}"  # noqa: RUF001
+            )
+        return field
 
 
 class BlockItemInline(admin.StackedInline):

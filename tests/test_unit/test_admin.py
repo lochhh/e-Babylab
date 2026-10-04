@@ -1,6 +1,7 @@
 """Unit tests for experiments/admin.py."""
 
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,6 +22,7 @@ from experiments.admin import (
     OuterBlockItemAdmin,
     QuestionInline,
     SubjectDataAdmin,
+    TrialItemInline,
     TrialResultAdmin,
     TrialResultInline,
 )
@@ -1513,3 +1515,150 @@ class TestTrialResultAdmin:
         request = rf.get("/")
         request.user = superuser
         assert trial_result_admin.has_change_permission(request, tr) is True
+
+
+# ---------------------------------------------------------------------------
+# TrialItemInline — attention getter scoping and formset validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def ag_block_setup(trialitem_factory, attention_getter_factory, filer_file_factory):
+    """Block with trial T1 plus AG (own block, same list) and AG2 (other list)."""
+    visual = filer_file_factory("pic.png")
+    trial = trialitem_factory(label="T1")
+    ag = attention_getter_factory(trial, label="AG", link=False)
+    other_ag = trialitem_factory(label="AG2", code="AG2")  # different experiment
+    other_ag.is_attention_getter = True
+    for t in (trial, ag, other_ag):
+        t.visual_file = visual
+        t.save()
+    return trial, ag, other_ag
+
+
+def _inline_request(rf, user, block):
+    request = rf.get("/")
+    user.is_superuser = True  # admin forms ignore edits without change permission
+    request.user = user
+    request.resolver_match = SimpleNamespace(kwargs={"object_id": str(block.pk)})
+    return request
+
+
+def _attention_getter_field(admin_site, rf, user, trial):
+    inline = TrialItemInline(BlockItem, admin_site)
+    return inline.formfield_for_foreignkey(
+        TrialItem._meta.get_field("attention_getter"),
+        _inline_request(rf, user, trial.blockitem),
+    )
+
+
+@pytest.mark.django_db
+def test_attention_getter_choices_limited_to_same_list(
+    admin_site, rf, user, ag_block_setup
+):
+    """Only flagged trials from the block's own list are offered."""
+    trial, ag, _ = ag_block_setup
+    field = _attention_getter_field(admin_site, rf, user, trial)
+    assert list(field.queryset) == [ag]
+
+
+@pytest.mark.django_db
+def test_attention_getter_choice_label_shows_full_location(
+    admin_site, rf, user, ag_block_setup
+):
+    """The dropdown label names the trial, its outer block and its block."""
+    trial, ag, _ = ag_block_setup
+    field = _attention_getter_field(admin_site, rf, user, trial)
+    block = ag.blockitem
+    expected = f"AG — {block.outerblockitem.outer_block_name} › {block.label}"  # noqa: RUF001
+    assert field.label_from_instance(ag) == expected
+
+
+@pytest.mark.django_db
+def test_attention_getter_help_text_explains_scope(
+    admin_site, rf, user, ag_block_setup
+):
+    """The help text states which trials are listed."""
+    trial, _, _ = ag_block_setup
+    field = _attention_getter_field(admin_site, rf, user, trial)
+    assert field.help_text.endswith(
+        " Lists every trial marked as an attention getter in this list, from any block."
+    )
+
+
+def _formset_data(trials, overrides):
+    """POST data for the trial inline formset; overrides: {pk: {field: value|None}}."""
+    prefix = "trialitem_set"
+    data = {
+        f"{prefix}-TOTAL_FORMS": str(len(trials)),
+        f"{prefix}-INITIAL_FORMS": str(len(trials)),
+        f"{prefix}-MIN_NUM_FORMS": "0",
+        f"{prefix}-MAX_NUM_FORMS": "1000",
+    }
+    for i, t in enumerate(trials):
+        values = {
+            "id": t.pk,
+            "blockitem": t.blockitem_id,
+            "label": t.label,
+            "code": t.code,
+            "visual_onset": 0,
+            "visual_file": t.visual_file_id,
+            "audio_onset": 0,
+            "user_input": "NO",
+            "max_duration": 1000,
+            "record_media": "on",
+            "record_gaze": "on",
+            "calibration_points": json.dumps(t.calibration_points),
+            "grid_row": 1,
+            "grid_col": 1,
+            "position": t.position,
+            "dwell_target_type": "ANY",
+        }
+        if t.is_attention_getter:
+            values["is_attention_getter"] = "on"
+        values.update(overrides.get(t.pk, {}))
+        data.update(
+            {f"{prefix}-{i}-{k}": v for k, v in values.items() if v is not None}
+        )
+    return data
+
+
+@pytest.mark.django_db
+def test_formset_rejects_pointing_at_attention_getter_unflagged_in_same_save(
+    admin_site, rf, user, ag_block_setup
+):
+    """Unflagging AG and pointing T1 at it in one save is caught by the formset."""
+    trial, ag, _ = ag_block_setup
+    ag.blockitem = trial.blockitem  # same block → same formset
+    ag.position = 2
+    ag.save()
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    formset_cls = inline.get_formset(request, trial.blockitem)
+    data = _formset_data(
+        [trial, ag],
+        {
+            trial.pk: {"attention_getter": ag.pk, "min_dwell_time": 500},
+            ag.pk: {"is_attention_getter": None},
+        },
+    )
+    formset = formset_cls(data, instance=trial.blockitem, prefix="trialitem_set")
+    assert not formset.is_valid()
+    assert "being unmarked" in str(formset.errors)
+
+
+@pytest.mark.django_db
+def test_formset_accepts_valid_dwell_check(admin_site, rf, user, ag_block_setup):
+    """A valid dwell-check configuration saves through the inline formset."""
+    trial, ag, _ = ag_block_setup
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    formset_cls = inline.get_formset(request, trial.blockitem)
+    data = _formset_data(
+        [trial], {trial.pk: {"attention_getter": ag.pk, "min_dwell_time": 500}}
+    )
+    formset = formset_cls(data, instance=trial.blockitem, prefix="trialitem_set")
+    assert formset.is_valid(), formset.errors
+    formset.save()
+    trial.refresh_from_db()
+    assert trial.attention_getter == ag
