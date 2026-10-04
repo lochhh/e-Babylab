@@ -1,9 +1,9 @@
 """Admin configuration for the experiments application."""
 
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.forms import BaseInlineFormSet, ModelForm, Script, Textarea
 from django.urls import reverse
@@ -29,6 +29,42 @@ from .models import (
     TrialItem,
     TrialResult,
 )
+
+# Recording options that include eye-tracking
+EYE_RECORDING_OPTIONS = (Experiment.EYE, Experiment.ALL)
+
+
+def eye_off_text(dwell: int, ags: int, cals: int, past: bool = False) -> str:
+    """Describe what turning off eye-tracking changes, omitting zero parts.
+
+    Args:
+        dwell (int): Number of trials whose gaze dwell time checks are cleared.
+        ags (int): Number of attention getters reset to Regular.
+        cals (int): Number of calibration trials reset to Regular.
+        past (bool): Use past tense (cleared/reset) instead of future (clear/reset).
+
+    Returns:
+        str: E.g. "clear gaze dwell time checks on 1 trial and reset 4 attention
+        getters to Regular", or "" if all counts are zero.
+
+    """
+
+    def n(count, noun):
+        return f"{count} {noun}{'' if count == 1 else 's'}"
+
+    parts = []
+    if dwell:
+        verb = "cleared" if past else "clear"
+        parts.append(f"{verb} gaze dwell time checks on {n(dwell, 'trial')}")
+    resets = [
+        n(c, w)
+        for c, w in ((ags, "attention getter"), (cals, "calibration trial"))
+        if c
+    ]
+    if resets:
+        parts.append(f"reset {' and '.join(resets)} to Regular")
+    return " and ".join(parts)
+
 
 # Custom Help Text
 TEMPLATES_HELP_TEXT = " ".join(
@@ -655,11 +691,99 @@ class ExperimentAdmin(
     search_fields = ["exp_name"]
     change_list_filter_template = "admin/filter_listing.html"
 
+    class Media:
+        """Confirm before a recording option change clears eye-tracking settings."""
+
+        js = (
+            Script("experiments/js/admin/recording-option-confirm.js", type="module"),
+        )
+
+    @staticmethod
+    def _experiment_trials(experiment):
+        """Return the trials of an experiment as a queryset."""
+        return TrialItem.objects.filter(
+            blockitem__outerblockitem__listitem__experiment=experiment
+        )
+
+    def eye_tracking_counts(self, experiment):
+        """Count the trials that turning off eye-tracking would change.
+
+        Args:
+            experiment: The experiment whose trials are counted.
+
+        Returns:
+            A (dwell, attention_getters, calibrations) tuple of trial counts.
+
+        """
+        trials = self._experiment_trials(experiment)
+        return (
+            trials.filter(
+                Q(attention_getter__isnull=False) | Q(min_dwell_time__isnull=False)
+            ).count(),
+            trials.filter(trial_type=TrialItem.ATTENTION_GETTER).count(),
+            trials.filter(trial_type=TrialItem.CALIBRATION).count(),
+        )
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Give the recording option select what the confirmation script needs."""
+        form = super().get_form(request, obj, **kwargs)
+        if obj is not None:
+            dwell, ags, cals = self.eye_tracking_counts(obj)
+            form.base_fields["recording_option"].widget.attrs.update(
+                {
+                    "data-initial": obj.recording_option,
+                    "data-eye-values": ",".join(EYE_RECORDING_OPTIONS),
+                    "data-dwell-count": dwell,
+                    "data-attention-getter-count": ags,
+                    "data-calibration-count": cals,
+                }
+            )
+        return form
+
     def save_model(self, request, obj, form, change):
-        """Assign the current user as owner when creating a new experiment."""
+        """Assign the owner; clear eye-tracking settings if recording turns it off."""
         if getattr(obj, "user", None) is None:
             obj.user = request.user
+        old = (
+            Experiment.objects.filter(pk=obj.pk)
+            .values_list("recording_option", flat=True)
+            .first()
+            if change
+            else None
+        )
         obj.save()
+        if (
+            old in EYE_RECORDING_OPTIONS
+            and obj.recording_option not in EYE_RECORDING_OPTIONS
+        ):
+            self._clear_eye_tracking(request, obj)
+
+    def _clear_eye_tracking(self, request, experiment):
+        """Clear dwell checks and reset calibration/attention getter trials."""
+        with transaction.atomic():
+            trials = self._experiment_trials(experiment)
+            dwell, _, _ = self.eye_tracking_counts(experiment)
+            # Dwell checks first so no trial still references an attention getter
+            trials.update(
+                attention_getter=None,
+                min_dwell_time=None,
+                dwell_target_type=TrialItem.ANY,
+                dwell_target_row=None,
+                dwell_target_col=None,
+            )
+            ags = trials.filter(trial_type=TrialItem.ATTENTION_GETTER).update(
+                trial_type=TrialItem.REGULAR
+            )
+            cals = trials.filter(trial_type=TrialItem.CALIBRATION).update(
+                trial_type=TrialItem.REGULAR
+            )
+        text = eye_off_text(dwell, ags, cals, past=True)
+        if text:
+            self.message_user(
+                request,
+                f"Recording option no longer includes eye-tracking: {text}.",
+                messages.SUCCESS,
+            )
 
     @admin.display(description="Actions")
     def experiment_buttons(self, obj):

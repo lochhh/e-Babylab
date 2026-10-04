@@ -27,6 +27,7 @@ from experiments.admin import (
     TrialItemInline,
     TrialResultAdmin,
     TrialResultInline,
+    eye_off_text,
 )
 from experiments.models import (
     BlockItem,
@@ -1947,3 +1948,138 @@ def test_formset_clears_dwell_values_unless_regular(
     assert values == (
         (ag, 500, "CELL", 1, 2) if kept else (None, None, "ANY", None, None)
     )
+
+
+# ---------------------------------------------------------------------------
+# ExperimentAdmin: turning off eye-tracking
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def eye_setup(
+    experiment_factory,
+    listitem_factory,
+    outerblock_factory,
+    blockitem_factory,
+    trialitem_factory,
+    attention_getter_factory,
+):
+    """Return a builder of an eye-tracking experiment with a dwell check, AG and CAL."""
+
+    def build(name):
+        exp = experiment_factory(exp_name=name)
+        exp.recording_option = Experiment.EYE
+        exp.save()
+        outer = outerblock_factory(listitem=listitem_factory(experiment=exp))
+        block = blockitem_factory(outerblock=outer)
+        trial = trialitem_factory(blockitem=block, label="T", code="T")
+        ag = attention_getter_factory(trial)
+        cal = trialitem_factory(blockitem=block, label="C", code="C", position=2)
+        cal.trial_type = TrialItem.CALIBRATION
+        cal.save()
+        return exp, trial, ag, cal
+
+    return build
+
+
+@pytest.mark.django_db
+class TestRecordingOptionChange:
+    """Turning off eye-tracking clears dwell checks and resets trial types."""
+
+    @pytest.mark.parametrize(
+        ("start", "end", "cleared"),
+        [
+            pytest.param(Experiment.EYE, Experiment.NONE, True, id="eye-to-none"),
+            pytest.param(Experiment.ALL, Experiment.AUDIO, True, id="all-to-audio"),
+            pytest.param(Experiment.EYE, Experiment.ALL, False, id="eye-to-all"),
+            pytest.param(Experiment.NONE, Experiment.EYE, False, id="none-to-eye"),
+            pytest.param(
+                Experiment.AUDIO, Experiment.VIDEO, False, id="audio-to-video"
+            ),
+        ],
+    )
+    def test_transitions(
+        self, experiment_admin, rf, user, eye_setup, start, end, cleared
+    ):
+        """Only eye to non-eye clears; other transitions leave trials alone."""
+        exp, trial, ag, cal = eye_setup("A")
+        _, other_trial, other_ag, other_cal = eye_setup("B")
+        Experiment.objects.filter(pk=exp.pk).update(recording_option=start)
+        exp.recording_option = end
+        request = rf.get("/")
+        request.user = user
+        request._messages = MagicMock()
+
+        experiment_admin.save_model(request, exp, None, True)
+
+        for t in (trial, ag, cal, other_trial, other_ag, other_cal):
+            t.refresh_from_db()
+        if cleared:
+            assert (trial.attention_getter, trial.min_dwell_time) == (None, None)
+            assert ag.trial_type == cal.trial_type == TrialItem.REGULAR
+            assert request._messages.add.call_args.args[1] == (
+                "Recording option no longer includes eye-tracking: cleared gaze dwell "
+                "time checks on 1 trial and reset 1 attention getter and 1 "
+                "calibration trial to Regular."
+            )
+        else:
+            assert trial.attention_getter == ag
+            assert trial.min_dwell_time == 500
+            assert ag.trial_type == TrialItem.ATTENTION_GETTER
+            assert cal.trial_type == TrialItem.CALIBRATION
+            request._messages.add.assert_not_called()
+        # the other experiment is untouched
+        assert other_trial.attention_getter == other_ag
+        assert other_ag.trial_type == TrialItem.ATTENTION_GETTER
+        assert other_cal.trial_type == TrialItem.CALIBRATION
+
+    def test_create_does_nothing(self, experiment_admin, rf, user):
+        """A new experiment never triggers the cleanup."""
+        request = rf.get("/")
+        request.user = user
+        request._messages = MagicMock()
+        exp = Experiment(exp_name="New", recording_option=Experiment.NONE)
+        experiment_admin.save_model(request, exp, None, False)
+        request._messages.add.assert_not_called()
+
+    def test_change_page_renders_counts(self, client, eye_setup):
+        """The change page carries the initial option and counts for the script."""
+        exp, *_ = eye_setup("A")
+        client.force_login(User.objects.create_superuser("root", "r@x.org", "pw"))
+        html = client.get(
+            reverse("admin:experiments_experiment_change", args=[exp.pk])
+        ).content.decode()
+        for attr in (
+            'data-initial="EYE"',
+            'data-dwell-count="1"',
+            'data-attention-getter-count="1"',
+            'data-calibration-count="1"',
+            "recording-option-confirm.js",
+        ):
+            assert attr in html
+
+
+@pytest.mark.parametrize(
+    ("counts", "text"),
+    [
+        pytest.param(
+            (1, 4, 1),
+            "cleared gaze dwell time checks on 1 trial and reset 4 attention "
+            "getters and 1 calibration trial to Regular",
+            id="singulars",
+        ),
+        pytest.param(
+            (3, 2, 0),
+            "cleared gaze dwell time checks on 3 trials and reset 2 attention "
+            "getters to Regular",
+            id="no-calibration",
+        ),
+        pytest.param(
+            (0, 0, 2), "reset 2 calibration trials to Regular", id="only-calibration"
+        ),
+        pytest.param((0, 0, 0), "", id="nothing"),
+    ],
+)
+def test_eye_off_text(counts, text):
+    """Plurals are correct and zero parts are omitted."""
+    assert eye_off_text(*counts, past=True) == text
