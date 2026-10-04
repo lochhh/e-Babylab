@@ -509,9 +509,7 @@ class TestExperimentAdmin:
         blockitem_factory,
         trialitem_factory,
     ):
-        """Verify export_to_zip returns a ZIP whose experiment.json has all
-        expected keys.
-        """
+        """Verify export_to_zip's experiment.json has all expected keys."""
         import io
         import zipfile
 
