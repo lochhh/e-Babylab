@@ -55,7 +55,7 @@ function makeTrial(overrides = {}) {
   return {
     trial_id: 1,
     trial_number: 1,
-    trial_type: 'image',
+    stimulus_type: 'image',
     label: 'test',
     visual_file: '/media/test.jpg',
     audio_file: '',
@@ -89,7 +89,7 @@ function makeEnv({
     trial: trials[0] ?? null,
     upcoming: trials[1] ?? null,
     videos: trials
-      .filter(t => t.trial_type === 'video')
+      .filter(t => t.stimulus_type === 'video')
       .map(t => ({ trial_id: t.trial_id, visual_file: t.visual_file })),
   })
 
@@ -368,7 +368,7 @@ describe('experiment.js — video trial', () => {
     HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
     const { locationReplace } = makeEnv({
       recordingOption: 'NON',
-      trials: [makeTrial({ trial_type: 'video', require_user_input: 'NO' })],
+      trials: [makeTrial({ stimulus_type: 'video', require_user_input: 'NO' })],
     })
     await flush()
     document.getElementById('fullscreen-button').click()
@@ -397,8 +397,8 @@ describe('experiment.js — video trial', () => {
       recordingOption: 'NON',
       trials: [
         makeTrial({ trial_id: 1 }),
-        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
-        makeTrial({ trial_id: 3, trial_type: 'video', visual_file: '/media/b.mp4' }),
+        makeTrial({ trial_id: 2, stimulus_type: 'video', visual_file: '/media/a.mp4' }),
+        makeTrial({ trial_id: 3, stimulus_type: 'video', visual_file: '/media/b.mp4' }),
       ],
     })
     await flush()
@@ -418,7 +418,7 @@ describe('experiment.js — video trial', () => {
       recordingOption: 'NON',
       trials: [
         makeTrial({ trial_id: 1, max_duration: 500 }),
-        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
+        makeTrial({ trial_id: 2, stimulus_type: 'video', visual_file: '/media/a.mp4' }),
       ],
     })
     await flush()
@@ -438,7 +438,7 @@ describe('experiment.js — video trial', () => {
     HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
     makeEnv({
       recordingOption: 'NON',
-      trials: [makeTrial({ trial_type: 'video', require_user_input: 'NO', is_attention_getter: true })],
+      trials: [makeTrial({ stimulus_type: 'video', require_user_input: 'NO', is_attention_getter: true })],
     })
     await flush()
     document.getElementById('fullscreen-button').click()

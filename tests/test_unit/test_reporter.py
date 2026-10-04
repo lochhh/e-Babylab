@@ -599,6 +599,40 @@ def test_create_trial_worksheet_with_one_result(
     assert len(rep.zip_file.written) == 1
 
 
+@pytest.mark.parametrize(
+    "trial_type,expected",
+    [
+        pytest.param("REG", "Regular", id="regular"),
+        pytest.param("CAL", "Eye-tracker calibration", id="calibration"),
+        pytest.param("AG", "Attention getter", id="attention-getter"),
+    ],
+)
+def test_create_trial_worksheet_trial_type_column(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    outerblock_factory,
+    blockitem_factory,
+    trialitem_factory,
+    trial_type,
+    expected,
+):
+    """The Trial Type column holds the trial type's display name."""
+    from experiments.models import TrialResult
+
+    subject = subjectdata_factory()
+    outerblock = outerblock_factory(listitem=subject.listitem)
+    trialitem = trialitem_factory(blockitem=blockitem_factory(outerblock=outerblock))
+    trialitem.trial_type = trial_type
+    trialitem.save()
+    TrialResult.objects.create(subject=subject, trialitem=trialitem, key_pressed="")
+
+    rep = make_reporter(monkeypatch, tmp_path, subject.experiment)
+    df = rep.create_trial_worksheet(subject)
+
+    assert df.data[0][rep.trial_columns.index("Trial Type")] == expected
+
+
 # ---------------------------------------------------------------------------
 # create_webgazer_worksheet -- skip branch and loop body (lines 313-350)
 # ---------------------------------------------------------------------------
@@ -649,7 +683,7 @@ def test_create_webgazer_worksheet_non_calibration_trial(
     blockitem = blockitem_factory(outerblock=outerblock)
     trialitem = trialitem_factory(blockitem=blockitem)
     trialitem.record_gaze = True
-    trialitem.is_calibration = False
+    trialitem.trial_type = "REG"
     trialitem.save()
     TrialResult.objects.create(
         subject=subject,
@@ -693,7 +727,7 @@ def test_create_webgazer_worksheet_calibration_trial(
     blockitem = blockitem_factory(outerblock=outerblock)
     trialitem = trialitem_factory(blockitem=blockitem)
     trialitem.record_gaze = True
-    trialitem.is_calibration = True
+    trialitem.trial_type = "CAL"
     trialitem.grid_row = 3
     trialitem.grid_col = 3
     trialitem.save()
@@ -775,6 +809,7 @@ def test_trial_columns(reporter):
         "Trial Number",
         "Trial Label",
         "Trial Code",
+        "Trial Type",
         "Visual Onset (ms)",
         "Audio Onset (ms)",
         "Visual Presented",

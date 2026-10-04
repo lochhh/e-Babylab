@@ -535,7 +535,7 @@ def test_trialitem_clean_accepts_dwell_check(ag_pair, filer_file_factory):
 
 def _other_list_ag(trial, ag, trialitem_factory):
     other = trialitem_factory(label="AG2", code="AG2")  # new experiment/list
-    other.is_attention_getter = True
+    other.trial_type = "AG"
     other.save()
     trial.attention_getter = other
     trial.min_dwell_time = 500
@@ -550,7 +550,7 @@ def _dwell_without_ag(t, ag):
 
 
 def _target_not_flagged(t, ag):
-    ag.is_attention_getter = False
+    ag.trial_type = "REG"
     ag.save()
     t.attention_getter = ag
     t.min_dwell_time = 500
@@ -559,7 +559,7 @@ def _target_not_flagged(t, ag):
 def _calibration_with_dwell(t, ag):
     t.attention_getter = ag
     t.min_dwell_time = 500
-    t.is_calibration = True
+    t.trial_type = "CAL"
 
 
 def _record_gaze_off(t, ag):
@@ -633,7 +633,7 @@ def _grid_row_zero(t, ag):
         pytest.param(_cell_on_1x1_grid, "grid rows/columns", id="cell-on-1x1-grid"),
         pytest.param(
             _ag_nested_dwell,
-            "cannot have its own dwell check",
+            "cannot have its own gaze dwell time check",
             id="ag-nested",
         ),
         pytest.param(_grid_row_zero, "greater than or equal to 1", id="grid-row-zero"),
@@ -665,7 +665,7 @@ def test_trialitem_clean_rejects_unflagging_referenced_attention_getter(ag_pair)
     trial, ag = ag_pair
     trial.attention_getter, trial.min_dwell_time = ag, 500
     trial.save()
-    ag.is_attention_getter = False
+    ag.trial_type = "REG"
     with pytest.raises(ValidationError, match="T1"):
         ag.full_clean()
 
@@ -705,3 +705,30 @@ def test_trialitem_dwell_target(trialitem_factory, target_type, row, col, expect
         col,
     )
     assert trial.dwell_target == expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "trial_type,is_calibration,is_attention_getter",
+    [
+        pytest.param("REG", False, False, id="regular"),
+        pytest.param("CAL", True, False, id="calibration"),
+        pytest.param("AG", False, True, id="attention-getter"),
+    ],
+)
+def test_trialitem_trial_type_properties(
+    trialitem_factory, trial_type, is_calibration, is_attention_getter
+):
+    """is_calibration and is_attention_getter are derived from trial_type."""
+    trial = trialitem_factory()
+    trial.trial_type = trial_type
+    assert trial.is_calibration is is_calibration
+    assert trial.is_attention_getter is is_attention_getter
+
+
+@pytest.mark.django_db
+def test_trialitem_db_constraint_rejects_attention_getter_with_dwell_check(ag_pair):
+    """The database refuses an attention getter that has its own dwell check."""
+    _, ag = ag_pair
+    with pytest.raises(IntegrityError), transaction.atomic():
+        type(ag).objects.filter(pk=ag.pk).update(attention_getter=ag, min_dwell_time=1)

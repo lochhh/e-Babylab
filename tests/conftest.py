@@ -243,7 +243,7 @@ def attention_getter_factory(blockitem_factory, trialitem_factory):
             position=99,
         )
         ag = trialitem_factory(blockitem=block, label=label, code=label)
-        ag.is_attention_getter = True
+        ag.trial_type = "AG"
         ag.save()
         if link:
             trial.attention_getter, trial.min_dwell_time = ag, min_dwell_time

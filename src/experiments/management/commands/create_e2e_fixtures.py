@@ -159,7 +159,6 @@ class Command(BaseCommand):
                     "max_duration": 1500,
                     "record_media": False,
                     "record_gaze": False,
-                    "is_calibration": False,
                     "calibration_points": [],
                     "position": 1,
                 },

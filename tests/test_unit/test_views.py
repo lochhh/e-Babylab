@@ -128,31 +128,31 @@ class TestCreateTrialDict:
     """Tests for the create_trial_dict helper function."""
 
     def test_no_media_files_returns_empty_strings_and_blank_type(self):
-        """Verify empty strings and blank trial_type when no media files are set."""
+        """Verify empty strings and blank stimulus_type when no media files are set."""
         result = create_trial_dict(
             _mock_trial(visual_file=None, audio_file=None), _mock_block(), 1
         )
         assert result["visual_file"] == ""
         assert result["audio_file"] == ""
-        assert result["trial_type"] == ""
+        assert result["stimulus_type"] == ""
 
     def test_video_visual_file_sets_type_and_url(self):
-        """Verify .mp4 visual file sets trial_type to video and includes the URL."""
+        """Verify .mp4 visual file sets stimulus_type to video and includes the URL."""
         from unittest.mock import MagicMock
 
         vf = MagicMock(url="/media/clip.mp4", original_filename="clip.mp4")
         result = create_trial_dict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/clip.mp4"
-        assert result["trial_type"] == "video"
+        assert result["stimulus_type"] == "video"
 
     def test_image_visual_file_sets_type_and_url(self):
-        """Verify .png visual file sets trial_type to image and includes the URL."""
+        """Verify .png visual file sets stimulus_type to image and includes the URL."""
         from unittest.mock import MagicMock
 
         vf = MagicMock(url="/media/img.png", original_filename="img.png")
         result = create_trial_dict(_mock_trial(visual_file=vf), _mock_block(), 1)
         assert result["visual_file"] == "/media/img.png"
-        assert result["trial_type"] == "image"
+        assert result["stimulus_type"] == "image"
 
     def test_audio_file_sets_url(self):
         """Verify an audio file URL is included in the trial dict."""
@@ -222,7 +222,7 @@ class TestCreateTrialDict:
             "max_duration",
             "response_keys",
             "require_user_input",
-            "trial_type",
+            "stimulus_type",
             "record_media",
             "record_gaze",
             "is_calibration",

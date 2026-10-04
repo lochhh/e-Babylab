@@ -30,6 +30,7 @@ from .models import (
     OuterBlockItem,
     Question,
     SubjectData,
+    TrialItem,
     TrialResult,
 )
 
@@ -59,6 +60,7 @@ class Reporter:
             "Trial Number",
             "Trial Label",
             "Trial Code",
+            "Trial Type",
             "Visual Onset (ms)",
             "Audio Onset (ms)",
             "Visual Presented",
@@ -227,7 +229,7 @@ class Reporter:
         ).order_by("pk", "trial_number")
         # Attention getter and PAUSE rows share another trial's number by design
         trial_numbers = (
-            qs.exclude(trialitem__is_attention_getter=True)
+            qs.exclude(trialitem__trial_type=TrialItem.ATTENTION_GETTER)
             .exclude(key_pressed="PAUSE")
             .values_list("trial_number", flat=True)
         )
@@ -257,6 +259,7 @@ class Reporter:
                     ),
                     result.trialitem.label,
                     result.trialitem.code,
+                    result.trialitem.get_trial_type_display(),
                     result.trialitem.visual_onset,
                     result.trialitem.audio_onset,
                     (

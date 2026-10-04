@@ -226,9 +226,9 @@ def _trial_sequence(subject_data):
             rng.shuffle(inner_blocks)
         for block in inner_blocks:
             trial_items = list(
-                block.trialitem_set.filter(is_attention_getter=False).order_by(
-                    "position"
-                )
+                block.trialitem_set.exclude(
+                    trial_type=TrialItem.ATTENTION_GETTER
+                ).order_by("position")
             )
             if block.randomise_trials:
                 rng.shuffle(trial_items)
@@ -310,7 +310,7 @@ def _next_trials(subject_data):
 
 def create_trial_dict(trial, block, trial_number):
     """Return a dictionary containing the details of a trial."""
-    trial_type = ""
+    stimulus_type = ""
 
     if trial.visual_file:
         visual_file = trial.visual_file.url
@@ -319,9 +319,9 @@ def create_trial_dict(trial, block, trial_number):
             Path(trial.visual_file.original_filename or "").suffix.lower()
             in _video_exts
         ):
-            trial_type = "video"
+            stimulus_type = "video"
         else:
-            trial_type = "image"
+            stimulus_type = "image"
     else:
         visual_file = ""
 
@@ -342,7 +342,7 @@ def create_trial_dict(trial, block, trial_number):
         "max_duration": trial.max_duration,
         "response_keys": trial.response_keys.lower().replace(" ", "").split(","),
         "require_user_input": trial.user_input,  #'NO', 'YES'
-        "trial_type": trial_type,
+        "stimulus_type": stimulus_type,
         "record_media": trial.record_media,
         "record_gaze": trial.record_gaze,
         "is_calibration": trial.is_calibration,
@@ -374,7 +374,7 @@ def experiment_run(request, run_uuid):
         # participant's fullscreen tap
         attention_getters = TrialItem.objects.filter(
             blockitem__outerblockitem__listitem=subject_data.listitem,
-            is_attention_getter=True,
+            trial_type=TrialItem.ATTENTION_GETTER,
         ).select_related("blockitem")
         videos = [
             {"trial_id": d["trial_id"], "visual_file": d["visual_file"]}
@@ -382,7 +382,7 @@ def experiment_run(request, run_uuid):
                 (create_trial_dict(*t) for t in _pending_trials(subject_data)),
                 (create_trial_dict(ag, ag.blockitem, 0) for ag in attention_getters),
             )
-            if d["trial_type"] == "video"
+            if d["stimulus_type"] == "video"
         ]
 
     except (
@@ -520,14 +520,16 @@ def experiment_end(request, run_uuid):
     tpl = experiment.thank_you_page_tpl
 
     if subject_data.listitem:
-        tr_count = TrialItem.objects.filter(
-            blockitem__outerblockitem__listitem=subject_data.listitem,
-            is_attention_getter=False,
-        ).count()
-        completed_count = (
-            TrialResult.objects.filter(
-                subject=run_uuid, trialitem__is_attention_getter=False
+        tr_count = (
+            TrialItem.objects.filter(
+                blockitem__outerblockitem__listitem=subject_data.listitem,
             )
+            .exclude(trial_type=TrialItem.ATTENTION_GETTER)
+            .count()
+        )
+        completed_count = (
+            TrialResult.objects.filter(subject=run_uuid)
+            .exclude(trialitem__trial_type=TrialItem.ATTENTION_GETTER)
             .exclude(key_pressed="PAUSE")
             .values("trialitem")
             .distinct()

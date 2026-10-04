@@ -515,6 +515,14 @@ class TrialItem(models.Model):
         (YES, "Require user input"),
     )
 
+    REGULAR = "REG"
+    CALIBRATION = "CAL"
+    ATTENTION_GETTER = "AG"
+    TRIAL_TYPE_OPTIONS = (
+        (REGULAR, "Regular"),
+        (CALIBRATION, "Eye-tracker calibration"),
+        (ATTENTION_GETTER, "Attention getter"),
+    )
     ANY = "ANY"
     CELL = "CELL"
 
@@ -573,19 +581,12 @@ class TrialItem(models.Model):
             " to record eye-tracking data."
         ),
     )
-    is_calibration = models.BooleanField(
-        "calibrate eye-tracker",
-        default=False,
-        help_text=(
-            "This value will be ignored if the experiment is not set"
-            " to record eye-tracking data."
-        ),
-    )
     calibration_points = models.JSONField(
         default=default_calibration_points,
         null=False,
         help_text=mark_safe(
-            'These values will be ignored if "calibrate eye-tracker" is unchecked'
+            'These values will be ignored if the trial type is not "Eye-tracker'
+            ' calibration"'
             " and the experiment is not set to record eye-tracking data.<br/>"
             "The duration for which each calibration point is shown is determined"
             " by dividing the <em>maximum duration</em> with the number of"
@@ -598,13 +599,16 @@ class TrialItem(models.Model):
     grid_col = models.PositiveSmallIntegerField(
         "columns", default=1, validators=[MinValueValidator(1)]
     )
-    is_attention_getter = models.BooleanField(
-        "use as attention getter",
-        default=False,
+    trial_type = models.CharField(
+        "trial type",
+        max_length=3,
+        choices=TRIAL_TYPE_OPTIONS,
+        default=REGULAR,
         help_text=(
-            "Attention getters are skipped in the normal trial order and only shown"
-            " when another trial's dwell check fails. Keeping them in a dedicated"
-            " block lets them use that block's background colour."
+            "Calibration and attention getter trials need an experiment that"
+            " records eye-tracking. Attention getters are skipped in the normal"
+            " trial order and only shown when another trial's gaze dwell time"
+            " check fails."
         ),
     )
     attention_getter = models.ForeignKey(
@@ -613,7 +617,7 @@ class TrialItem(models.Model):
         blank=True,
         on_delete=models.PROTECT,
         related_name="triggering_trials",
-        limit_choices_to={"is_attention_getter": True},
+        limit_choices_to={"trial_type": ATTENTION_GETTER},
         help_text=(
             "If the participant looked at the dwell target for less than the"
             " minimum dwell time, show the selected attention getter once,"
@@ -682,11 +686,11 @@ class TrialItem(models.Model):
                 ),
             ),
             models.CheckConstraint(
-                condition=Q(is_attention_getter=False)
-                | Q(attention_getter__isnull=True),
+                # ponytail: Meta cannot see class constants; "AG" == ATTENTION_GETTER
+                condition=~Q(trial_type="AG") | Q(attention_getter__isnull=True),
                 name="trialitem_attention_getter_not_nested",
                 violation_error_message=(
-                    "An attention getter cannot have its own dwell check."
+                    "An attention getter cannot have its own gaze dwell time check."
                 ),
             ),
             models.CheckConstraint(
@@ -732,12 +736,12 @@ class TrialItem(models.Model):
                 )
         if self.min_dwell_time is not None and self.is_calibration:
             errors["min_dwell_time"] = (
-                "Dwell checks are not available on calibration trials."
+                "Gaze dwell time checks are not available on calibration trials."
             )
         if self.min_dwell_time is not None and not self.record_gaze:
             errors.setdefault(
                 "min_dwell_time",
-                "Dwell checks need eye-tracking enabled on this trial.",
+                "Gaze dwell time checks need eye-tracking enabled on this trial.",
             )
         if self.dwell_target_type == self.CELL:
             if self.grid_row == 1 and self.grid_col == 1:
@@ -765,10 +769,20 @@ class TrialItem(models.Model):
                 )
             )
             if users:
-                errors["is_attention_getter"] = (
+                errors["trial_type"] = (
                     "Still used as the attention getter of: "
                     f"{', '.join(users)}. Remove those references first."
                 )
+
+    @property
+    def is_calibration(self) -> bool:
+        """Return True if this is an eye-tracker calibration trial."""
+        return self.trial_type == self.CALIBRATION
+
+    @property
+    def is_attention_getter(self) -> bool:
+        """Return True if this is an attention getter trial."""
+        return self.trial_type == self.ATTENTION_GETTER
 
     @property
     def dwell_target(self) -> Cell | None:

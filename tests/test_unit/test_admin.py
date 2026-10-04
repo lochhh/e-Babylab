@@ -1529,7 +1529,7 @@ def ag_block_setup(trialitem_factory, attention_getter_factory, filer_file_facto
     trial = trialitem_factory(label="T1")
     ag = attention_getter_factory(trial, label="AG", link=False)
     other_ag = trialitem_factory(label="AG2", code="AG2")  # different experiment
-    other_ag.is_attention_getter = True
+    other_ag.trial_type = "AG"
     for t in (trial, ag, other_ag):
         t.visual_file = visual
         t.save()
@@ -1614,8 +1614,7 @@ def _formset_data(trials, overrides):
             "position": t.position,
             "dwell_target_type": "ANY",
         }
-        if t.is_attention_getter:
-            values["is_attention_getter"] = "on"
+        values["trial_type"] = t.trial_type
         values.update(overrides.get(t.pk, {}))
         data.update(
             {f"{prefix}-{i}-{k}": v for k, v in values.items() if v is not None}
@@ -1639,12 +1638,12 @@ def test_formset_rejects_pointing_at_attention_getter_unflagged_in_same_save(
         [trial, ag],
         {
             trial.pk: {"attention_getter": ag.pk, "min_dwell_time": 500},
-            ag.pk: {"is_attention_getter": None},
+            ag.pk: {"trial_type": "REG"},
         },
     )
     formset = formset_cls(data, instance=trial.blockitem, prefix="trialitem_set")
     assert not formset.is_valid()
-    assert "being unmarked" in str(formset.errors)
+    assert "being changed from an attention getter" in str(formset.errors)
 
 
 @pytest.mark.django_db

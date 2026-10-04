@@ -2,6 +2,7 @@
 
 import django.core.validators
 import django.db.models.deletion
+import experiments.models
 from django.db import migrations, models
 
 
@@ -16,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='trialitem',
             name='attention_getter',
-            field=models.ForeignKey(blank=True, help_text='If the participant looked at the dwell target for less than the minimum dwell time, show the selected attention getter once, straight after this trial. The experiment then carries on with the next trial; this trial is not repeated.', limit_choices_to={'is_attention_getter': True}, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='triggering_trials', to='experiments.trialitem'),
+            field=models.ForeignKey(blank=True, help_text='If the participant looked at the dwell target for less than the minimum dwell time, show the selected attention getter once, straight after this trial. The experiment then carries on with the next trial; this trial is not repeated.', limit_choices_to={'trial_type': 'AG'}, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='triggering_trials', to='experiments.trialitem'),
         ),
         migrations.AddField(
             model_name='trialitem',
@@ -35,13 +36,22 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='trialitem',
-            name='is_attention_getter',
-            field=models.BooleanField(default=False, help_text="Attention getters are skipped in the normal trial order and only shown when another trial's dwell check fails. Keeping them in a dedicated block lets them use that block's background colour.", verbose_name='use as attention getter'),
+            name='trial_type',
+            field=models.CharField(choices=[('REG', 'Regular'), ('CAL', 'Eye-tracker calibration'), ('AG', 'Attention getter')], default='REG', help_text="Calibration and attention getter trials need an experiment that records eye-tracking. Attention getters are skipped in the normal trial order and only shown when another trial's gaze dwell time check fails.", max_length=3, verbose_name='trial type'),
+        ),
+        migrations.RemoveField(
+            model_name='trialitem',
+            name='is_calibration',
         ),
         migrations.AddField(
             model_name='trialitem',
             name='min_dwell_time',
             field=models.PositiveIntegerField(blank=True, help_text='How long the participant must look at the dwell target during this trial. If they look for less, the attention getter is shown next.', null=True, verbose_name='minimum dwell time (ms)'),
+        ),
+        migrations.AlterField(
+            model_name='trialitem',
+            name='calibration_points',
+            field=models.JSONField(default=experiments.models.default_calibration_points, help_text='These values will be ignored if the trial type is not "Eye-tracker calibration" and the experiment is not set to record eye-tracking data.<br/>The duration for which each calibration point is shown is determined by dividing the <em>maximum duration</em> with the number of calibration points.'),
         ),
         migrations.AlterField(
             model_name='trialitem',
@@ -59,7 +69,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='trialitem',
-            constraint=models.CheckConstraint(condition=models.Q(('is_attention_getter', False), ('attention_getter__isnull', True), _connector='OR'), name='trialitem_attention_getter_not_nested', violation_error_message='An attention getter cannot have its own dwell check.'),
+            constraint=models.CheckConstraint(condition=models.Q(models.Q(('trial_type', 'AG'), _negated=True), ('attention_getter__isnull', True), _connector='OR'), name='trialitem_attention_getter_not_nested', violation_error_message='An attention getter cannot have its own gaze dwell time check.'),
         ),
         migrations.AddConstraint(
             model_name='trialitem',

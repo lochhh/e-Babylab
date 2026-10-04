@@ -178,7 +178,7 @@ class TrialItemInlineFormSet(BaseInlineFormSet):
             if f.instance.pk
             and (
                 f.cleaned_data.get("DELETE")
-                or not f.cleaned_data.get("is_attention_getter")
+                or f.cleaned_data.get("trial_type") != TrialItem.ATTENTION_GETTER
             )
         }
         for form in live:
@@ -190,7 +190,7 @@ class TrialItemInlineFormSet(BaseInlineFormSet):
             ):
                 form.add_error(
                     "attention_getter",
-                    f"'{ag.label}' is being unmarked as an attention getter or"
+                    f"'{ag.label}' is being changed from an attention getter or"
                     " deleted in this save.",
                 )
 
@@ -206,7 +206,7 @@ class TrialItemInline(admin.StackedInline):
     sortable_field_name = "position"
     formset = TrialItemInlineFormSet
     fieldsets = (
-        (None, {"fields": ("label", "code", "position", "is_attention_getter")}),
+        (None, {"fields": ("label", "code", "position", "trial_type")}),
         (
             "Stimulus",
             {
@@ -225,7 +225,7 @@ class TrialItemInline(admin.StackedInline):
             "Eye-tracking calibration",
             {
                 "classes": ("grp-collapse", "grp-closed"),
-                "fields": ("is_calibration", "calibration_points"),
+                "fields": ("calibration_points",),
             },
         ),
         (
@@ -272,7 +272,7 @@ class TrialItemInline(admin.StackedInline):
                 else None
             )
             kwargs["queryset"] = TrialItem.objects.filter(
-                is_attention_getter=True,
+                trial_type=TrialItem.ATTENTION_GETTER,
                 blockitem__outerblockitem__listitem=listitem_id,
             ).select_related("blockitem__outerblockitem")
         field = super().formfield_for_foreignkey(db_field, request, **kwargs)
