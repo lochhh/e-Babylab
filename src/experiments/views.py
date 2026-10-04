@@ -460,6 +460,15 @@ def store_result(request, run_uuid):
     return JsonResponse({"resultId": trialresult.pk})
 
 
+def _positive_int(value):
+    """Return ``value`` as a positive int, or None if it is not one."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
 def experiment_pause(request, run_uuid):
     """Generate the pause page of an experiment."""
     trial_id = None
@@ -469,21 +478,26 @@ def experiment_pause(request, run_uuid):
     if request.method == "POST":
         trial_id = int(request.POST.get("trialitem"))
 
-    # retrieve completed trials
-    all_trial_results = TrialResult.objects.filter(subject=subject_data)
-    # retrieve the last trial result as a TrialItem is required
-    # for the creation of a TrialResult.
-    last_trial_result = (
-        all_trial_results.exclude(key_pressed="PAUSE").order_by("-id").first()
-    )
-
-    if last_trial_result:  # only store pause as trial result when not the first trial
-        TrialResult.objects.create(
-            subject=subject_data,
-            trialitem=last_trial_result.trialitem,
-            key_pressed="PAUSE",
-            trial_number=all_trial_results.count() + 1,
-        )
+    if subject_data.listitem is not None:  # no list, no trials to record
+        # The trial on screen comes from untrusted client input: accept it only if it
+        # belongs to the subject's list, else fall back to the first pending trial.
+        trial_item = TrialItem.objects.filter(
+            pk=_positive_int(request.GET.get("trialitem")),
+            blockitem__outerblockitem__listitem=subject_data.listitem,
+        ).first()
+        trial_number = _positive_int(request.GET.get("trial_number"))
+        if trial_item is None or trial_number is None:
+            # First pending trial, or (None, None, None) if all trials are done
+            trial_item, _, trial_number = next(
+                _pending_trials(subject_data), (None,) * 3
+            )
+        if trial_item is not None:
+            TrialResult.objects.create(
+                subject=subject_data,
+                trialitem=trial_item,
+                key_pressed="PAUSE",
+                trial_number=trial_number,
+            )
 
     return _render_tpl(
         request,

@@ -51,6 +51,23 @@ export function init() {
     // Global timeout reference
     let globaltimer;
 
+    // Last trial shown (attention getters included); null only before the first trial starts
+    let currentTrial = null;
+
+    /**
+     * Pause page URL, carrying the trial on screen so the server can record it.
+     * @returns {string}
+     */
+    const pauseUrl = function () {
+        const base = `/${subjectUuid}/run/pause`;
+        if (!currentTrial) return base;
+        const params = new URLSearchParams({
+            trialitem: currentTrial.trial_id,
+            trial_number: currentTrial.trial_number,
+        });
+        return `${base}?${params}`;
+    };
+
     // Media stream object
     let mediaStream;
 
@@ -100,7 +117,7 @@ export function init() {
         globaltimer = setTimeout(() => {
             webcam.stopUploading();
             if (include_pause_page) {
-                window.location.replace(`/${subjectUuid}/run/pause`);
+                window.location.replace(pauseUrl());
             } else {
                 window.location.replace(`/${subjectUuid}/run/thankyou`);
             }
@@ -149,6 +166,7 @@ export function init() {
      *   loaded while this trial runs
      */
     const showNextTrial = function (trialObj, upcoming) {
+        currentTrial = trialObj;
         body.style.backgroundColor = trialObj.background_colour;
         preloadVideo(trialObj);
         if (upcoming) preloadVideo(upcoming);
@@ -659,7 +677,7 @@ export function init() {
      */
     const terminateStudy = function () {
         if (include_pause_page) {
-            window.location.replace(`/${subjectUuid}/run/pause`);
+            window.location.replace(pauseUrl());
         } else {
             window.location.replace(`/${subjectUuid}/run/thankyou`);
         }

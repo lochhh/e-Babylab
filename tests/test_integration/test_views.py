@@ -940,15 +940,15 @@ class TestExperimentPause:
         assert response.status_code == 200
 
     @pytest.mark.django_db
-    def test_post_stores_pause_result_after_first_trial(
+    def test_get_stores_pause_result_for_trial_on_screen(
         self, client, subjectdata_factory, trialresult_factory, experiment_with_trials
     ):
-        """Verify POSTing to the pause view creates a PAUSE TrialResult record."""
+        """Verify the pause view stores a PAUSE row for the queried trial."""
         exp, listitem, trial = experiment_with_trials
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         trialresult_factory(subject=sd, trialitem=trial)
         url = reverse("experiments:experimentPause", args=[sd.pk])
-        client.post(url, {"trialitem": trial.pk})
+        client.get(url, {"trialitem": trial.pk, "trial_number": 1})
         pause_results = exp_models.TrialResult.objects.filter(
             subject=sd, key_pressed="PAUSE"
         )

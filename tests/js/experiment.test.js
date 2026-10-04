@@ -308,6 +308,58 @@ describe('experiment.js — global timeout', () => {
   })
 })
 
+describe('experiment.js — pause redirect carries the trial on screen', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('adds trialitem and trial_number to the pause URL on timeout', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 500 })],
+      globalTimeout: '100',
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(110)
+    await flush()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('adds the params when the exit button is clicked mid-trial', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 500 })],
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('still carries the last trial after its result was posted', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 50 })],
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(100)
+    await flush()
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('storeresult'), expect.anything())
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenLastCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('uses the plain pause URL when no trial is on screen', () => {
+    const { locationReplace } = makeEnv({ trials: [], includePausePage: 'true' })
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause')
+  })
+})
+
 describe('experiment.js — video trial', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })

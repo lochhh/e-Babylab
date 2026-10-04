@@ -921,57 +921,68 @@ class TestExperimentPause:
         assert response.status_code == 200
         assert b"PAUSE_CONTENT" in response.content
 
-    def test_post_with_prior_trial_result_creates_pause_record(
+    @pytest.mark.parametrize(
+        ("target", "number", "done", "expected", "expected_number"),
+        [
+            pytest.param("t1", "7", (), "t1", 7, id="first-trial-no-prior-results"),
+            pytest.param("t2", "7", ("t1",), "t2", 7, id="regular-trial"),
+            pytest.param("ag", "1", ("t1",), "ag", 1, id="attention-getter"),
+            pytest.param("foreign", "7", (), "t1", 1, id="other-list-falls-back"),
+            pytest.param("abc", "7", (), "t1", 1, id="non-int-trialitem-falls-back"),
+            pytest.param("t2", "abc", (), "t1", 1, id="non-int-number-falls-back"),
+            pytest.param("t2", "0", (), "t1", 1, id="non-positive-number-falls-back"),
+            pytest.param(None, None, (), "t1", 1, id="missing-params-fall-back"),
+            pytest.param(None, None, ("t1",), "t2", 2, id="fallback-skips-completed"),
+            pytest.param(None, None, ("t1", "t2"), None, None, id="nothing-pending"),
+            pytest.param("t1", "7", "no-list", None, None, id="no-list"),
+            pytest.param(None, None, "no-list", None, None, id="no-list-no-params"),
+        ],
+    )
+    def test_pause_records_trial_on_screen(
         self,
         client,
-        experiment_factory,
-        listitem_factory,
-        subjectdata_factory,
         trialitem_factory,
+        attention_getter_factory,
+        subjectdata_factory,
         trialresult_factory,
+        target,
+        number,
+        done,
+        expected,
+        expected_number,
     ):
-        """Verify POSTing after a trial result creates a PAUSE TrialResult record."""
-        exp = _simple_experiment(experiment_factory)
-        li = listitem_factory(experiment=exp)
-        sd = subjectdata_factory(experiment=exp, listitem=li)
-        ti = trialitem_factory()
-        trialresult_factory(subject=sd, trialitem=ti)
-        assert (
-            exp_models.TrialResult.objects.filter(
-                subject=sd, key_pressed="PAUSE"
-            ).count()
-            == 0
+        """Verify the PAUSE row points at the (validated) trial on screen."""
+        t1 = trialitem_factory(label="T1", code="C1", position=1)
+        t2 = trialitem_factory(
+            blockitem=t1.blockitem, label="T2", code="C2", position=2
         )
-        url = reverse("experiments:experimentPause", args=(sd.pk,))
-        client.post(url, {"trialitem": str(ti.pk)})
-        assert (
-            exp_models.TrialResult.objects.filter(
-                subject=sd, key_pressed="PAUSE"
-            ).count()
-            == 1
-        )
+        items = {"t1": t1, "t2": t2, "ag": attention_getter_factory(t1)}
+        items["foreign"] = trialitem_factory()
+        listitem = t1.blockitem.outerblockitem.listitem
+        sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+        if done == "no-list":
+            sd.listitem = None
+            sd.save()
+            done = ()
+        for name in done:
+            trialresult_factory(subject=sd, trialitem=items[name])
+        params = {}
+        if target is not None:
+            params["trialitem"] = items[target].pk if target in items else target
+        if number is not None:
+            params["trial_number"] = number
 
-    def test_post_without_prior_trial_result_does_not_create_pause_record(
-        self,
-        client,
-        experiment_factory,
-        listitem_factory,
-        subjectdata_factory,
-        trialitem_factory,
-    ):
-        """Verify no PAUSE record is created when no prior trial result exists."""
-        exp = _simple_experiment(experiment_factory)
-        li = listitem_factory(experiment=exp)
-        sd = subjectdata_factory(experiment=exp, listitem=li)
-        ti = trialitem_factory()
-        url = reverse("experiments:experimentPause", args=(sd.pk,))
-        client.post(url, {"trialitem": str(ti.pk)})
-        assert (
-            exp_models.TrialResult.objects.filter(
-                subject=sd, key_pressed="PAUSE"
-            ).count()
-            == 0
-        )
+        client.get(reverse("experiments:experimentPause", args=(sd.pk,)), params)
+
+        rows = exp_models.TrialResult.objects.filter(subject=sd, key_pressed="PAUSE")
+        if expected is None:
+            assert not rows.exists()
+        else:
+            (row,) = rows
+            assert (row.trialitem, row.trial_number) == (
+                items[expected],
+                expected_number,
+            )
 
     def test_post_passes_trial_id_to_context(
         self,

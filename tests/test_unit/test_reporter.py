@@ -815,3 +815,22 @@ def test_attention_getter_rows_keep_trial_numbers_unique(
     qs, unique = rep._get_trial_results(sd)
     assert unique is True
     assert list(qs.values_list("trialitem", flat=True)) == [trial.pk, ag.pk]
+
+
+@pytest.mark.django_db
+def test_pause_row_sharing_trial_number_keeps_unique(
+    monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
+):
+    """A PAUSE row shares the interrupted trial's number but stays in the export."""
+    trial = trialitem_factory(label="T1")
+    listitem = trial.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    rpt.TrialResult.objects.create(subject=sd, trialitem=trial, trial_number=1)
+    pause = rpt.TrialResult.objects.create(
+        subject=sd, trialitem=trial, trial_number=1, key_pressed="PAUSE"
+    )
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    qs, unique = rep._get_trial_results(sd)
+    assert unique is True
+    assert pause in qs
