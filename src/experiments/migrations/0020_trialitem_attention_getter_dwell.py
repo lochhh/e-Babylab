@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='trialitem',
             name='trial_type',
-            field=models.CharField(choices=[('REG', 'Regular'), ('CAL', 'Eye-tracker calibration'), ('AG', 'Attention getter')], default='REG', help_text="Calibration and attention getter trials need an experiment that records eye-tracking. Attention getters are skipped in the normal trial order and only shown when another trial's gaze dwell time check fails.", max_length=3, verbose_name='trial type'),
+            field=models.CharField(choices=[('REG', 'Regular'), ('CAL', 'Eye-tracking calibration'), ('AG', 'Attention getter')], default='REG', help_text="Calibration and attention getter trials need an experiment that records eye-tracking. Attention getters are skipped in the normal trial order and only shown when another trial's gaze dwell time check fails.", max_length=3, verbose_name='trial type'),
         ),
         migrations.RemoveField(
             model_name='trialitem',
@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='trialitem',
             name='calibration_points',
-            field=models.JSONField(default=experiments.models.default_calibration_points, help_text='These values will be ignored if the trial type is not "Eye-tracker calibration" and the experiment is not set to record eye-tracking data.<br/>The duration for which each calibration point is shown is determined by dividing the <em>maximum duration</em> with the number of calibration points.'),
+            field=models.JSONField(default=experiments.models.default_calibration_points, help_text='These values will be ignored if the trial type is not "Eye-tracking calibration" or the experiment is not set to record eye-tracking data.<br/>The duration for which each calibration point is shown is determined by dividing the <em>maximum duration</em> with the number of calibration points.'),
         ),
         migrations.AlterField(
             model_name='trialitem',

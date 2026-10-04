@@ -2,9 +2,10 @@
 
 from django.conf import settings
 from django.contrib import admin
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import models
 from django.db.models import Q
-from django.forms import BaseInlineFormSet, Script, Textarea
+from django.forms import BaseInlineFormSet, ModelForm, Script, Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -63,7 +64,6 @@ CDI_HELP_TEXT = " ".join(
 
 GRID_LAYOUT_HELP_TEXT = " ".join(
     [
-        "<p>Note:",
         "<p><em>Rows</em> and <em>Columns</em> are for defining a grid layout"
         " (nrow * ncol), for establishing areas of interest (applicable to"
         " click responses and/or eye-tracking). <br />",
@@ -72,8 +72,12 @@ GRID_LAYOUT_HELP_TEXT = " ".join(
         " right side (1,2) of the visual stimulus. <br />",
         "A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2),"
         " bottom-left (2,1), and bottom-right (2,2) clicks and/or gazes. <br />",
-        "<em>Calibration points</em> for eye-tracking are defined"
-        " in percentages. <br />",
+    ]
+)
+
+CALIBRATION_HELP_TEXT = " ".join(
+    [
+        "Calibration points for eye-tracking are defined in percentages. <br />",
         "For instance, specifying [10,50] places the visual stimulus at 10%"
         " of the width of the screen from the left edge and 50% of the"
         " height of the screen from the top edge. <br />",
@@ -195,6 +199,54 @@ class TrialItemInlineFormSet(BaseInlineFormSet):
                 )
 
 
+class TrialItemForm(ModelForm):
+    """Trial form without label colons (Django 6 renders file/FK labels as legends)."""
+
+    def __init__(self, *args, **kwargs):
+        """Default the label suffix to empty."""
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+    HIDDEN_FIELD_PREFIXES = {
+        "trial_type": "Trial type",
+        "record_gaze": "Enable eye-tracking",
+    }
+
+    def clean(self):
+        """Clear dwell-check values when the trial is not a regular trial."""
+        cleaned = super().clean()
+        if cleaned.get("trial_type", TrialItem.REGULAR) != TrialItem.REGULAR:
+            cleared = {
+                "attention_getter": None,
+                "min_dwell_time": None,
+                "dwell_target_type": TrialItem.ANY,
+                "dwell_target_row": None,
+                "dwell_target_col": None,
+            }
+            cleaned.update({k: v for k, v in cleared.items() if k in self.fields})
+        return cleaned
+
+    def _update_errors(self, errors):
+        """Show errors on fields hidden from this form as non-field errors."""
+        error_dict = getattr(errors, "error_dict", {})
+        hidden = error_dict.keys() - self.fields.keys() - {NON_FIELD_ERRORS}
+        moved = []
+        for name in hidden:
+            prefix = self.HIDDEN_FIELD_PREFIXES.get(name, "Gaze dwell time check")
+            moved += [
+                ValidationError(
+                    "%(prefix)s: %(msg)s To edit these settings, set the"
+                    " experiment's Recording option (General Settings) to include"
+                    " eye-tracking.",
+                    params={"prefix": prefix, "msg": " ".join(err.messages)},
+                )
+                for err in error_dict.pop(name)
+            ]
+        if moved:
+            error_dict.setdefault(NON_FIELD_ERRORS, []).extend(moved)
+        super()._update_errors(errors)
+
+
 class TrialItemInline(admin.StackedInline):
     """Inline admin for editing trial items within a block item."""
 
@@ -204,6 +256,7 @@ class TrialItemInline(admin.StackedInline):
     verbose_name_plural = "Trials"
     inline_classes = ["grp-collapse grp-open"]
     sortable_field_name = "position"
+    form = TrialItemForm
     formset = TrialItemInlineFormSet
     fieldsets = (
         (None, {"fields": ("label", "code", "position", "trial_type")}),
@@ -222,13 +275,6 @@ class TrialItemInline(admin.StackedInline):
         ("Response", {"fields": ("user_input", "response_keys")}),
         ("Recording", {"fields": ("record_media", "record_gaze")}),
         (
-            "Eye-tracking calibration",
-            {
-                "classes": ("grp-collapse", "grp-closed"),
-                "fields": ("calibration_points",),
-            },
-        ),
-        (
             "Grid",
             {
                 "fields": (("grid_row", "grid_col"),),
@@ -236,28 +282,63 @@ class TrialItemInline(admin.StackedInline):
             },
         ),
         (
-            "Gaze dwell time and attention getter",
+            "Eye-tracking calibration",
             {
-                "classes": ("grp-collapse", "grp-closed", "dwell-check"),
+                "classes": ("eye-calibration",),
+                "fields": ("calibration_points",),
+                "description": f'<div class="help">{CALIBRATION_HELP_TEXT}</div>',
+            },
+        ),
+        (
+            "Gaze dwell time check",
+            {
+                "classes": ("dwell-check",),
                 "fields": (
+                    "attention_getter",
                     "min_dwell_time",
                     "dwell_target_type",
                     ("dwell_target_row", "dwell_target_col"),
-                    "attention_getter",
                 ),
                 "description": (
-                    '<div class="help">If gaze dwell in the target is below the'
-                    " minimum, the attention getter is shown before the next trial."
-                    " Requires eye-tracking.</div>"
+                    '<div class="help">Launch an attention getter trial immediately'
+                    " after this trial if the participant's dwell time on the dwell"
+                    " target falls below the minimum dwell time. Requires"
+                    " <em>Enable eye-tracking</em> (Recording).</div>"
                 ),
             },
         ),
     )
 
-    class Media:
-        """Hide the dwell fieldset for attention getters."""
+    def get_fieldsets(self, request, obj=None):
+        """Drop eye-tracking fields unless the parent block's experiment records gaze.
 
-        js = (Script("experiments/js/admin/attention-getter-toggle.js", type="module"),)
+        Args:
+            request: The current request.
+            obj: The parent ``BlockItem``, or None on the add page (show all).
+
+        Returns:
+            The fieldsets to render. Omitted fields keep their saved values.
+
+        """
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj is None:
+            return fieldsets
+        experiment = obj.outerblockitem.listitem.experiment
+        if experiment.recording_option in (Experiment.EYE, Experiment.ALL):
+            return fieldsets
+        eye_only = {"trial_type", "record_gaze"}
+        kept = []
+        for name, opts in fieldsets:
+            if set(opts.get("classes", ())) & {"eye-calibration", "dwell-check"}:
+                continue
+            fields = [f for f in opts["fields"] if f not in eye_only]
+            kept.append((name, {**opts, "fields": fields}))
+        return kept
+
+    class Media:
+        """Show the eye-tracking sections that apply to the trial type."""
+
+        js = (Script("experiments/js/admin/trial-type-toggle.js", type="module"),)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Offer only attention getters from the same list as the edited block."""

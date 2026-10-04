@@ -603,7 +603,7 @@ def test_create_trial_worksheet_with_one_result(
     "trial_type,expected",
     [
         pytest.param("REG", "Regular", id="regular"),
-        pytest.param("CAL", "Eye-tracker calibration", id="calibration"),
+        pytest.param("CAL", "Eye-tracking calibration", id="calibration"),
         pytest.param("AG", "Attention getter", id="attention-getter"),
     ],
 )

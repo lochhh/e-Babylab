@@ -1,6 +1,7 @@
 """Unit tests for experiments/admin.py."""
 
 import json
+import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,7 @@ import pytest
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -1533,6 +1535,9 @@ def ag_block_setup(trialitem_factory, attention_getter_factory, filer_file_facto
     for t in (trial, ag, other_ag):
         t.visual_file = visual
         t.save()
+    exp = trial.blockitem.outerblockitem.listitem.experiment
+    exp.recording_option = Experiment.EYE  # dwell fields only exist for eye-tracking
+    exp.save()
     return trial, ag, other_ag
 
 
@@ -1674,3 +1679,271 @@ def test_listitem_change_view_renders_flowchart(client, listitem_factory):
     assert response.status_code == 200
     assert b'class="mermaid"' in response.content
     assert b"flowchart TD" in response.content
+
+
+# ---------------------------------------------------------------------------
+# TrialItemInline — layout and eye-tracking visibility
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def block_page(client, trialitem_factory):
+    """Return (trial, fetch) where fetch(recording_option) renders the block page."""
+    trial = trialitem_factory()
+    client.force_login(User.objects.create_superuser("layoutadmin", "l@x.org", "pw"))
+
+    def fetch(recording_option):
+        exp = trial.blockitem.outerblockitem.listitem.experiment
+        exp.recording_option = recording_option
+        exp.save()
+        url = reverse("admin:experiments_blockitem_change", args=[trial.blockitem.pk])
+        response = client.get(url)
+        assert response.status_code == 200
+        return response.content.decode()
+
+    fetch.trial = trial
+    return fetch
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "option",
+    [pytest.param(Experiment.EYE, id="eye"), pytest.param(Experiment.ALL, id="all")],
+)
+def test_trial_inline_sections_in_order_without_collapse(block_page, option):
+    """Eye-tracking experiments show every section, in order, none collapsible."""
+    html = block_page(option)
+    titles = [
+        "Stimulus",
+        "Response",
+        "Recording",
+        "Grid",
+        "Eye-tracking calibration",
+        "Gaze dwell time check",
+    ]
+    found = [
+        re.search(rf'<fieldset class="([^"]*)"><h4[^>]*>{t}</h4>', html) for t in titles
+    ]
+    assert all(found)
+    positions = [m.start() for m in found]
+    assert positions == sorted(positions)
+    assert 'name="trialitem_set-0-trial_type"' in html
+    assert all("grp-collapse" not in m.group(1) for m in found)
+    assert "eye-calibration" in found[4].group(1)
+    assert "dwell-check" in found[5].group(1)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("label", ["Visual file", "Audio file", "Attention getter"])
+def test_trial_inline_labels_have_no_colon(block_page, label):
+    """File and FK labels render without a trailing colon."""
+    html = block_page(Experiment.EYE)
+    assert f">{label}:<" not in html
+    assert f">{label}<" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "option",
+    [
+        pytest.param(Experiment.NONE, id="key-click-only"),
+        pytest.param(Experiment.AUDIO, id="audio"),
+        pytest.param(Experiment.VIDEO, id="video"),
+    ],
+)
+def test_trial_inline_hides_eye_tracking_for_other_recording_options(
+    block_page, option
+):
+    """Without eye-tracking, its sections and fields are not rendered."""
+    html = block_page(option)
+    assert "Eye-tracking calibration" not in html
+    assert "Gaze dwell time check" not in html
+    assert "record_gaze" not in html
+    assert "trial_type" not in html
+    assert ">Recording</h4>" in html
+
+
+@pytest.mark.django_db
+def test_non_eye_save_keeps_trial_type_and_dwell_values(
+    admin_site,
+    rf,
+    user,
+    trialitem_factory,
+    attention_getter_factory,
+    filer_file_factory,
+):
+    """Fields hidden from the form keep their saved values on save."""
+    trial = trialitem_factory(label="T1")
+    ag = attention_getter_factory(trial, link=True)
+    trial.trial_type = TrialItem.REGULAR
+    trial.dwell_target_type = "CELL"
+    trial.dwell_target_row = 1
+    trial.dwell_target_col = 2
+    trial.grid_col = 2
+    trial.record_gaze = True
+    trial.visual_file = filer_file_factory("pic.png")
+    trial.save()
+    exp = trial.blockitem.outerblockitem.listitem.experiment
+    exp.recording_option = Experiment.NONE
+    exp.save()
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    data = _formset_data([trial], {trial.pk: {"grid_col": 2}})
+    formset = inline.get_formset(request, trial.blockitem)(
+        data, instance=trial.blockitem, prefix="trialitem_set"
+    )
+    assert "trial_type" not in formset.forms[0].fields
+    assert formset.is_valid(), formset.errors
+    formset.save()
+    trial.refresh_from_db()
+    assert trial.trial_type == TrialItem.REGULAR
+    assert trial.attention_getter == ag
+    assert (trial.dwell_target_type, trial.dwell_target_row) == ("CELL", 1)
+
+
+@pytest.mark.django_db
+def test_non_eye_hidden_field_error_becomes_non_field_error(
+    admin_site,
+    rf,
+    user,
+    trialitem_factory,
+    attention_getter_factory,
+    filer_file_factory,
+):
+    """An error on a hidden eye-tracking field is shown with a hint, not a 500."""
+    trial = trialitem_factory(label="T1")
+    attention_getter_factory(trial, link=True)
+    trial.dwell_target_type, trial.dwell_target_row, trial.dwell_target_col = (
+        "CELL",
+        2,
+        1,
+    )
+    trial.grid_row = 2
+    trial.record_gaze = True
+    trial.visual_file = filer_file_factory("pic.png")
+    trial.save()
+    exp = trial.blockitem.outerblockitem.listitem.experiment
+    exp.recording_option = Experiment.NONE
+    exp.save()
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    data = _formset_data([trial], {trial.pk: {"grid_row": 1, "grid_col": 1}})
+    formset = inline.get_formset(request, trial.blockitem)(
+        data, instance=trial.blockitem, prefix="trialitem_set"
+    )
+    assert not formset.is_valid()
+    errors = " ".join(formset.forms[0].non_field_errors())
+    assert "Gaze dwell time check:" in errors
+    assert (
+        "set the experiment's Recording option (General Settings) to include"
+        " eye-tracking." in errors
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("option", "errors", "expected", "unexpected"),
+    [
+        pytest.param(
+            Experiment.EYE,
+            {NON_FIELD_ERRORS: ["Constraint broken."]},
+            ["Constraint broken."],
+            ["Gaze dwell time check", "Recording option"],
+            id="genuine-non-field-error-untouched",
+        ),
+        pytest.param(
+            Experiment.NONE,
+            {NON_FIELD_ERRORS: ["Constraint broken."], "trial_type": ["Bad type."]},
+            ["Constraint broken.", "Trial type: Bad type. To edit these settings"],
+            ["Gaze dwell time check"],
+            id="hidden-trial-type-labelled",
+        ),
+    ],
+)
+def test_hidden_field_error_labels(
+    admin_site, rf, user, ag_block_setup, option, errors, expected, unexpected
+):
+    """Only errors on hidden fields are relabelled; genuine ones are kept as is."""
+    trial, _, _ = ag_block_setup
+    exp = trial.blockitem.outerblockitem.listitem.experiment
+    exp.recording_option = option
+    exp.save()
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    formset = inline.get_formset(request, trial.blockitem)(
+        _formset_data([trial], {}), instance=trial.blockitem, prefix="trialitem_set"
+    )
+    assert formset.is_valid(), formset.errors
+    form = formset.forms[0]
+    form._update_errors(ValidationError(errors))
+    text = " ".join(form.non_field_errors())
+    assert all(e in text for e in expected)
+    assert not any(u in text for u in unexpected)
+
+
+@pytest.mark.django_db
+def test_formset_shows_min_dwell_above_max_duration_on_the_field(
+    admin_site, rf, user, ag_block_setup
+):
+    """The max-duration check surfaces as an error on the min_dwell_time field."""
+    trial, ag, _ = ag_block_setup
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    data = _formset_data(
+        [trial], {trial.pk: {"attention_getter": ag.pk, "min_dwell_time": 1001}}
+    )
+    formset = inline.get_formset(request, trial.blockitem)(
+        data, instance=trial.blockitem, prefix="trialitem_set"
+    )
+    assert not formset.is_valid()
+    assert "Must not exceed the maximum" in str(
+        formset.forms[0].errors["min_dwell_time"]
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("trial_type", "kept"),
+    [
+        pytest.param("AG", False, id="to-attention-getter-clears"),
+        pytest.param("CAL", False, id="to-calibration-clears"),
+        pytest.param("REG", True, id="regular-keeps"),
+    ],
+)
+def test_formset_clears_dwell_values_unless_regular(
+    admin_site, rf, user, ag_block_setup, trial_type, kept
+):
+    """Posted dwell values are cleared on save for non-regular trials."""
+    trial, ag, _ = ag_block_setup
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, trial.blockitem)
+    data = _formset_data(
+        [trial],
+        {
+            trial.pk: {
+                "trial_type": trial_type,
+                "attention_getter": ag.pk,
+                "min_dwell_time": 500,
+                "dwell_target_type": "CELL",
+                "dwell_target_row": 1,
+                "dwell_target_col": 2,
+                "grid_col": 2,
+            }
+        },
+    )
+    formset = inline.get_formset(request, trial.blockitem)(
+        data, instance=trial.blockitem, prefix="trialitem_set"
+    )
+    assert formset.is_valid(), formset.errors
+    formset.save()
+    trial.refresh_from_db()
+    values = (
+        trial.attention_getter,
+        trial.min_dwell_time,
+        trial.dwell_target_type,
+        trial.dwell_target_row,
+        trial.dwell_target_col,
+    )
+    assert values == (
+        (ag, 500, "CELL", 1, 2) if kept else (None, None, "ANY", None, None)
+    )

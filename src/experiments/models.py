@@ -520,7 +520,7 @@ class TrialItem(models.Model):
     ATTENTION_GETTER = "AG"
     TRIAL_TYPE_OPTIONS = (
         (REGULAR, "Regular"),
-        (CALIBRATION, "Eye-tracker calibration"),
+        (CALIBRATION, "Eye-tracking calibration"),
         (ATTENTION_GETTER, "Attention getter"),
     )
     ANY = "ANY"
@@ -585,9 +585,9 @@ class TrialItem(models.Model):
         default=default_calibration_points,
         null=False,
         help_text=mark_safe(
-            'These values will be ignored if the trial type is not "Eye-tracker'
+            'These values will be ignored if the trial type is not "Eye-tracking'
             ' calibration"'
-            " and the experiment is not set to record eye-tracking data.<br/>"
+            " or the experiment is not set to record eye-tracking data.<br/>"
             "The duration for which each calibration point is shown is determined"
             " by dividing the <em>maximum duration</em> with the number of"
             " calibration points."
@@ -671,6 +671,7 @@ class TrialItem(models.Model):
         ".ogg",
         ".webm",
     }
+    _VIDEO_EXTENSIONS: ClassVar[set[str]] = {".mp4", ".ogg", ".webm"}
 
     class Meta:
         """Orders trials by position and guards dwell-check consistency."""
@@ -738,6 +739,18 @@ class TrialItem(models.Model):
             errors["min_dwell_time"] = (
                 "Gaze dwell time checks are not available on calibration trials."
             )
+        if (
+            self.min_dwell_time is not None
+            and self.max_duration is not None
+            and self.min_dwell_time > self.max_duration
+            and not self._ignores_max_duration
+        ):
+            errors.setdefault(
+                "min_dwell_time",
+                f"Must not exceed the maximum duration ({self.max_duration} ms);"
+                " otherwise the attention getter is shown after every run of"
+                " this trial.",
+            )
         if self.min_dwell_time is not None and not self.record_gaze:
             errors.setdefault(
                 "min_dwell_time",
@@ -773,6 +786,15 @@ class TrialItem(models.Model):
                     "Still used as the attention getter of: "
                     f"{', '.join(users)}. Remove those references first."
                 )
+
+    @property
+    def _ignores_max_duration(self) -> bool:
+        """Return True for video trials without user input (they run to the end)."""
+        name = self.visual_file.original_filename.lower() if self.visual_file else ""
+        return (
+            os.path.splitext(name)[1] in self._VIDEO_EXTENSIONS
+            and self.user_input == self.NO
+        )
 
     @property
     def is_calibration(self) -> bool:

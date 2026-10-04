@@ -533,6 +533,32 @@ def test_trialitem_clean_accepts_dwell_check(ag_pair, filer_file_factory):
     trial.full_clean()
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("filename", "user_input", "min_dwell", "valid"),
+    [
+        pytest.param("a.png", "NO", 1001, False, id="image-over-max"),
+        pytest.param("a.png", "NO", 1000, True, id="image-equal-max"),
+        pytest.param("a.mp4", "NO", 1001, True, id="video-no-input-skipped"),
+        pytest.param("a.mp4", "YES", 1001, False, id="video-with-input-over-max"),
+    ],
+)
+def test_trialitem_min_dwell_must_not_exceed_max_duration(
+    ag_pair, filer_file_factory, filename, user_input, min_dwell, valid
+):
+    """Dwell time above a timed trial's max duration would always trigger the AG."""
+    trial, ag = ag_pair
+    trial.visual_file = filer_file_factory(filename)
+    trial.user_input = user_input
+    trial.attention_getter = ag
+    trial.min_dwell_time = min_dwell  # max_duration is 1000
+    if valid:
+        trial.full_clean()
+    else:
+        with pytest.raises(ValidationError, match="Must not exceed the maximum"):
+            trial.full_clean()
+
+
 def _other_list_ag(trial, ag, trialitem_factory):
     other = trialitem_factory(label="AG2", code="AG2")  # new experiment/list
     other.trial_type = "AG"
