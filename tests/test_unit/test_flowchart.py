@@ -32,7 +32,7 @@ def test_flowchart_structure(structure):
     assert f'subgraph O{outer.pk}["Outer: Fam"]' in src
     assert f'subgraph B{block.pk}["Block: Main"]' in src
     assert f"T{t1.pk} --> T{t2.pk}" in src
-    assert f"B{block.pk} --> B{ag_block.pk}" in src
+    assert f"B{block.pk} --> B{ag_block.pk}" not in src
     assert f'T{t1.pk} -.->|"dwell #60; 500 ms"| T{ag.pk}' in src
     assert f'T{ag.pk}(["AG"])' in src
     assert f"class T{ag.pk} ag" in src
@@ -73,3 +73,43 @@ def test_flowchart_escapes_labels(structure):
 def test_flowchart_empty_list(listitem_factory):
     """A list without blocks renders a placeholder node."""
     assert "No trials yet" in list_flowchart(listitem_factory())
+
+
+@pytest.mark.django_db
+def test_flowchart_ag_only_block_still_drawn(structure):
+    """An attention-getter-only block keeps its subgraph, node and dwell edge."""
+    listitem, _, _, ag_block, _, _, ag = structure
+    src = list_flowchart(listitem)
+    assert f"subgraph B{ag_block.pk}[" in src
+    assert f'T{ag.pk}(["AG"])' in src
+
+
+@pytest.mark.django_db
+def test_flowchart_mixed_block_still_chains(
+    structure, blockitem_factory, trialitem_factory
+):
+    """A block with regular trials and an attention getter takes part in the order."""
+    listitem, outer, block, *_ = structure
+    mixed = blockitem_factory(outerblock=outer, label="Mixed", position=50)
+    trialitem_factory(blockitem=mixed, label="M1", code="M1")
+    extra = trialitem_factory(blockitem=mixed, label="X", code="X")
+    extra.trial_type = "AG"
+    extra.save()
+    src = list_flowchart(listitem)
+    assert f"B{block.pk} --> B{mixed.pk}" in src
+
+
+@pytest.mark.django_db
+def test_flowchart_ag_only_outer_block_not_chained(
+    structure, outerblock_factory, blockitem_factory, trialitem_factory
+):
+    """An outer block whose blocks are all attention-getter-only has no order arrows."""
+    listitem, outer, *_ = structure
+    ag_outer = outerblock_factory(listitem=listitem, outer_block_name="AGs", position=5)
+    b = blockitem_factory(outerblock=ag_outer, label="AGB")
+    ag = trialitem_factory(blockitem=b, label="X", code="X")
+    ag.trial_type = "AG"
+    ag.save()
+    src = list_flowchart(listitem)
+    assert f"subgraph O{ag_outer.pk}[" in src
+    assert f"O{outer.pk} --> O{ag_outer.pk}" not in src

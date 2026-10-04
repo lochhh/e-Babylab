@@ -67,16 +67,16 @@ def list_flowchart(list_item: ListItem) -> str:
     """
     lines = ["flowchart TD"]
     edges: list[str] = []
-    outer_ids: list[str] = []
+    outer_ids: list[str] = []  # outer blocks with a block in the order chain
+    has_outer = False
     for outer in list_item.outerblockitem_set.order_by("position"):
-        outer_ids.append(f"O{outer.pk}")
+        has_outer = True
         suffix = " (randomised blocks)" if outer.randomise_inner_blocks else ""
         lines.append(
             f'  subgraph O{outer.pk}["Outer: {_text(outer.outer_block_name)}{suffix}"]'
         )
-        block_ids: list[str] = []
+        block_ids: list[str] = []  # blocks with a regular trial, in order
         for block in outer.blockitem_set.order_by("position"):
-            block_ids.append(f"B{block.pk}")
             suffix = " (randomised)" if block.randomise_trials else ""
             lines.append(
                 f'    subgraph B{block.pk}["Block: {_text(block.label)}{suffix}"]'
@@ -91,13 +91,19 @@ def list_flowchart(list_item: ListItem) -> str:
                 trial_ids.append(f"T{trial.pk}")
                 if trial.attention_getter_id:
                     edges.append(_dwell_edge(trial))
+            # Attention getters are skipped in sequence, so AG-only blocks are
+            # not chained (empty blocks still are).
+            if trial_ids or not block.trialitem_set.exists():
+                block_ids.append(f"B{block.pk}")
             if not block.randomise_trials:
                 lines.extend("  " + e for e in _chain(trial_ids))
             lines.append("    end")
         lines.append("  end")
+        if block_ids or not outer.blockitem_set.exists():
+            outer_ids.append(f"O{outer.pk}")
         if not outer.randomise_inner_blocks:
             edges.extend(_chain(block_ids))
-    if not outer_ids:
+    if not has_outer:
         return 'flowchart TD\n  empty["No trials yet"]'
     edges.extend(_chain(outer_ids))
     lines.extend(edges)

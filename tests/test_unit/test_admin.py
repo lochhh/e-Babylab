@@ -1680,6 +1680,11 @@ def test_listitem_change_view_renders_flowchart(client, listitem_factory):
     assert response.status_code == 200
     assert b'class="mermaid"' in response.content
     assert b"flowchart TD" in response.content
+    # Same group markup as the neighbouring inline sections, with open/close icons
+    assert b'class="inline-group grp-group grp-stacked" id="flowchart-group"' in (
+        response.content
+    )
+    assert b'class="grp-icon grp-close-handler" title="Close"' in response.content
 
 
 # ---------------------------------------------------------------------------

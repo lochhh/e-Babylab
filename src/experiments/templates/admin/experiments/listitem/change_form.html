@@ -3,18 +3,46 @@
 {% block after_field_sets %}
 {{ block.super }}
 {% if flowchart %}
-<fieldset class="grp-module grp-collapse grp-open">
+{# Same markup as Grappelli's stacked inline groups: grey header, open/close icons #}
+<div class="inline-group grp-group grp-stacked" id="flowchart-group">
   <h2 class="grp-collapse-handler">Flowchart</h2>
-  <div class="grp-row">
-    <p class="grp-help">Saved structure only. Dashed arrows lead to attention getters; randomised parts have no order arrows.</p>
-    {# Falls back to the raw Mermaid source if the CDN is unreachable #}
-    <pre class="mermaid">{{ flowchart }}</pre>
+  <ul class="grp-tools">
+    <li><a href="javascript://" class="grp-icon grp-open-handler" title="Open"></a></li>
+    <li><a href="javascript://" class="grp-icon grp-close-handler" title="Close"></a></li>
+  </ul>
+  <div class="grp-items">
+    <div class="grp-module grp-collapse grp-open">
+      <div class="grp-row">
+        <p>Overview of the currently saved design. Solid arrows show the presentation order and are not displayed for randomised components. Dashed arrows indicate transitions to attention getter trials. Changes made below will appear here only after you click Save.</p>
+        {# Falls back to the raw Mermaid source if the CDN is unreachable #}
+        <pre class="mermaid">{{ flowchart }}</pre>
+      </div>
+    </div>
   </div>
-</fieldset>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js"
         integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous"></script>
 <script>
-  if (window.mermaid) { mermaid.initialize({ startOnLoad: true, securityLevel: "strict" }); }
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: "strict",
+      // Grappelli palette
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#e1f0f5",
+        primaryBorderColor: "#309bbf",
+        primaryTextColor: "#373737",
+        lineColor: "#5e5e5e",
+        clusterBkg: "#f5f5f5",
+        clusterBorder: "#d4d4d4",
+        // Explicit (not "inherit"): inside <pre> that would be monospace,
+        // which is wider than what Mermaid measures, truncating labels
+        fontFamily: "Arial, sans-serif",
+        fontSize: "12px",  // Grappelli body text size
+      },
+    });
+  }
 </script>
 {% endif %}
 {% endblock %}
