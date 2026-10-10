@@ -790,11 +790,13 @@ class TrialItem(models.Model):
     @property
     def _ignores_max_duration(self) -> bool:
         """Return True for video trials without user input (they run to the end)."""
-        name = self.visual_file.original_filename.lower() if self.visual_file else ""
-        return (
-            os.path.splitext(name)[1] in self._VIDEO_EXTENSIONS
-            and self.user_input == self.NO
-        )
+        return self.has_video and self.user_input == self.NO
+
+    @property
+    def has_video(self) -> bool:
+        """Return True if the visual stimulus is a video file."""
+        name = (self.visual_file.original_filename or "") if self.visual_file else ""
+        return os.path.splitext(name.lower())[1] in self._VIDEO_EXTENSIONS
 
     @property
     def is_calibration(self) -> bool:

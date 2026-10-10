@@ -6,7 +6,6 @@ import os.path
 import random as _random
 import uuid
 from itertools import chain
-from pathlib import Path
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -314,14 +313,7 @@ def create_trial_dict(trial, block, trial_number):
 
     if trial.visual_file:
         visual_file = trial.visual_file.url
-        _video_exts = {".mp4", ".ogg", ".webm"}
-        if (
-            Path(trial.visual_file.original_filename or "").suffix.lower()
-            in _video_exts
-        ):
-            stimulus_type = "video"
-        else:
-            stimulus_type = "image"
+        stimulus_type = "video" if trial.has_video else "image"
     else:
         visual_file = ""
 

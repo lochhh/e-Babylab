@@ -559,6 +559,24 @@ def test_trialitem_min_dwell_must_not_exceed_max_duration(
             trial.full_clean()
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        pytest.param("a.MP4", True, id="video"),
+        pytest.param("a.png", False, id="image"),
+        pytest.param(None, False, id="null-filename"),
+    ],
+)
+def test_trialitem_has_video(trialitem_factory, filer_file_factory, filename, expected):
+    """has_video checks the visual file's extension and tolerates a null filename."""
+    trial = trialitem_factory()
+    trial.visual_file = filer_file_factory(filename or "a.png")
+    trial.visual_file.original_filename = filename
+    assert trial.has_video is expected
+    assert trial._ignores_max_duration is (expected and trial.user_input == "NO")
+
+
 def _other_list_ag(trial, ag, trialitem_factory):
     other = trialitem_factory(label="AG2", code="AG2")  # new experiment/list
     other.trial_type = "AG"

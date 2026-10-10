@@ -61,6 +61,9 @@ def _mock_trial(
     trial = MagicMock()
     trial.id = tid
     trial.visual_file = visual_file
+    trial.has_video = bool(visual_file) and visual_file.original_filename.endswith(
+        ".mp4"
+    )
     trial.audio_file = audio_file
     trial.response_keys = response_keys
     trial.user_input = user_input
