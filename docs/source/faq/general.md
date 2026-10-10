@@ -30,7 +30,11 @@ These are fields that you can use to store information about the [trial](target-
 
 ## What is a (gaze) calibration trial?
 
-A (gaze) calibration trial is a special type of trial where the participant is asked to look at a series of points on the screen. This data is then used to calibrate the eye tracker. At the end of the calibration trial, the eye tracker is validated by presenting the first point again. Watch the [eye-tracking video tutorial](https://www.youtube.com/watch?v=CXf7JDdxEj0) for more information.
+A (gaze) calibration trial is a special type of trial (set with `Trial type` = `Eye-tracking calibration`) where the participant is asked to look at a series of points on the screen. This data is then used to calibrate the eye tracker. At the end of the calibration trial, the eye tracker is validated by presenting the first point again. Watch the [eye-tracking video tutorial](https://www.youtube.com/watch?v=CXf7JDdxEj0) for more information.
+
+## What is an attention getter / gaze dwell time check?
+
+An attention getter is a trial (`Trial type` = `Attention getter`) that is only shown when a regular trial's optional gaze dwell time check fails (eye-tracking experiments only), i.e., when the participant looks at the dwell target for less than the minimum dwell time. It is shown once, straight after that trial. See [Trials](target-trials) for how to set one up.
 
 ## Can I validate the eye tracker with multiple points?
 
