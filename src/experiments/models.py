@@ -615,7 +615,7 @@ class TrialItem(models.Model):
         "self",
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="triggering_trials",
         limit_choices_to={"trial_type": ATTENTION_GETTER},
         help_text=(

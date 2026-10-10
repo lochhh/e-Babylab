@@ -14,7 +14,7 @@ import pytest
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import ProtectedError
+from django.db.models import RestrictedError
 
 from experiments import models as exp_models
 
@@ -705,13 +705,42 @@ def test_trialitem_db_constraint_rejects_half_dwell_check(ag_pair):
 
 
 @pytest.mark.django_db
-def test_deleting_referenced_attention_getter_is_protected(ag_pair):
-    """An attention getter in use cannot be deleted."""
+def test_deleting_referenced_attention_getter_is_refused(ag_pair):
+    """An attention getter still used by a trial in another block cannot be deleted."""
     trial, ag = ag_pair
     trial.attention_getter, trial.min_dwell_time = ag, 500
     trial.save()
-    with pytest.raises(ProtectedError):
+    with pytest.raises(RestrictedError):
         ag.delete()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("parent", "same_block"),
+    [
+        pytest.param(
+            lambda t: t.blockitem.outerblockitem.listitem.experiment,
+            False,
+            id="experiment",
+        ),
+        pytest.param(
+            lambda t: t.blockitem.outerblockitem.listitem, False, id="listitem"
+        ),
+        pytest.param(lambda t: t.blockitem.outerblockitem, False, id="outerblockitem"),
+        pytest.param(lambda t: t.blockitem, True, id="blockitem"),
+    ],
+)
+def test_deleting_parent_of_trigger_and_attention_getter_succeeds(
+    trialitem_factory, attention_getter_factory, parent, same_block
+):
+    """A cascade that removes both the trial and its attention getter is allowed."""
+    trial = trialitem_factory()
+    ag = attention_getter_factory(trial)
+    if same_block:
+        ag.blockitem = trial.blockitem
+        ag.save()
+    parent(trial).delete()
+    assert not type(trial).objects.filter(pk__in=[trial.pk, ag.pk]).exists()
 
 
 @pytest.mark.django_db

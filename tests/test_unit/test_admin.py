@@ -1670,6 +1670,54 @@ def test_formset_accepts_valid_dwell_check(admin_site, rf, user, ag_block_setup)
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("model", "get_obj"),
+    [
+        pytest.param(
+            "experiment",
+            lambda t: t.blockitem.outerblockitem.listitem.experiment,
+            id="experiment",
+        ),
+        pytest.param(
+            "listitem", lambda t: t.blockitem.outerblockitem.listitem, id="listitem"
+        ),
+        pytest.param("blockitem", lambda t: t.blockitem, id="blockitem"),
+    ],
+)
+def test_delete_confirmation_with_attention_getter_is_not_blocked(
+    client, trialitem_factory, attention_getter_factory, model, get_obj
+):
+    """Deleting a parent holding a trigger and its attention getter can be confirmed."""
+    trial = trialitem_factory()
+    ag = attention_getter_factory(trial)
+    ag.blockitem = trial.blockitem  # same block, so the blockitem case holds both
+    ag.save()
+    client.force_login(User.objects.create_superuser("deladmin", "d@x.org", "pw"))
+    url = reverse(f"admin:experiments_{model}_delete", args=[get_obj(trial).pk])
+    response = client.get(url)
+    assert response.status_code == 200
+    assert b"Cannot delete" not in response.content
+    client.post(url, {"post": "yes"})
+    assert not TrialItem.objects.filter(pk__in=[trial.pk, ag.pk]).exists()
+
+
+@pytest.mark.django_db
+def test_inline_delete_of_referenced_attention_getter_gives_form_error(
+    admin_site, rf, user, trialitem_factory, attention_getter_factory
+):
+    """Ticking DELETE on an attention getter still in use is a form error, not a 500."""
+    trial = trialitem_factory()
+    ag = attention_getter_factory(trial)
+    inline = TrialItemInline(BlockItem, admin_site)
+    request = _inline_request(rf, user, ag.blockitem)
+    formset_cls = inline.get_formset(request, ag.blockitem)
+    data = _formset_data([ag], {ag.pk: {"DELETE": "on"}})
+    formset = formset_cls(data, instance=ag.blockitem, prefix="trialitem_set")
+    assert not formset.is_valid()
+    assert "would require deleting" in str(formset.non_form_errors())
+
+
+@pytest.mark.django_db
 def test_listitem_change_view_renders_flowchart(client, listitem_factory):
     """The list change page includes the Mermaid flowchart source."""
     listitem = listitem_factory()
