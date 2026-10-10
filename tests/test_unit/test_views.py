@@ -931,6 +931,9 @@ class TestExperimentPause:
             pytest.param("abc", "7", (), "t1", 1, id="non-int-trialitem-falls-back"),
             pytest.param("t2", "abc", (), "t1", 1, id="non-int-number-falls-back"),
             pytest.param("t2", "0", (), "t1", 1, id="non-positive-number-falls-back"),
+            pytest.param(
+                "t2", "2147483648", (), "t1", 1, id="overflowing-number-falls-back"
+            ),
             pytest.param(None, None, (), "t1", 1, id="missing-params-fall-back"),
             pytest.param(None, None, ("t1",), "t2", 2, id="fallback-skips-completed"),
             pytest.param(None, None, ("t1", "t2"), None, None, id="nothing-pending"),

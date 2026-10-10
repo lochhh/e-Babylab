@@ -466,7 +466,8 @@ def _positive_int(value):
         number = int(value)
     except (TypeError, ValueError):
         return None
-    return number if number > 0 else None
+    # upper bound: Postgres integer max
+    return number if 0 < number <= 2_147_483_647 else None
 
 
 def experiment_pause(request, run_uuid):
