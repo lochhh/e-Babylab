@@ -340,6 +340,9 @@ class Reporter:
             curr_webgazer_data.insert(0, "Trial Number", trial_number)
             curr_webgazer_data.insert(1, "Trial Label", result.trialitem.label)
             curr_webgazer_data.insert(2, "Trial Code", result.trialitem.code)
+            curr_webgazer_data.insert(
+                3, "Trial Type", result.trialitem.get_trial_type_display()
+            )
             curr_webgazer_data["Nrows"] = result.trialitem.grid_row
             curr_webgazer_data["Ncols"] = result.trialitem.grid_col
             if result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1:

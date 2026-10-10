@@ -663,6 +663,13 @@ def test_create_webgazer_worksheet_skips_gaze_disabled(
     assert isinstance(validation, DummyDF)
 
 
+def _gaze_columns():
+    """Sample EyeTrackingData columns plus Trial Type after Trial Code."""
+    cols = _xlsx_sheet_columns(3)
+    cols.insert(cols.index("Trial Code") + 1, "Trial Type")
+    return cols
+
+
 def test_create_webgazer_worksheet_non_calibration_trial(
     monkeypatch,
     tmp_path,
@@ -702,7 +709,7 @@ def test_create_webgazer_worksheet_non_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
+    assert list(webgazer.columns) == _gaze_columns()  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
 
 
@@ -750,7 +757,7 @@ def test_create_webgazer_worksheet_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
+    assert list(webgazer.columns) == _gaze_columns()  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
     assert list(validation.columns) == _xlsx_sheet_columns(4)  # EyeTrackingValidation
 
