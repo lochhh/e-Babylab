@@ -745,6 +745,32 @@ class TestAttentionGetter:
         assert _next(client, sd)["trial"]["trial_id"] == second.pk
 
     @pytest.mark.django_db
+    def test_attention_getter_in_randomised_block_stays_out_of_the_order(
+        self, client, subjectdata_factory, dwell_experiment, trialitem_factory
+    ):
+        """A shuffled block with regular trials never shuffles its AG into the order."""
+        exp, listitem, trial, second, ag = dwell_experiment
+        block = trial.blockitem
+        block.randomise_trials = True
+        block.save()
+        extra = [
+            trialitem_factory(blockitem=block, label=f"X{i}", code=f"X{i}", position=i)
+            for i in (3, 4, 5)
+        ]
+        ag.blockitem, ag.position = block, 6
+        ag.save()
+        regular_ids = {trial.pk, second.pk, *(t.pk for t in extra)}
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        order = []
+        for number in range(1, 6):
+            data = _next(client, sd)
+            assert _next(client, sd) == data  # repeat calls give the same trial
+            order.append(data["trial"]["trial_id"])
+            _store(sd, exp_models.TrialItem.objects.get(pk=order[-1]), 500, number)
+        assert set(order) == regular_ids
+        assert _next(client, sd) == {"done": True}
+
+    @pytest.mark.django_db
     def test_pause_between_trial_and_attention_getter_still_shows_it(
         self, client, subjectdata_factory, dwell_experiment
     ):
