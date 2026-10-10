@@ -1769,6 +1769,18 @@ def test_trial_inline_hides_eye_tracking_for_other_recording_options(
     assert ">Recording</h4>" in html
 
 
+def test_trial_inline_add_page_shows_all_fieldsets(admin_site, rf, user):
+    """With no parent block (add page) every fieldset, eye-tracking included, shows."""
+    request = rf.get("/")
+    request.user = user
+    fieldsets = TrialItemInline(BlockItem, admin_site).get_fieldsets(request, None)
+    names = [name for name, _ in fieldsets]
+    fields = [f for _, opts in fieldsets for f in opts["fields"]]
+    assert "Gaze dwell time check" in names
+    assert "Eye-tracking calibration" in names
+    assert "trial_type" in fields
+
+
 @pytest.mark.django_db
 def test_non_eye_save_keeps_trial_type_and_dwell_values(
     admin_site,
