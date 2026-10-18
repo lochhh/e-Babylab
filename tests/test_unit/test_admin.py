@@ -509,7 +509,9 @@ class TestExperimentAdmin:
         blockitem_factory,
         trialitem_factory,
     ):
-        """Verify export_to_zip returns a ZIP whose experiment.json has all expected keys."""
+        """Verify export_to_zip returns a ZIP whose experiment.json has all
+        expected keys.
+        """
         import io
         import zipfile
 
@@ -525,8 +527,16 @@ class TestExperimentAdmin:
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             data = json.loads(zf.read("experiment.json"))
 
-        for key in ("experiment", "lists", "outerblocks", "innerblocks",
-                    "trials", "questions", "consentquestions", "media_files"):
+        for key in (
+            "experiment",
+            "lists",
+            "outerblocks",
+            "innerblocks",
+            "trials",
+            "questions",
+            "consentquestions",
+            "media_files",
+        ):
             assert key in data
 
         assert data["experiment"][0]["pk"] == str(ex.id)
@@ -552,9 +562,7 @@ class TestExperimentAdmin:
         assert len(data["questions"]) == 1
         assert len(data["consentquestions"]) == 1
 
-    def test_import_from_zip_creates_new_experiment(
-        self, experiment_factory, user, rf
-    ):
+    def test_import_from_zip_creates_new_experiment(self, experiment_factory, user, rf):
         """Verify import_from_zip creates a new experiment owned by the request user."""
         from filer.models import Folder
 
@@ -1204,6 +1212,55 @@ class TestSubjectDataAdmin:
         request = rf.get("/")
         request.user = user
         assert subject_data_admin.has_add_permission(request) is False
+
+    @pytest.mark.parametrize("is_owner", [False, True], ids=["member", "owner"])
+    @pytest.mark.parametrize("sharing_option", ["GRP", "PUB"])
+    @pytest.mark.parametrize(
+        "exp_groups, user_groups",
+        [
+            (["A"], ["A"]),
+            (["A"], ["A", "B"]),
+            (["A", "B"], ["A"]),
+            (["A", "B"], ["B"]),
+            (["A", "B"], ["A", "B"]),
+        ],
+        ids=[
+            "exp-A_user-A",
+            "exp-A_user-AB",
+            "exp-AB_user-A",
+            "exp-AB_user-B",
+            "exp-AB_user-AB",
+        ],
+    )
+    def test_shared_subject_listed_once(
+        self,
+        subject_data_admin,
+        subjectdata_factory,
+        experiment_factory,
+        user,
+        rf,
+        exp_groups,
+        user_groups,
+        sharing_option,
+        is_owner,
+    ):
+        """Verify shared subject data is not duplicated and opens without error."""
+        groups = {name: Group.objects.create(name=name) for name in ["A", "B"]}
+        user.groups.add(*(groups[name] for name in user_groups))
+        ex = experiment_factory()
+        if not is_owner:
+            ex.user = User.objects.create_user(username="grp_owner", password="pass")
+        ex.sharing_option = sharing_option
+        ex.save()
+        ex.sharing_groups.add(*(groups[name] for name in exp_groups))
+        sd = subjectdata_factory(experiment=ex)
+
+        request = rf.get("/")
+        request.user = user
+        qs = subject_data_admin.get_queryset(request)
+        assert qs.filter(pk=sd.pk).count() == 1
+        # change view uses get_object; duplicates raise MultipleObjectsReturned (500)
+        assert subject_data_admin.get_object(request, str(sd.pk)) == sd
 
 
 # ---------------------------------------------------------------------------
