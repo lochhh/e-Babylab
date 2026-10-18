@@ -121,7 +121,10 @@ class ExperimentScopedQuerysetMixin:
         shared_user_grps = Q(**{f"{p}sharing_groups__in": user_groups})
         shared_pub = Q(**{f"{p}sharing_option": "PUB"})
         if request.user.groups.exists():
-            return qs.filter(user_owned | shared_pub | shared_grp & shared_user_grps)
+            # distinct: the sharing_groups M2M join yields one row per shared group
+            return qs.filter(
+                user_owned | shared_pub | shared_grp & shared_user_grps
+            ).distinct()
         return qs.filter(user_owned | shared_pub)
 
 
