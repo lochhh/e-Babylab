@@ -28,9 +28,7 @@ from .models import (
     TrialResult,
 )
 
-"""
-Custom Help Text
-"""
+# Custom Help Text
 TEMPLATES_HELP_TEXT = " ".join(
     [
         "<p><strong>Note:</strong>",
@@ -123,7 +121,10 @@ class ExperimentScopedQuerysetMixin:
         shared_user_grps = Q(**{f"{p}sharing_groups__in": user_groups})
         shared_pub = Q(**{f"{p}sharing_option": "PUB"})
         if request.user.groups.exists():
-            return qs.filter(user_owned | shared_pub | shared_grp & shared_user_grps)
+            # distinct: the sharing_groups M2M join yields one row per shared group
+            return qs.filter(
+                user_owned | shared_pub | shared_grp & shared_user_grps
+            ).distinct()
         return qs.filter(user_owned | shared_pub)
 
 
@@ -332,54 +333,47 @@ class TrialResultInline(admin.TabularInline):
     )
     ordering = ("id",)
 
+    @admin.display(description="Block item")
     def trial_blockitem(self, obj):
         """Return the block item associated with the trial result."""
         return obj.trialitem.blockitem
 
-    trial_blockitem.short_description = "Block item"
-
+    @admin.display(description="Audio file")
     def trial_audio(self, obj):
         """Return the audio filename for the trial item, or empty string if none."""
         f = obj.trialitem.audio_file
         return f.original_filename if f else ""
 
-    trial_audio.short_description = "Audio file"
-
+    @admin.display(description="Visual file")
     def trial_visual(self, obj):
         """Return the visual filename for the trial item, or empty string if none."""
         f = obj.trialitem.visual_file
         return f.original_filename if f else ""
 
-    trial_visual.short_description = "Visual file"
-
+    @admin.display(description="User input")
     def trial_input(self, obj):
         """Return the user input setting for the trial item."""
         return obj.trialitem.user_input
 
-    trial_input.short_description = "User input"
-
+    @admin.display(description="Max duration")
     def trial_maxduration(self, obj):
         """Return the maximum duration setting for the trial item."""
         return obj.trialitem.max_duration
 
-    trial_maxduration.short_description = "Max duration"
-
+    @admin.display(description="Response time")
     def response_time(self, obj):
         """Return the elapsed response time as a string."""
         if obj.start_time and obj.end_time:
             return str(obj.end_time - obj.start_time)
         return ""
 
-    response_time.short_description = "Response time"
-
+    @admin.display(description="Webcam file")
     def webcam_file_link(self, obj):
         """Return the webcam filename, or a dash if none was recorded."""
         if obj.webcam_file:
             return obj.webcam_file.name
         else:
             return "-"
-
-    webcam_file_link.short_description = "Webcam file"
 
     def has_add_permission(self, request, obj=None):
         """Disable adding trial results; they are created during experiment runs."""
@@ -498,6 +492,7 @@ class ExperimentAdmin(
             obj.user = request.user
         obj.save()
 
+    @admin.display(description="Actions")
     def experiment_buttons(self, obj):
         """Display action buttons for the Experiment admin interface."""
         return format_html(
@@ -508,8 +503,6 @@ class ExperimentAdmin(
             url_report=reverse("experiments:experimentReport", args=[obj.id]),
             url_export=reverse("experiments:experimentExport", args=[obj.id]),
         )
-
-    experiment_buttons.short_description = "Actions"
 
 
 class ListItemAdmin(
@@ -548,12 +541,10 @@ class OuterBlockItemAdmin(
     classes = ["grp-collapse grp-open"]
     list_display = ("outer_block_name", "listitem", "get_experiment")
 
+    @admin.display(description="Experiment", ordering="listitem")
     def get_experiment(self, obj):
         """Return the experiment this outer block item belongs to."""
         return obj.listitem.experiment
-
-    get_experiment.admin_order_field = "listitem"  # allow column order sorting
-    get_experiment.short_description = "Experiment"  # rename column head
 
 
 class BlockItemAdmin(
@@ -571,21 +562,15 @@ class BlockItemAdmin(
     inlines = [TrialItemInline]
     list_display = ("label", "outerblockitem", "get_listitem", "get_experiment")
 
+    @admin.display(description="List item", ordering="outerblockitem")
     def get_listitem(self, obj):
         """Return the list item associated with the block item."""
         return obj.outerblockitem.listitem
 
-    get_listitem.admin_order_field = "outerblockitem"  # allow column order sorting
-    get_listitem.short_description = "List item"  # rename column head
-
+    @admin.display(description="Experiment", ordering="outerblockitem__listitem")
     def get_experiment(self, obj):
         """Return the experiment associated with the block item."""
         return obj.outerblockitem.listitem.experiment
-
-    get_experiment.admin_order_field = (
-        "outerblockitem__listitem"  # allow column order sorting
-    )
-    get_experiment.short_description = "Experiment"  # rename column head
 
 
 class SubjectDataAdmin(
@@ -660,6 +645,7 @@ class TrialResultAdmin(
         "webcam_file_link",
     )
 
+    @admin.display(description="Webcam file")
     def webcam_file_link(self, obj):
         """Return a URL to the webcam recording, or a dash if none exists."""
         if obj.webcam_file:
@@ -673,8 +659,6 @@ class TrialResultAdmin(
         self.exclude = ("webcam_file",)
         form = super().get_form(request, obj, **kwargs)
         return form
-
-    webcam_file_link.short_description = "Webcam file"
 
     def has_add_permission(self, request, obj=None):
         """Disable adding trial results; they are created during experiment runs."""
