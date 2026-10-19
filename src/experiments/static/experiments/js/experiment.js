@@ -51,6 +51,23 @@ export function init() {
     // Global timeout reference
     let globaltimer;
 
+    // Last trial shown (attention getters included); null only before the first trial starts
+    let currentTrial = null;
+
+    /**
+     * Pause page URL, carrying the trial on screen so the server can record it.
+     * @returns {string}
+     */
+    const pauseUrl = function () {
+        const base = `/${subjectUuid}/run/pause`;
+        if (!currentTrial) return base;
+        const params = new URLSearchParams({
+            trialitem: currentTrial.trial_id,
+            trial_number: currentTrial.trial_number,
+        });
+        return `${base}?${params}`;
+    };
+
     // Media stream object
     let mediaStream;
 
@@ -100,7 +117,7 @@ export function init() {
         globaltimer = setTimeout(() => {
             webcam.stopUploading();
             if (include_pause_page) {
-                window.location.replace(`/${subjectUuid}/run/pause`);
+                window.location.replace(pauseUrl());
             } else {
                 window.location.replace(`/${subjectUuid}/run/thankyou`);
             }
@@ -149,6 +166,7 @@ export function init() {
      *   loaded while this trial runs
      */
     const showNextTrial = function (trialObj, upcoming) {
+        currentTrial = trialObj;
         body.style.backgroundColor = trialObj.background_colour;
         preloadVideo(trialObj);
         if (upcoming) preloadVideo(upcoming);
@@ -159,7 +177,7 @@ export function init() {
         if (trialObj.audio_file !== '') {
             trialSetupPromises.push(playTrialAudio(trialObj));
         }
-        if (trialObj.trial_type === 'video') {
+        if (trialObj.stimulus_type === 'video') {
             trialSetupPromises.push(playTrialVideo(trialObj));
         } else {
             trialSetupPromises.push(showTrialImage(trialObj));
@@ -192,10 +210,10 @@ export function init() {
             trialObj.start_time = performance.now();
 
             const trialDonePromises = [];
-            if (trialObj.trial_type === 'video' && trialObj.require_user_input === 'NO') {
+            if (trialObj.stimulus_type === 'video' && trialObj.require_user_input === 'NO') {
                 trialDonePromises.push(setupVideoEnd(trialObj));
             }
-            if ((trialObj.trial_type === 'image' && !trialObj.is_calibration) || (trialObj.trial_type === 'video' && trialObj.require_user_input === 'YES')) {
+            if ((trialObj.stimulus_type === 'image' && !trialObj.is_calibration) || (trialObj.stimulus_type === 'video' && trialObj.require_user_input === 'YES')) {
                 trialDonePromises.push(setupMaxDuration(trialObj));
             }
             if (trialObj.require_user_input === 'YES' && !trialObj.is_calibration) {
@@ -221,7 +239,7 @@ export function init() {
             if (trialObj.audio_file !== '') {
                 removeTrialAudio();
             }
-            if (trialObj.trial_type === 'video') {
+            if (trialObj.stimulus_type === 'video') {
                 removeTrialVideo(trialObj);
             } else {
                 removeTrialImage();
@@ -285,7 +303,7 @@ export function init() {
      *   trial's elements to load=true.
      */
     const preloadVideo = function (trialObj, load = true) {
-        if (trialObj.trial_type !== 'video') return;
+        if (trialObj.stimulus_type !== 'video') return;
 
         const existing = document.getElementById(`video-container-${trialObj.trial_id}`);
         if (existing) {
@@ -478,7 +496,15 @@ export function init() {
             delete videoEndedHandlerRefs[trialObj.trial_id];
         }
         video.pause();
-        document.querySelector(`#video-container-${trialObj.trial_id}`).remove();
+        const container = document.querySelector(`#video-container-${trialObj.trial_id}`);
+        if (trialObj.is_attention_getter) {
+            // Attention getters can be shown again; keep the element that was
+            // unlocked for autoplay (iOS) rather than creating a fresh one.
+            container.style.display = 'none';
+            video.currentTime = 0;
+        } else {
+            container.remove();
+        }
     };
 
     /**
@@ -607,7 +633,7 @@ export function init() {
     }).then(() => {
         // Create elements for all pending video trials (no data fetch yet) so the
         // fullscreen tap can unlock each one for iOS.
-        initial.videos.forEach(v => preloadVideo({ ...v, trial_type: 'video' }, false));
+        initial.videos.forEach(v => preloadVideo({ ...v, stimulus_type: 'video' }, false));
         return new Promise((resolve, reject) => {
             document.getElementById('fullscreen-button').addEventListener('click', function () {
                 const docElem = document.documentElement;
@@ -651,7 +677,7 @@ export function init() {
      */
     const terminateStudy = function () {
         if (include_pause_page) {
-            window.location.replace(`/${subjectUuid}/run/pause`);
+            window.location.replace(pauseUrl());
         } else {
             window.location.replace(`/${subjectUuid}/run/thankyou`);
         }

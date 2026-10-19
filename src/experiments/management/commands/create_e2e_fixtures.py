@@ -81,6 +81,9 @@ def _get_or_create_filer_file(filename, content, folder):
     return f
 
 
+AG_EXP_ID = "a0e2e000-0000-0000-0000-000000000006"
+
+
 class Command(BaseCommand):
     """Create or refresh e2e test fixtures for all recording modes."""
 
@@ -159,7 +162,6 @@ class Command(BaseCommand):
                     "max_duration": 1500,
                     "record_media": False,
                     "record_gaze": False,
-                    "is_calibration": False,
                     "calibration_points": [],
                     "position": 1,
                 },
@@ -178,6 +180,70 @@ class Command(BaseCommand):
                 },
             )
 
-        self.stdout.write(
-            self.style.SUCCESS("e2e fixtures created for all 5 recording modes")
+        self._create_attention_getter_fixture(user, visual_file)
+
+        self.stdout.write(self.style.SUCCESS("e2e fixtures created"))
+
+    def _create_attention_getter_fixture(self, user, visual_file):
+        """EYE experiment whose first trial always fails its dwell check.
+
+        The e2e WebGazer stub returns no predictions, so dwell is 0 and the
+        attention getter is shown between it and the second regular trial.
+        Subjects are created per browser by the attention-getter spec.
+        """
+        experiment, _ = Experiment.objects.get_or_create(
+            id=AG_EXP_ID,
+            defaults={
+                "user": user,
+                "exp_name": "e2e-attention-getter",
+                "recording_option": "EYE",
+                "include_pause_page": False,
+                "list_selection_strategy": "SEQ",
+                "show_gaze_estimations": False,
+                "general_onset": 0,
+            },
+        )
+        listitem, _ = ListItem.objects.get_or_create(
+            experiment=experiment, list_name="e2e-list"
+        )
+        outer, _ = OuterBlockItem.objects.get_or_create(
+            listitem=listitem, outer_block_name="e2e-outer", defaults={"position": 1}
+        )
+        main, _ = BlockItem.objects.get_or_create(
+            outerblockitem=outer, label="e2e-ag-main", defaults={"position": 1}
+        )
+        ag_block, _ = BlockItem.objects.get_or_create(
+            outerblockitem=outer,
+            label="e2e-ag-block",
+            defaults={"position": 2, "background_colour": "#000000"},
+        )
+        common = {
+            "visual_file": visual_file,
+            "user_input": "NO",
+            "max_duration": 500,
+            "record_media": False,
+            "record_gaze": True,
+            "calibration_points": [],
+            "position": 1,
+        }
+        ag, _ = TrialItem.objects.get_or_create(
+            blockitem=ag_block,
+            label="e2e-ag",
+            defaults={**common, "code": "AG", "trial_type": TrialItem.ATTENTION_GETTER},
+        )
+        TrialItem.objects.get_or_create(
+            blockitem=main,
+            label="e2e-ag-trial",
+            defaults={
+                **common,
+                "code": "T1",
+                "attention_getter": ag,
+                "min_dwell_time": 400,
+            },
+        )
+        # The attention getter is only shown while trials remain
+        TrialItem.objects.get_or_create(
+            blockitem=main,
+            label="e2e-ag-after",
+            defaults={**common, "code": "T2", "position": 2},
         )

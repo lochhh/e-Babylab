@@ -43,8 +43,12 @@ Fields in boldface are mandatory.
   - eye-tracking and key presses or clicks, or
   - eye-tracking, video, and key presses or clicks.
 - `Loading image` is an optional field for specifying the image to be shown before the end page of an experiment, while media uploads are still in progress. This can be an image with a message asking participants to keep their browser windows open while the captured media are still being uploaded.
-- `Include pause page` provides the option to redirect participants to a pause page when they fail to complete an experiment within a given time or when the exit button is clicked during an experiment, instead of ending an experiment immediately. Pause events are recorded in the results.
+- `Include pause page` provides the option to redirect participants to a pause page when they fail to complete an experiment within a given time or when the exit button is clicked during an experiment, instead of ending an experiment immediately. Pause events are recorded in the results against the trial that was on screen, including attention getters and the first trial.
 - `Show gaze estimations` allows WebGazer estimations to be visualised as a red dot to check if eye-tracking is working properly. This is typically used for debugging purposes but should be disabled in actual experiments.
+
+:::{note}
+On an existing (saved) experiment that records eye-tracking, changing `Recording option` to one without eye-tracking clears all gaze dwell time checks and resets eye-tracking calibration and attention getter trials to `Regular`. If any trials would be affected, a pop-up asks you to confirm first. This cannot be undone.
+:::
 
 (target-html-templates)=
 ## HTML Templates
@@ -138,6 +142,8 @@ Each list may represent different versions of the experiment or different condit
 - **`Global timeout`** is the maximum duration allowed for participants to complete the entire experimental task. If no time limit is required, this can simply be a very large number.
 - `Do not include this list` temporarily "disables" a list (i.e. prevents a list from being distributed to future participants).
 
+The list page also shows a read-only **Flowchart** of the saved design. Solid arrows show the presentation order and are omitted for randomised parts; dashed arrows lead to attention getter trials. The flowchart updates after you click Save.
+
 (target-outer-blocks)=
 ### Outer-Blocks
 
@@ -169,24 +175,60 @@ Inner-blocks allow users to organise different phases of an experimental task in
 (target-trials)=
 ### Trials
 
+<!-- TODO: replace the screenshot below, it predates the sectioned trial layout. -->
 :::{figure} https://github.com/user-attachments/assets/8832a29e-4547-4cdc-bbaf-4eb53c3c4109
 :alt: Trial
 
 Trial
 :::
 
+The trial form is grouped into sections. The eye-tracking sections, `Enable eye-tracking` and `Trial type` are only shown when the experiment's _recording option_ includes eye-tracking.
+
 - **`Label`**
 - **`Code`**
+- **`Position`** determines the order in which a trial is presented within its inner-block, except when trials are set to be randomised; trials can be reordered by using drag-and-drop.
+- **`Trial type`** is one of:
+  - `Regular`,
+  - `Eye-tracking calibration` (see **Eye-tracking calibration** below), or
+  - `Attention getter` (see **Gaze dwell time check** below).
+
+  The trial type decides which eye-tracking section is shown.
+
+**Stimulus**
+
 - **`Visual onset (ms)`** determines the onset of the visual stimulus during a trial; when set at 0, the stimulus will be presented as soon as a trial begins.
 - **`Visual file`**
 - **`Audio onset (ms)`** determines the onset of the audio stimulus during a trial; when set at 0, the stimulus will be presented as soon as a trial begins.
 - `Audio file`
+- **`Maximum duration (ms)`** is the time limit given to participants to respond in a trial or, if a response is not required, the duration of a trial. If the visual stimulus is a video, this value is disregarded. If there is no time limit to respond, this can simply be a very large number.
+
+**Response**
+
 - **`User input`** determines whether a participant's response is required to proceed to the next trial.
 - `Response key(s)` define as a comma-separated list, the types of responses or specific keys that are accepted if a response is required (e.g., `click`, `up`, `down`, `left`, `right`, `a`, `b`, `c`, `space`, `enter`).
-- **`Maximum duration (ms)`** is the time limit given to participants to respond in a trial or, if a response is not required, the duration of a trial. If the visual stimulus is a video, this value is disregarded. If there is no time limit to respond, this can simply be a very large number.
+
+**Recording**
+
 - `Record media` determines whether media (and depending on the experiment-level _recording option_) should be recorded for a trial.
 - `Enable eye-tracking` determines whether eye-tracking data (and depending on the experiment-level _recording option_) should be recorded for a trial.
-- `Calibrate eye-tracker` determines whether this is an eye-tracker calibration trial.
-- **`Calibration points`** defines an **ordered list** of points in [x,y] coordinates (specified as a percentage of the screen width and height, from the left and top edge) at which the visual stimulus will be presented one after another. The default provided is a grid containing 9 points for calibration. The duration for which each calibration point is shown is determined by dividing the `maximum duration` by the number of calibration points. See also the [eye-tracking video tutorial](https://www.youtube.com/watch?v=CXf7JDdxEj0).
+
+**Grid**
+
 - **`Rows`** and **`Columns`** allow users to set an invisible grid layout with _x_ rows and _y_ columns so that the position of a click/touch/eye-gaze on the screen (row, col) can be determined in addition to the coordinates.
-- **`Position`** determines the order in which a trial is presented within its inner-block, except when trials are set to be randomised; trials can be reordered by using drag-and-drop.
+
+**Eye-tracking calibration**
+
+- **`Calibration points`** defines an **ordered list** of points in [x,y] coordinates (specified as a percentage of the screen width and height, from the left and top edge) at which the visual stimulus will be presented one after another. The default provided is a grid containing 9 points for calibration. The duration for which each calibration point is shown is determined by dividing the `maximum duration` by the number of calibration points. See also the [eye-tracking video tutorial](https://www.youtube.com/watch?v=CXf7JDdxEj0).
+
+**Gaze dwell time check**
+
+A gaze dwell time check is optional and can be added to any regular trial in an experiment whose _recording option_ includes eye-tracking. It launches an attention getter when the participant has not looked at the trial's dwell target for long enough: if their dwell time on the target is less than the minimum dwell time, the selected attention getter is shown once, straight after the trial. The experiment then carries on with the next trial (the trial is not repeated). No attention getter is shown after the final trial of an experiment. Leave these fields empty on trials that do not need a check.
+
+An _attention getter_ is a trial with `Trial type` = `Attention getter`. Attention getters are skipped in the normal trial order and are only shown when a gaze dwell time check launches them.
+
+- `Attention getter` is the attention getter trial to show. It must be in the same list as the trial, but can be anywhere in that list: in the same inner-block as regular trials, or in an inner-block or outer-block of its own. Like any trial, it uses its inner-block's background colour. Set both `Attention getter` and `Minimum dwell time (ms)`, or neither.
+- `Minimum dwell time (ms)` is the dwell time on the dwell target below which the attention getter is shown. It cannot exceed the `Maximum duration (ms)` (except for video trials without user input).
+- **`Dwell target`** is either `Anywhere on screen` or `Specific grid cell`.
+- `Target row` and `Target column` are used for `Specific grid cell`. They are 1-based and must lie within the trial's grid, so `Rows` and/or `Columns` must be larger than 1.
+
+Gaze dwell time checks are only available on `Regular` trials and require `Enable eye-tracking`.

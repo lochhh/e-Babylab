@@ -51,7 +51,7 @@ _CALIBRATION_WEBGAZER_DATA = [
 
 
 def _xlsx_sheet_columns(sheet_index):
-    """Return the header row column names from the given 1-based sheet of the sample xlsx.
+    """Return header row column names from the given 1-based sheet.
 
     Reads the xlsx as a zip of XML to avoid an openpyxl dependency.
     """
@@ -73,7 +73,7 @@ def _xlsx_sheet_columns(sheet_index):
 
 
 class DummyZipFile:
-    """Stub for zipfile.ZipFile that records written entries without touching the filesystem."""
+    """Stub for zipfile.ZipFile that records written entries without filesystem IO."""
 
     def __init__(self, *_, **__):
         """Initialise with an empty list to track written entries."""
@@ -92,7 +92,7 @@ class DummyDF:
     """Stub for pd.DataFrame that records to_excel calls without writing files."""
 
     def __init__(self, data=None, columns=None):
-        """Initialise with optional data and columns, tracking whether to_excel was called."""
+        """Track to_excel calls with optional data and columns."""
         # store so tests can inspect
         self.data = data
         self.columns = columns
@@ -152,8 +152,6 @@ def test_reporter_init(monkeypatch, tmp_path, experiment_factory):
     assert rep.output_folder == str(tmp_path)
     assert rep.output_file == "results_myexp.zip"
     assert isinstance(rep.zip_file, DummyZipFile)
-    assert isinstance(rep.trial_columns, list)
-    assert len(rep.trial_columns) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -183,8 +181,9 @@ def test_calc_trial_duration_missing(reporter):
         ([99, 99], "(2,2)"),  # bottom-right quadrant
         ([50, 50], "(1,1)"),  # on boundary; x=50 satisfies c >= 50 at index 1 -> col 1
         ([0, 0], "(0,0)"),  # origin
-        ([200, 200], "(2,2)"),  # out of positive bounds
+        ([200, 200], "(0,0)"),  # beyond screen edge → off-screen
         ([-10, -10], "(0,0)"),  # out of negative bounds
+        ([100, 50], "(1,0)"),  # right edge (WebGazer clamp) → off-screen column
         ([], ""),  # required length 2 but empty
         ([10], ""),  # required length 2 but only one coordinate
     ],
@@ -600,6 +599,40 @@ def test_create_trial_worksheet_with_one_result(
     assert len(rep.zip_file.written) == 1
 
 
+@pytest.mark.parametrize(
+    "trial_type,expected",
+    [
+        pytest.param("REG", "Regular", id="regular"),
+        pytest.param("CAL", "Eye-tracking calibration", id="calibration"),
+        pytest.param("AG", "Attention getter", id="attention-getter"),
+    ],
+)
+def test_create_trial_worksheet_trial_type_column(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    outerblock_factory,
+    blockitem_factory,
+    trialitem_factory,
+    trial_type,
+    expected,
+):
+    """The Trial Type column holds the trial type's display name."""
+    from experiments.models import TrialResult
+
+    subject = subjectdata_factory()
+    outerblock = outerblock_factory(listitem=subject.listitem)
+    trialitem = trialitem_factory(blockitem=blockitem_factory(outerblock=outerblock))
+    trialitem.trial_type = trial_type
+    trialitem.save()
+    TrialResult.objects.create(subject=subject, trialitem=trialitem, key_pressed="")
+
+    rep = make_reporter(monkeypatch, tmp_path, subject.experiment)
+    df = rep.create_trial_worksheet(subject)
+
+    assert df.data[0][rep.trial_columns.index("Trial Type")] == expected
+
+
 # ---------------------------------------------------------------------------
 # create_webgazer_worksheet -- skip branch and loop body (lines 313-350)
 # ---------------------------------------------------------------------------
@@ -630,6 +663,13 @@ def test_create_webgazer_worksheet_skips_gaze_disabled(
     assert isinstance(validation, DummyDF)
 
 
+def _gaze_columns():
+    """Sample EyeTrackingData columns plus Trial Type after Trial Code."""
+    cols = _xlsx_sheet_columns(3)
+    cols.insert(cols.index("Trial Code") + 1, "Trial Type")
+    return cols
+
+
 def test_create_webgazer_worksheet_non_calibration_trial(
     monkeypatch,
     tmp_path,
@@ -650,7 +690,7 @@ def test_create_webgazer_worksheet_non_calibration_trial(
     blockitem = blockitem_factory(outerblock=outerblock)
     trialitem = trialitem_factory(blockitem=blockitem)
     trialitem.record_gaze = True
-    trialitem.is_calibration = False
+    trialitem.trial_type = "REG"
     trialitem.save()
     TrialResult.objects.create(
         subject=subject,
@@ -669,7 +709,7 @@ def test_create_webgazer_worksheet_non_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
+    assert list(webgazer.columns) == _gaze_columns()  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
 
 
@@ -694,7 +734,7 @@ def test_create_webgazer_worksheet_calibration_trial(
     blockitem = blockitem_factory(outerblock=outerblock)
     trialitem = trialitem_factory(blockitem=blockitem)
     trialitem.record_gaze = True
-    trialitem.is_calibration = True
+    trialitem.trial_type = "CAL"
     trialitem.grid_row = 3
     trialitem.grid_col = 3
     trialitem.save()
@@ -717,6 +757,122 @@ def test_create_webgazer_worksheet_calibration_trial(
 
     webgazer, validation = rep.create_webgazer_worksheet(subject)
     assert isinstance(webgazer, pd.DataFrame)
-    assert list(webgazer.columns) == _xlsx_sheet_columns(3)  # EyeTrackingData
+    assert list(webgazer.columns) == _gaze_columns()  # EyeTrackingData
     assert isinstance(validation, pd.DataFrame)
     assert list(validation.columns) == _xlsx_sheet_columns(4)  # EyeTrackingValidation
+
+
+# ---------------------------------------------------------------------------
+# calc_dwell / attention getter numbering
+# ---------------------------------------------------------------------------
+
+
+def _dwell_result(recording="EYE", record_gaze=True, is_calibration=False, key=""):
+    samples = [{"x": 10, "y": 10, "t": t} for t in (0, 34, 68)]
+    return SimpleNamespace(
+        key_pressed=key,
+        resolution_w=100,
+        resolution_h=100,
+        webgazer_data=samples,
+        trialitem=SimpleNamespace(
+            record_gaze=record_gaze,
+            is_calibration=is_calibration,
+            grid_row=1,
+            grid_col=1,
+            dwell_target=None,
+            blockitem=SimpleNamespace(
+                outerblockitem=SimpleNamespace(
+                    listitem=SimpleNamespace(
+                        experiment=SimpleNamespace(recording_option=recording)
+                    )
+                )
+            ),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected",
+    [
+        pytest.param({}, 68, id="eye"),
+        pytest.param({"recording": "ALL"}, 68, id="all"),
+        pytest.param({"recording": "VID"}, "", id="video-only"),
+        pytest.param({"record_gaze": False}, "", id="record-gaze-off"),
+        pytest.param({"is_calibration": True}, "", id="calibration"),
+        pytest.param({"key": "PAUSE"}, "", id="pause"),
+    ],
+)
+def test_calc_dwell(reporter, kwargs, expected):
+    """Dwell is reported for gaze-recorded, non-calibration, non-pause rows only."""
+    assert reporter.calc_dwell(_dwell_result(**kwargs)) == expected
+
+
+def test_trial_columns(reporter):
+    """Trial columns are exactly these, in order (new columns go last)."""
+    assert reporter.trial_columns == [
+        "Outer Block",
+        "Inner Block",
+        "Randomized",
+        "Trial Number",
+        "Trial Label",
+        "Trial Code",
+        "Trial Type",
+        "Visual Onset (ms)",
+        "Audio Onset (ms)",
+        "Visual Presented",
+        "Audio Presented",
+        "Max Duration (ms)",
+        "User Input",
+        "Response Keys",
+        "Nrows",
+        "Ncols",
+        "Area Clicked (row,col)",
+        "Response Time (ms)",
+        "Record Media",
+        "Webcam File",
+        "Screen Width",
+        "Screen Height",
+        "Record Gaze",
+        "Dwell (ms)",
+    ]
+
+
+@pytest.mark.django_db
+def test_attention_getter_rows_keep_trial_numbers_unique(
+    monkeypatch,
+    tmp_path,
+    subjectdata_factory,
+    trialitem_factory,
+    attention_getter_factory,
+):
+    """An AG row is kept and its shared trial number doesn't force ordinal numbering."""
+    trial = trialitem_factory(label="T1")
+    ag = attention_getter_factory(trial)
+    listitem = trial.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    for t in (trial, ag):
+        rpt.TrialResult.objects.create(subject=sd, trialitem=t, trial_number=1)
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    qs, unique = rep._get_trial_results(sd)
+    assert unique is True
+    assert list(qs.values_list("trialitem", flat=True)) == [trial.pk, ag.pk]
+
+
+@pytest.mark.django_db
+def test_pause_row_sharing_trial_number_keeps_unique(
+    monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
+):
+    """A PAUSE row shares the interrupted trial's number but stays in the export."""
+    trial = trialitem_factory(label="T1")
+    listitem = trial.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    rpt.TrialResult.objects.create(subject=sd, trialitem=trial, trial_number=1)
+    pause = rpt.TrialResult.objects.create(
+        subject=sd, trialitem=trial, trial_number=1, key_pressed="PAUSE"
+    )
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    qs, unique = rep._get_trial_results(sd)
+    assert unique is True
+    assert pause in qs

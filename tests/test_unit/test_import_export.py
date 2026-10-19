@@ -738,3 +738,88 @@ class TestImportFromZip:
             zf.writestr("other.txt", "irrelevant")
         with pytest.raises(ValueError, match=r"experiment\.json not found"):
             import_from_zip(mock_request, buf.getvalue())
+
+    @pytest.mark.django_db
+    def test_import_remaps_attention_getter_to_copied_trial(
+        self,
+        experiment_factory,
+        listitem_factory,
+        outerblock_factory,
+        blockitem_factory,
+        trialitem_factory,
+        attention_getter_factory,
+        mock_request,
+    ):
+        """Imported trials point at the imported attention getter, not the source."""
+        exp = experiment_factory(exp_name="AGExp")
+        outer = outerblock_factory(listitem=listitem_factory(experiment=exp))
+        # Trial saved before its AG in pk order, so a naive loop would miss the map
+        trial = trialitem_factory(blockitem=blockitem_factory(outerblock=outer))
+        ag = attention_getter_factory(trial)
+
+        import_from_zip(mock_request, export_to_zip(exp.pk))
+
+        copy = TrialItem.objects.get(
+            blockitem__outerblockitem__listitem__experiment__exp_name="AGExp copy",
+            label=trial.label,
+        )
+        assert copy.attention_getter.label == "AG"
+        assert copy.attention_getter.pk != ag.pk
+        assert (
+            copy.attention_getter.blockitem.outerblockitem.listitem.experiment.exp_name
+            == "AGExp copy"
+        )
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "old_fields,expected",
+        [
+            pytest.param({"is_calibration": True}, "CAL", id="old-calibration"),
+            pytest.param(
+                {"is_attention_getter": True}, "AG", id="old-attention-getter"
+            ),
+            pytest.param(
+                {"is_calibration": True, "is_attention_getter": True},
+                "AG",
+                id="old-both-prefers-attention-getter",
+            ),
+            pytest.param(
+                {"is_calibration": False, "is_attention_getter": False},
+                "REG",
+                id="old-both-false",
+            ),
+            pytest.param({}, "REG", id="no-keys"),
+        ],
+    )
+    def test_import_maps_old_flags_to_trial_type(
+        self,
+        experiment_factory,
+        listitem_factory,
+        outerblock_factory,
+        blockitem_factory,
+        trialitem_factory,
+        mock_request,
+        old_fields,
+        expected,
+    ):
+        """Exports from before trial_type map the old flags onto it."""
+        exp = experiment_factory(exp_name="OldFlags")
+        outer = outerblock_factory(listitem=listitem_factory(experiment=exp))
+        trialitem_factory(blockitem=blockitem_factory(outerblock=outer))
+        zf = zipfile.ZipFile(io.BytesIO(export_to_zip(exp.pk)))
+        raw = json.loads(zf.read("experiment.json"))
+        for t in raw["trials"]:
+            del t["fields"]["trial_type"]
+            t["fields"].update(old_fields)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as out:
+            for name in zf.namelist():
+                data = json.dumps(raw) if name == "experiment.json" else zf.read(name)
+                out.writestr(name, data)
+
+        import_from_zip(mock_request, buf.getvalue())
+
+        copy = TrialItem.objects.get(
+            blockitem__outerblockitem__listitem__experiment__exp_name="OldFlags copy"
+        )
+        assert copy.trial_type == expected

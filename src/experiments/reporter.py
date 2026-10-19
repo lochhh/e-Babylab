@@ -18,6 +18,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.text import get_valid_filename
 
+from .gaze import dwell_time, parse_samples, roi_cell
 from .models import (
     ANSWER_TYPE_MODEL,
     AnswerBase,
@@ -29,6 +30,7 @@ from .models import (
     OuterBlockItem,
     Question,
     SubjectData,
+    TrialItem,
     TrialResult,
 )
 
@@ -58,6 +60,7 @@ class Reporter:
             "Trial Number",
             "Trial Label",
             "Trial Code",
+            "Trial Type",
             "Visual Onset (ms)",
             "Audio Onset (ms)",
             "Visual Presented",
@@ -74,6 +77,7 @@ class Reporter:
             "Screen Width",
             "Screen Height",
             "Record Gaze",
+            "Dwell (ms)",
         ]
 
         # Define report folders
@@ -105,24 +109,39 @@ class Reporter:
 
     def calc_roi_response(self, result, coords):
         """Determine the row and column of a click or gaze within the trial's grid."""
-        width = result.resolution_w
-        height = result.resolution_h
-        boundaries_r = list(range(0, height, int(height / result.trialitem.grid_row)))
-        boundaries_r.append(height)
-        boundaries_c = list(range(0, width, int(width / result.trialitem.grid_col)))
-        boundaries_c.append(width)
+        if len(coords) != 2:
+            return ""
+        row, col = roi_cell(
+            coords[0],
+            coords[1],
+            result.resolution_w,
+            result.resolution_h,
+            result.trialitem.grid_row,
+            result.trialitem.grid_col,
+        )
+        return f"({row},{col})"
 
-        if len(coords) == 2:
-            if coords[0] > max(boundaries_c):
-                col_num = len(boundaries_c) - 1
-            else:
-                col_num = next(i for i, c in enumerate(boundaries_c) if c >= coords[0])
-            if coords[1] > max(boundaries_r):
-                row_num = len(boundaries_r) - 1
-            else:
-                row_num = next(i for i, r in enumerate(boundaries_r) if r >= coords[1])
-            return f"({row_num},{col_num})"
-        return ""
+    def calc_dwell(self, result):
+        """Return gaze dwell (ms) in the trial's target, or "" if not recorded."""
+        trial = result.trialitem
+        recording = trial.blockitem.outerblockitem.listitem.experiment.recording_option
+        if (
+            recording not in ("EYE", "ALL")
+            or not trial.record_gaze
+            or trial.is_calibration
+            or result.key_pressed == "PAUSE"
+        ):
+            return ""
+        return round(
+            dwell_time(
+                parse_samples(result.webgazer_data),
+                result.resolution_w,
+                result.resolution_h,
+                trial.grid_row,
+                trial.grid_col,
+                trial.dwell_target,
+            )
+        )
 
     @staticmethod
     def _resolve_answer_value(answer_base, participation_date):
@@ -192,6 +211,8 @@ class Reporter:
 
         unique_trial_number is False when trial_number values repeat, in which
         case callers must derive an ordinal position from the queryset order.
+        Attention getter and PAUSE rows share another trial's number by design,
+        so they are ignored by that check (they stay in the queryset).
         """
         outer_pks = list(
             OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
@@ -206,7 +227,12 @@ class Reporter:
         qs = TrialResult.objects.filter(
             trialitem__blockitem__pk__in=block_pks, subject_id=subject.id
         ).order_by("pk", "trial_number")
-        trial_numbers = qs.values_list("trial_number", flat=True)
+        # Attention getter and PAUSE rows share another trial's number by design
+        trial_numbers = (
+            qs.exclude(trialitem__trial_type=TrialItem.ATTENTION_GETTER)
+            .exclude(key_pressed="PAUSE")
+            .values_list("trial_number", flat=True)
+        )
         unique = len(trial_numbers) == len(set(trial_numbers))
         return qs, unique
 
@@ -233,6 +259,7 @@ class Reporter:
                     ),
                     result.trialitem.label,
                     result.trialitem.code,
+                    result.trialitem.get_trial_type_display(),
                     result.trialitem.visual_onset,
                     result.trialitem.audio_onset,
                     (
@@ -269,6 +296,7 @@ class Reporter:
                         in ["EYE", "ALL"]
                         and result.trialitem.record_gaze
                     ),
+                    self.calc_dwell(result),
                 ]
             )
 
@@ -312,6 +340,9 @@ class Reporter:
             curr_webgazer_data.insert(0, "Trial Number", trial_number)
             curr_webgazer_data.insert(1, "Trial Label", result.trialitem.label)
             curr_webgazer_data.insert(2, "Trial Code", result.trialitem.code)
+            curr_webgazer_data.insert(
+                3, "Trial Type", result.trialitem.get_trial_type_display()
+            )
             curr_webgazer_data["Nrows"] = result.trialitem.grid_row
             curr_webgazer_data["Ncols"] = result.trialitem.grid_col
             if result.trialitem.grid_row != 1 or result.trialitem.grid_col != 1:

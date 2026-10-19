@@ -9,13 +9,16 @@ from colorfield.fields import ColorField
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.dispatch import receiver
 from django.utils.safestring import mark_safe
 from filer.fields.file import FilerFileField
 from filer.fields.image import FilerImageField
 from tinymce import models as tinymce_models
 
+from .gaze import Cell
 from .template_defaults import (
     browser_check_page_content,
     cdi_page_content,
@@ -253,8 +256,7 @@ class Experiment(models.Model):
     show_gaze_estimations = models.BooleanField(
         default=False,
         help_text=(
-            "Display webgazer estimations during experiment"
-            " (for debugging purposes)."
+            "Display webgazer estimations during experiment (for debugging purposes)."
         ),
     )
     ALL = "ALL"
@@ -339,8 +341,7 @@ class Experiment(models.Model):
         "for typically-developing children",
         default=True,
         help_text=(
-            "Uncheck this box if experiment involves"
-            " non-typically developing children."
+            "Uncheck this box if experiment involves non-typically developing children."
         ),
     )
 
@@ -514,6 +515,22 @@ class TrialItem(models.Model):
         (YES, "Require user input"),
     )
 
+    REGULAR = "REG"
+    CALIBRATION = "CAL"
+    ATTENTION_GETTER = "AG"
+    TRIAL_TYPE_OPTIONS = (
+        (REGULAR, "Regular"),
+        (CALIBRATION, "Eye-tracking calibration"),
+        (ATTENTION_GETTER, "Attention getter"),
+    )
+    ANY = "ANY"
+    CELL = "CELL"
+
+    DWELL_TARGET_OPTIONS = (
+        (ANY, "Anywhere on screen"),
+        (CELL, "Specific grid cell"),
+    )
+
     blockitem = models.ForeignKey(BlockItem, on_delete=models.CASCADE)
     label = models.CharField(max_length=20)
     code = models.CharField(max_length=20)
@@ -564,27 +581,84 @@ class TrialItem(models.Model):
             " to record eye-tracking data."
         ),
     )
-    is_calibration = models.BooleanField(
-        "calibrate eye-tracker",
-        default=False,
-        help_text=(
-            "This value will be ignored if the experiment is not set"
-            " to record eye-tracking data."
-        ),
-    )
     calibration_points = models.JSONField(
         default=default_calibration_points,
         null=False,
         help_text=mark_safe(
-            'These values will be ignored if "calibrate eye-tracker" is unchecked'
-            " and the experiment is not set to record eye-tracking data.<br/>"
+            'These values will be ignored if the trial type is not "Eye-tracking'
+            ' calibration"'
+            " or the experiment is not set to record eye-tracking data.<br/>"
             "The duration for which each calibration point is shown is determined"
             " by dividing the <em>maximum duration</em> with the number of"
             " calibration points."
         ),
     )
-    grid_row = models.IntegerField("rows", default=1)
-    grid_col = models.IntegerField("columns", default=1)
+    grid_row = models.PositiveSmallIntegerField(
+        "rows", default=1, validators=[MinValueValidator(1)]
+    )
+    grid_col = models.PositiveSmallIntegerField(
+        "columns", default=1, validators=[MinValueValidator(1)]
+    )
+    trial_type = models.CharField(
+        "trial type",
+        max_length=3,
+        choices=TRIAL_TYPE_OPTIONS,
+        default=REGULAR,
+        help_text=(
+            "Calibration and attention getter trials need an experiment that"
+            " records eye-tracking. Attention getters are skipped in the normal"
+            " trial order and only shown when another trial's gaze dwell time"
+            " check fails."
+        ),
+    )
+    attention_getter = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.RESTRICT,
+        related_name="triggering_trials",
+        limit_choices_to={"trial_type": ATTENTION_GETTER},
+        help_text=(
+            "If the participant looked at the dwell target for less than the"
+            " minimum dwell time, show the selected attention getter once,"
+            " straight after this trial. The experiment then carries on with the"
+            " next trial; this trial is not repeated."
+        ),
+    )
+    min_dwell_time = models.PositiveIntegerField(
+        "minimum dwell time (ms)",
+        null=True,
+        blank=True,
+        help_text=(
+            "How long the participant must look at the dwell target during this"
+            " trial. If they look for less, the attention getter is shown next."
+        ),
+    )
+    dwell_target_type = models.CharField(
+        "dwell target",
+        max_length=4,
+        choices=DWELL_TARGET_OPTIONS,
+        default=ANY,
+        help_text=(
+            "Only used for 'Specific grid cell'. Row/column are 1-based and must"
+            " lie within this trial's grid — set rows/columns in the Grid section"
+            " first."
+        ),
+    )
+    dwell_target_row = models.PositiveSmallIntegerField(
+        "target row",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="1-based; must be within the trial's grid.",
+    )
+    dwell_target_col = models.PositiveSmallIntegerField(
+        "target column",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="1-based; must be within the trial's grid.",
+    )
     position = models.PositiveSmallIntegerField("Position", null=True)
 
     _AUDIO_EXTENSIONS: ClassVar[set[str]] = {".mp3", ".wav"}
@@ -597,14 +671,44 @@ class TrialItem(models.Model):
         ".ogg",
         ".webm",
     }
+    _VIDEO_EXTENSIONS: ClassVar[set[str]] = {".mp4", ".ogg", ".webm"}
 
     class Meta:
-        """Orders trials by position."""
+        """Orders trials by position and guards dwell-check consistency."""
 
         ordering = ["position"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(attention_getter__isnull=True, min_dwell_time__isnull=True)
+                | Q(attention_getter__isnull=False, min_dwell_time__isnull=False),
+                name="trialitem_dwell_check_complete",
+                violation_error_message=(
+                    "Set both an attention getter and a minimum dwell time, or neither."
+                ),
+            ),
+            models.CheckConstraint(
+                # ponytail: Meta cannot see class constants; "AG" == ATTENTION_GETTER
+                condition=~Q(trial_type="AG") | Q(attention_getter__isnull=True),
+                name="trialitem_attention_getter_not_nested",
+                violation_error_message=(
+                    "An attention getter cannot have its own gaze dwell time check."
+                ),
+            ),
+            models.CheckConstraint(
+                condition=Q(grid_row__gte=1, grid_col__gte=1),
+                name="trialitem_grid_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(dwell_target_row__isnull=True) | Q(dwell_target_row__gte=1)
+                )
+                & (Q(dwell_target_col__isnull=True) | Q(dwell_target_col__gte=1)),
+                name="trialitem_dwell_target_positive",
+            ),
+        ]
 
     def clean(self):
-        """Validate audio_file and visual_file extension types."""
+        """Validate file extensions and the dwell-check configuration."""
         errors = {}
         _validate_file_extension(
             self.audio_file, self._AUDIO_EXTENSIONS, "audio_file", errors
@@ -612,8 +716,104 @@ class TrialItem(models.Model):
         _validate_file_extension(
             self.visual_file, self._VISUAL_EXTENSIONS, "visual_file", errors
         )
+        self._validate_dwell_check(errors)
         if errors:
             raise ValidationError(errors)
+
+    def _validate_dwell_check(self, errors):
+        """Add cross-field and cross-row dwell-check errors to ``errors``."""
+        ag = self.attention_getter
+        if ag is not None:
+            if not ag.is_attention_getter:
+                errors["attention_getter"] = (
+                    "Choose a trial marked as an attention getter."
+                )
+            elif self.blockitem_id and (
+                ag.blockitem.outerblockitem.listitem_id
+                != self.blockitem.outerblockitem.listitem_id
+            ):
+                errors["attention_getter"] = (
+                    "The attention getter must be in the same list as this trial."
+                )
+        if self.min_dwell_time is not None and self.is_calibration:
+            errors["min_dwell_time"] = (
+                "Gaze dwell time checks are not available on calibration trials."
+            )
+        if (
+            self.min_dwell_time is not None
+            and self.max_duration is not None
+            and self.min_dwell_time > self.max_duration
+            and not self._ignores_max_duration
+        ):
+            errors.setdefault(
+                "min_dwell_time",
+                f"Must not exceed the maximum duration ({self.max_duration} ms);"
+                " otherwise the attention getter is shown after every run of"
+                " this trial.",
+            )
+        if self.min_dwell_time is not None and not self.record_gaze:
+            errors.setdefault(
+                "min_dwell_time",
+                "Gaze dwell time checks need eye-tracking enabled on this trial.",
+            )
+        if self.dwell_target_type == self.CELL:
+            if self.grid_row == 1 and self.grid_col == 1:
+                errors["dwell_target_type"] = (
+                    "Set the grid rows/columns to pick a specific cell, or use"
+                    " 'Anywhere on screen'."
+                )
+            elif self.dwell_target_row is None or self.dwell_target_col is None:
+                errors["dwell_target_type"] = (
+                    "Set a target row and column for a specific grid cell."
+                )
+            else:
+                if self.dwell_target_row > self.grid_row:
+                    errors["dwell_target_row"] = (
+                        f"The grid only has {self.grid_row} row(s)."
+                    )
+                if self.dwell_target_col > self.grid_col:
+                    errors["dwell_target_col"] = (
+                        f"The grid only has {self.grid_col} column(s)."
+                    )
+        if self.pk and not self.is_attention_getter:
+            users = list(
+                TrialItem.objects.filter(attention_getter_id=self.pk).values_list(
+                    "label", flat=True
+                )
+            )
+            if users:
+                errors["trial_type"] = (
+                    "Still used as the attention getter of: "
+                    f"{', '.join(users)}. Remove those references first."
+                )
+
+    @property
+    def _ignores_max_duration(self) -> bool:
+        """Return True for video trials without user input (they run to the end)."""
+        return self.has_video and self.user_input == self.NO
+
+    @property
+    def has_video(self) -> bool:
+        """Return True if the visual stimulus is a video file."""
+        name = (self.visual_file.original_filename or "") if self.visual_file else ""
+        return os.path.splitext(name.lower())[1] in self._VIDEO_EXTENSIONS
+
+    @property
+    def is_calibration(self) -> bool:
+        """Return True if this is an eye-tracker calibration trial."""
+        return self.trial_type == self.CALIBRATION
+
+    @property
+    def is_attention_getter(self) -> bool:
+        """Return True if this is an attention getter trial."""
+        return self.trial_type == self.ATTENTION_GETTER
+
+    @property
+    def dwell_target(self) -> Cell | None:
+        """Return the dwell-check target cell, or None for anywhere on screen."""
+        if self.dwell_target_type == self.CELL:
+            return (self.dwell_target_row, self.dwell_target_col)
+        return None
 
     def __str__(self):
         """Return the trial label."""
