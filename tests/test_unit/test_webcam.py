@@ -199,6 +199,31 @@ class TestWebcamUpload:
         assert response.status_code == 204
         assert (tmp_path / "trial-0.webm").read_bytes() == b"new data"
 
+    def test_first_chunk_discards_chunks_of_an_interrupted_recording(
+        self, client, subjectdata_factory, experiment_factory, tmp_path, monkeypatch
+    ):
+        """A restarted trial reuses its file name; stale chunks must not be merged.
+
+        A trial interrupted by a pause leaves unmerged chunks behind. When the
+        trial restarts, its first chunk starts a new recording, so leftover
+        chunks of that name (e.g. a longer interrupted attempt) are removed.
+        """
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        for i in range(3):
+            (tmp_path / f"1_trial2_t_u-{i:05d}.webm").write_bytes(b"stale")
+        (tmp_path / "1_trial2_t_u2-00000.webm").write_bytes(b"other trial")
+        chunk = SimpleUploadedFile(
+            "1_trial2_t_u-00000.webm", b"new", content_type="video/webm"
+        )
+        client.post(_webcam_upload_url(subject.id), data={"file": chunk})
+        assert sorted(p.name for p in tmp_path.iterdir()) == [
+            "1_trial2_t_u-00000.webm",
+            "1_trial2_t_u2-00000.webm",
+        ]
+        assert (tmp_path / "1_trial2_t_u-00000.webm").read_bytes() == b"new"
+
     def test_post_merge_request_merges_chunks_and_saves_to_trial_result(
         self,
         client,

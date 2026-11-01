@@ -1,6 +1,7 @@
 """Views for webcam/microphone recording and file upload handling."""
 
 import logging
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -80,9 +81,17 @@ def webcam_test_upload(request, run_uuid):
 
 
 def _upload_chunk(request):
-    """Store a single uploaded chunk in WEBCAM_ROOT, replacing any existing file."""
+    """Store a single uploaded chunk in WEBCAM_ROOT, replacing any existing file.
+
+    The first chunk of a recording also removes unmerged chunks left under the
+    same name, e.g. by a trial that was interrupted by a pause and restarted.
+    """
     fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
     webcam_file = request.FILES["file"]
+    first_chunk = re.fullmatch(r"(.+)-0{5}\.webm", webcam_file.name)
+    if first_chunk:
+        for stale in find_files(get_valid_filename(first_chunk.group(1))):
+            fs.delete(stale)
     if fs.exists(webcam_file.name):
         fs.delete(webcam_file.name)
     fs.save(get_valid_filename(webcam_file.name), webcam_file)
