@@ -42,18 +42,22 @@ e-Babylab currently pre-generates the full ordered trial sequence on the server 
 
 ### Stage 2 — Live AOI / Dwell Time + Attention Getter Flow
 
-**Goal:** Support the "show attention getter if dwell time insufficient" rule. Flow: trial → dwell in target AOI < `min_dwell_time` → attention getter (AG) → **continue** to next trial in sequence (no repeat, so no loops).
+**Status:** PR 2a implemented in #39 (branch `dwell-time`, rebased onto main 2026-10-19, CI green, draft awaiting review). PR 2b not started. This section describes PR 2a as built; departures from the original design are marked **(changed in PR 2a)**.
 
-**Decision — dwell computed server-side (approach A).** `storeresult` already posts full gaze samples (`webgazer_data`), so `nexttrial` computes dwell in Python from the latest `TrialResult`. No JS port, no `roi_summary` payload. Post-trial decisions (Stages 2–4, incl. habituation) all stay server-side; Stage 5 adds a JS ROI helper for its own mid-trial need. Dropped from original plan as YAGNI: `trial_kind`, `max_attempts`, `SessionState`.
+**Goal:** Support the "show attention getter if dwell time insufficient" rule. Flow: trial → dwell in target AOI < `min_dwell_time` → attention getter (AG) → **continue** to next trial in sequence (no repeat, so no loops). In the UI and docs this is the **gaze dwell time check**, framed as the trigger for launching the AG rather than a gaze measurement.
 
-**Decision — AG is a flagged `TrialItem`** (not a separate model): AGs get every trial capability (image/video/audio, onsets, recording, future text stimuli/branching) for free. Flagged trials are skipped by the sequence wherever they live; a dedicated "Attention getters" block is recommended practice (AG uses its block's `background_colour`) but mixed blocks are allowed.
+**Decision — dwell computed server-side (approach A).** `storeresult` already posts full gaze samples (`webgazer_data`), so `nexttrial` computes dwell in Python from the latest `TrialResult`. No JS port, no `roi_summary` payload. Post-trial decisions (Stages 2–4, incl. habituation) all stay server-side; Stage 5 adds a JS ROI helper for its own mid-trial need. Dropped from original plan as YAGNI: `max_attempts`, `SessionState`.
 
-**TrialItem fields (one migration):**
+**Decision — AG is a `TrialItem` with `trial_type = AG`** (not a separate model): AGs get every trial capability (image/video/audio, onsets, recording, future text stimuli/branching) for free. AG trials are skipped by the sequence wherever they live; they can sit in any outer/inner block of the list (AG uses its block's `background_colour`). Placing them in a dedicated block is optional; AG-only blocks contribute no trials to the normal order.
+
+**(changed in PR 2a) `trial_type` replaces boolean flags.** The planned `is_attention_getter` boolean and the existing `is_calibration` were merged into one `trial_type` choice field: `REG` "Regular" (default), `CAL` "Eye-tracking calibration", `AG` "Attention getter". Read-only `is_calibration`/`is_attention_getter` properties keep existing readers working; code uses the `TrialItem` constants, not literals. Experiment import maps the old boolean keys onto `trial_type`. Migration 0020 was edited in place with no data step, since there is no production data before v2.0.0 (the test server will be reset).
+
+**TrialItem fields (migration 0020):**
 ```python
-is_attention_getter = BooleanField(default=False)
+trial_type = CharField(choices=TRIAL_TYPE_OPTIONS, default=REGULAR)  # replaces is_calibration
 attention_getter = ForeignKey("self", null=True, blank=True, on_delete=RESTRICT,  # SET_NULL would violate the both-or-neither constraint; RESTRICT (unlike PROTECT) still lets a cascade delete the trigger and its AG together, while deleting a still-referenced AG alone is refused
                               related_name="triggering_trials",
-                              limit_choices_to={"is_attention_getter": True})
+                              limit_choices_to={"trial_type": ATTENTION_GETTER})
 min_dwell_time = PositiveIntegerField("minimum dwell time (ms)", null=True, blank=True)
 dwell_target_type = CharField(choices=[("ANY", "Anywhere on screen"), ("CELL", "Specific grid cell")], default="ANY")
 dwell_target_row = PositiveSmallIntegerField(null=True, blank=True)  # 1-based, matches report "(row,col)"
@@ -62,11 +66,12 @@ dwell_target_col = PositiveSmallIntegerField(null=True, blank=True)
 ```
 
 **Validation (layered):**
-- DB `CheckConstraint`s (same-row; also guard import/shell): flagged ⇒ no `attention_getter`/`min_dwell_time`; `attention_getter` and `min_dwell_time` set together; grid/dwell row/col ≥ 1.
-- `limit_choices_to` + formfield narrowed to flagged trials in the same ListItem.
-- `TrialItem.clean()` (cross-row): AG in same ListItem; can't unflag a trial still referenced; `CELL` needs row/col within grid; no `min_dwell_time` on calibration trials (their `webgazer_data[0]` is validation data).
-- Inline formset `clean()`: catches unflag-A + point-B-at-A in one save.
-- Runtime: `nexttrial` never runs the dwell check for flagged trials.
+- DB `CheckConstraint`s (same-row; also guard import/shell): only regular trials may have `attention_getter`/`min_dwell_time`; `attention_getter` and `min_dwell_time` set together; grid/dwell row/col ≥ 1.
+- `limit_choices_to` + formfield narrowed to AG trials in the same ListItem. Dropdown labels show the location, `<label> — <outer block> › <block>`.
+- `TrialItem.clean()` (cross-row): AG in same ListItem (defence in depth; moving a block to another list can still split an AG from its triggers, accepted as rare and harmless at runtime); can't change the type of an AG that is still referenced; `CELL` needs row/col within grid and is rejected on a 1×1 grid; dwell check needs `record_gaze` **(added in PR 2a)**; `min_dwell_time` ≤ `max_duration` except video trials without user input **(added in PR 2a)**; no dwell check on calibration trials (their `webgazer_data[0]` is validation data).
+- `TrialItemForm`: model errors on fields hidden from the form (non-eye experiments) are remapped to non-field errors instead of crashing with a 500; `clean()` clears the dwell fields when `trial_type` is not `REG`, so the JS only shows/hides them and switching type back and forth doesn't lose values.
+- Inline formset `clean()`: catches retype-A + point-B-at-A in one save.
+- Runtime: `nexttrial` only runs the dwell check for regular trials.
 
 **New module `src/experiments/gaze.py` (pure functions).** Public functions here and in `flowchart.py` get precise type hints and Google-style docstrings (`Args:` with `name (type): ...`, `Returns:`, `Raises:` where relevant). No bare `dict`/`list`/`Any`: `GazeSample = TypedDict("GazeSample", {"x": float, "y": float, "t": float})`, `Cell = tuple[int, int]`, samples as `Sequence[GazeSample]`, dwell target as `Cell | None` (`None` = ANY), `list_flowchart(list_item: ListItem) -> str`.
 - `roi_cell(x, y, width, height, rows, cols) -> (row, col)`, 1-based. `Reporter.calc_roi_response` delegates to it. WebGazer clamps off-screen predictions to the screen edge, so a coordinate at `0` **or** at `width`/`height` → `0` on that axis = "off-screen" (symmetric; today only left/top give 0, right/bottom count as the edge cell, and non-divisible sizes can give nonexistent cell `rows+1`/`cols+1`). Only report change: right/bottom edge samples now show 0 instead of the last cell.
@@ -74,26 +79,33 @@ dwell_target_col = PositiveSmallIntegerField(null=True, blank=True)
 
 **Backend — `nexttrial`:**
 1. `last` = subject's latest non-PAUSE `TrialResult`.
-2. If `last.trialitem` has `min_dwell_time`, is not flagged/calibration, `recording_option` ∈ EYE/ALL and `record_gaze` → if `dwell_time(...) < min_dwell_time`, return AG dict (AG's own block for background, `trial_number = last.trial_number`).
+2. If `last.trialitem` has `min_dwell_time`, is a regular trial, `recording_option` ∈ EYE/ALL and `record_gaze` → if `dwell_time(...) < min_dwell_time`, return AG dict (AG's own block for background, `trial_number = last.trial_number`).
 3. Else pending sequence as before.
 Once AG result is stored, `last` is the AG → sequence continues. Idempotent on refetch; pause between trial and AG still shows AG on resume; no gaze samples ⇒ dwell 0 ⇒ AG. No AG after the final trial of the experiment (nothing left to regain attention for) — the run finishes; block boundaries still show it.
 
 **Knock-on fixes:**
-- `_trial_sequence` skips flagged trials.
-- `experiment_end` completeness counts only non-flagged trials, and *distinct* completed trial items.
-- `experiment_run` `videos` list includes flagged video trials (iOS unlock).
-- Reporter: AG row shares triggering trial's number; uniqueness check (ordinal fallback) ignores flagged rows.
+- `_trial_sequence` skips AG trials, including inside randomised blocks.
+- `experiment_end` completeness counts only non-AG trials, and *distinct* completed trial items.
+- `experiment_run` `videos` list includes AG video trials (iOS unlock); trial validation and the trial payload share one null-safe video check.
+- Reporter: AG row shares triggering trial's number; uniqueness check (ordinal fallback) ignores AG rows.
 - Reporter: new "Dwell (ms)" column in Trials sheet for every gaze-recorded non-calibration trial, using the trial's configured target (default `ANY` = on-screen looking time); blank otherwise.
+- **(added in PR 2a)** Reporter: "Trial Type" column (display label) right after "Trial Code" in the Trials sheet (shifts later columns by one), and in the EyeTrackingData sheet.
+- **(added in PR 2a)** `create_trial_dict` key `trial_type` (video/image) renamed to `stimulus_type` to free the name; JS updated.
+- **(added in PR 2a)** Pause rows record the trial on screen when paused (incl. AGs and the first trial): JS tracks `currentTrial` (the last trial shown) and appends `?trialitem=&trial_number=` to both pause redirects. The view validates them and falls back to the first pending trial when missing or out of range. Pause rows share that trial's number, so they no longer force the ordinal fallback.
+- **(added in PR 2a)** Experiment import remaps `attention_getter` references to the imported copies.
+- **(added in PR 2a)** Turning the recording option from eye-tracking to non-eye-tracking on a saved experiment: browser confirm with counts (shown only if trials are affected), then the server clears dwell checks, resets CAL/AG trials to REG, and reports what changed. Cannot be undone.
 
-**Admin UI:** `TrialItemInline` split into Grappelli fieldsets — main (label, code, position, `is_attention_getter`), Stimulus, Response, Recording, Eye-tracking calibration (collapsed), Grid, "Dwell check → attention getter (optional)" (collapsed). Small admin JS hides/clears the dwell fieldset when `is_attention_getter` is ticked (event delegation, works for dynamically added inlines); server validation remains the real guard.
+**Admin UI (changed in PR 2a):** `TrialItemInline` split into Grappelli fieldsets with no collapsing. The `trial_type` select drives a small admin JS toggle (event delegation; handles Grappelli's late `.grp-dynamic-form` rows): AG hides the "Gaze dwell time and attention getter" section, Eye-tracking calibration shows the calibration section. The eye-tracking sections and `trial_type` only appear when the experiment's recording option includes eye-tracking, with a hint naming where to change it. Server validation remains the real guard.
 
-**Mermaid flowchart (read-only):** Pure function `list_flowchart(list_item) -> str` in new `src/experiments/flowchart.py`, passed via `ListItemAdmin.change_view` `extra_context` to a template override `admin/experiments/listitem/change_form.html` (collapsible "Flowchart" panel above the inlines). Outer/inner blocks as nested subgraphs; solid arrows = configured order, randomised blocks labelled "(randomised)"; AG nodes distinct shape/class with dashed edges labelled with threshold (+ target cell if `CELL`). Labels escaped. Reflects saved state only. Mermaid loaded from jsdelivr, exact version pinned + SRI hash (no CSP in project); fallback shows raw source in `<pre>` if CDN unreachable.
+**Mermaid flowchart (read-only):** Pure function `list_flowchart(list_item) -> str` in new `src/experiments/flowchart.py`, passed via `ListItemAdmin.change_view` `extra_context` to a template override `admin/experiments/listitem/change_form.html`. As built, it is a Grappelli collapsible group (open by default so Mermaid renders at full size) above the inlines, styled with the Grappelli palette (theme `base`, Arial 12px), with a short help paragraph. Outer/inner blocks as nested subgraphs; solid arrows = configured order, omitted when randomised; blocks with only AGs get no order edges; AG nodes distinct shape/class with dashed edges labelled with threshold (+ target cell if `CELL`). Labels escaped. Reflects saved state only. Mermaid loaded from jsdelivr, exact version pinned + SRI hash (no CSP in project); fallback shows raw source in `<pre>` if CDN unreachable.
+
+**Docs:** user guide covers trial types, the gaze dwell time check, attention getters, the recording-option cleanup (`:::{note}`) and the list flowchart; FAQ updated.
 
 **Skipped (add when needed):** preloading AG video (loads on fetch; add if delay noticeable). "Repeat trial after AG" option deferred to Stage 3 (shares repeat semantics with `repeat_mode`).
 
-**Verification:** Parametrised pytest for `roi_cell`/`dwell_time`, `list_flowchart`, validation rules (incl. formset unflag case), `nexttrial` (low dwell → AG; sufficient dwell / flagged / no eye recording / calibration → sequence; AG → continue), completeness count, reporter numbering + dwell column. Playwright: admin fieldset toggle; attention getter happy path through to thank-you page.
+**Verification:** Parametrised pytest for `roi_cell`/`dwell_time`, `list_flowchart`, validation rules (incl. formset retype case), `nexttrial` (low dwell → AG; sufficient dwell / AG / no eye recording / calibration → sequence; AG → continue; no AG after final trial), pause trial recording, completeness count, reporter numbering + dwell/trial-type columns, recording-option cleanup, import remapping; 100% Python coverage. Vitest for pause tracking and the recording-option confirm. Playwright: admin trial-type toggle; attention getter happy path through to thank-you page.
 
-**Commit sequence (PR 2a):** plan → `gaze.py` + reporter delegation → model fields/constraints/migration/`clean()` → `nexttrial` dwell check + sequence/end/videos fixes → reporter numbering + dwell column → admin fieldsets/scoping/formset clean/toggle JS → Mermaid flowchart → Playwright e2e.
+**PR 2a remaining:** user review of #39 → mark ready → merge. Then release `v2.0.0a4` (see Release Plan).
 
 ---
 
@@ -199,7 +211,7 @@ stimulus_pairs = JSONField(null=True)      # [{"aoi_row": r, "aoi_col": c, "audi
 
 **Changes:**
 - New `TrialItem` field: `visual_type = CharField(choices=['IMAGE', 'VIDEO', 'TEXT'], default='IMAGE')`, `visual_text = CharField(null=True)`, `visual_text_style = JSONField(null=True)` (font size, colour, position)
-- Frontend: `showNextTrial()` checks `trial_type === 'text'` → renders a styled `<div>` instead of `<img>`/`<video>`
+- Frontend: `showNextTrial()` checks `stimulus_type === 'text'` (renamed from `trial_type` in PR 2a) → renders a styled `<div>` instead of `<img>`/`<video>`
 - `create_trial_dict()` (or new `nexttrial` endpoint) includes `visual_text` and `visual_text_style`
 
 ---
@@ -241,7 +253,9 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 ## Resolved Design Decisions
 
 1. **AOI target (Stage 2):** Flexible per trial — `dwell_target_type` field (ANY / CELL) with `dwell_target_row/col`.
-5. **Dwell computation (Stage 2):** Server-side from stored `webgazer_data`, not live JS. AG flow is "AG then continue" (no repeat).
+5. **Dwell computation (Stage 2):** Server-side from stored `webgazer_data`, not live JS. AG flow is "AG then continue" (no repeat). No AG after the final trial of the experiment.
+6. **Trial kinds (Stage 2):** One `trial_type` field (REG / CAL / AG), not per-kind booleans. Later stages that add trial kinds extend its choices.
+7. **Migrations before v2.0.0:** No production data, so unreleased migrations can be edited in place and need no data step.
 2. **Repeat position (Stage 3):** Configurable per branch rule — `repeat_mode` field (IMMEDIATE / ENQUEUE).
 3. **Stage 5 priority:** Needed soon — included in near-term plan alongside Stage 4.
 4. **Branching UI:** Visual flowchart required from day one. Mermaid read-only diagram ships with PR 2a; interactive Reactflow editor ships with PR 2b.
@@ -259,7 +273,7 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 - **Existing tests must continue to pass** after every PR: `uv run pytest` (Python) and `npm test` (Vitest unit + Playwright e2e).
 - **Update or delete tests** that break due to intentional behaviour changes (e.g. the trials-data JSON in the template changing shape in PR 1).
 - **New backend logic gets pytest coverage**: parametrise over edge cases (no trials remaining, mid-session resume, error paths).
-- **New JS logic gets Vitest unit tests** where the function is pure or easily isolated (e.g. the live AOI/dwell calculation in Stage 2).
+- **New JS logic gets Vitest unit tests** where the function is pure or easily isolated (e.g. the Stage 5 JS ROI helper; Stage 2's dwell calculation ended up server-side).
 - **New user-facing flows get Playwright e2e tests**: at minimum a happy-path test per PR that runs a minimal experiment through to the thank-you page.
 - **Test-driven where practical**: write the pytest/Vitest test first for new backend endpoints and pure JS helpers, then implement.
 
@@ -267,23 +281,60 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 
 ## Suggested PR Sequence
 
-| PR | Stage | Est. scope |
-|----|-------|-----------|
-| PR 1 | Stage 1: Dynamic trial fetching (`nexttrial` API) | Medium — pure refactor, no new features |
-| PR 2a | Stage 2: Server-side dwell check + attention getter fields + Mermaid read-only flowchart | Large |
-| PR 2b | Stage 2: Interactive Reactflow admin editor for trial branching | Large — custom admin view + bundled JS |
-| PR 3 | Stage 3: Response-contingent branching (`TrialBranchRule`, feedback audio, `is_success`) | Medium |
-| PR 4 | Stage 4: Block-level accumulated conditions (`BlockTransitionRule`, session accumulators) | Large |
-| PR 5 | Stage 5: Gaze-triggered stimulus selection (`selectstimulus` endpoint, stimulus pairs) | Large |
-| PR 6 | Stage 6: Native text stimuli | Small — new field type, frontend rendering |
-| PR 7+ | Stage 7: Project-wide type hints + Google-style docstrings (one PR per module) | Medium overall — no behaviour change |
+| PR | Stage | Est. scope | Status |
+|----|-------|-----------|--------|
+| PR 1 | Stage 1: Dynamic trial fetching (`nexttrial` API) | Medium — pure refactor, no new features | Released in `v2.0.0a3` |
+| PR 2a | Stage 2: Server-side dwell check + attention getter trial type + Mermaid read-only flowchart | Large | Open (#39), draft, CI green → `v2.0.0a4` |
+| PR 2b | Stage 2: Interactive Reactflow admin editor for trial branching | Large — custom admin view + bundled JS | Not started |
+| PR 3 | Stage 3: Response-contingent branching (`TrialBranchRule`, feedback audio, `is_success`) | Medium | Not started → `v2.0.0a5` |
+| PR 4 | Stage 4: Block-level accumulated conditions (`BlockTransitionRule`, session accumulators) | Large | Not started |
+| PR 5 | Stage 5: Gaze-triggered stimulus selection (`selectstimulus` endpoint, stimulus pairs) | Large | Not started |
+| PR 6 | Stage 6: Native text stimuli | Small — new field type, frontend rendering | Not started |
+| PR 7+ | Stage 7: Project-wide type hints + Google-style docstrings (one PR per module) | Medium overall — no behaviour change | Not started |
+| Docs | Refresh the Trial admin screenshot (`docs/source/user_guide/experiment-setup.md`, TODO comment) | Small | In `v2.0.0rc1`; retake if PR 5 or 6 changes the trial form |
 
 **Minimum viable set for most common research designs:** PR 1 + PR 2a + PR 3.
 PR 2b (interactive flowchart editor) significantly improves usability but is not required for correct behaviour.
 PR 5 (gaze-triggered) is needed for looking-while-listening and active learning designs.
 
-## Release Tagging
+## Release Plan
 
-- Stage 1 shipped and tagged `v2.0.0a3` (#31 dynamic trial fetching, plus #35, #36, #38).
-- **Reminder:** `pyproject.toml` `version` is stale (`"2.0.0.a1"`; not bumped for a2 or a3). Bump it to the new version in the commit being tagged *before* creating the next tag (e.g. `2.0.0a4`).
-- Stay on alpha (`aN`) while stages can still change behaviour/data model; move to `b1` once 2.0 is feature-complete.
+**Decisions (2026-11-01):** 2.0.0 is the MVP (Stages 1–3); PR 2b, 4, 5 and 6 ship as 2.x minor releases. One alpha per merged stage PR. Every tag gets a GitHub Release (pre-release for a/b/rc). Clean migration history at 2.0.0.
+
+**Versioning:** PEP 440 (`2.0.0a4`, `2.0.0b1`, `2.0.0rc1`), git tag `v<version>`. Pushing a `v*` tag publishes the Docker image `ghcr.io/lochhh/e-babylab:<version>` (`publish.yaml`; `{{major}}.{{minor}}` is skipped for pre-releases) and deploys the docs to gh-pages (`docs.yaml`), so the public docs always describe the latest tag, alphas included.
+
+**Roadmap → releases**
+
+| Release | Contents | Gate |
+|---|---|---|
+| `v2.0.0a3` | PR 1 (#31) dynamic trial fetching, plus #35, #36, #38 | Done 2026-09-27 |
+| `v2.0.0a4` | PR 2a (#39): attention getters, gaze dwell time check, trial type, Mermaid flowchart | #39 merged |
+| `v2.0.0a5` | PR 3: response-contingent branching, feedback audio, repeat (incl. repeat after AG) | PR 3 merged; MVP feature-complete |
+| `v2.0.0b1` | Freeze: no new features or model changes, only fixes and docs | Researchers trial a real MVP design on the test server |
+| `v2.0.0rc1` | Migration reset, docs refresh (incl. Trial screenshot), release notes | Beta feedback resolved |
+| `v2.0.0` | Stable MVP | rc unchanged after a test-server soak; fresh install + experiment import/export checked |
+| `v2.1.0` | PR 2b: interactive Reactflow editor | Merged |
+| `v2.2.0` | PR 4: block-level conditions (habituation) | Merged |
+| `v2.3.0` | PR 5: gaze-triggered stimulus selection | Merged |
+| `v2.4.0` | PR 6: native text stimuli | Merged |
+| `2.x.y` | Stage 7 type-hint PRs and bug fixes | Patch releases, or ride along with the next minor |
+
+The order of 2.1–2.4 follows the roadmap and can change by priority (Stage 5 is "needed soon"). Version numbers are assigned when a PR merges, not in advance. A post-2.0 feature that changes the data model heavily may get its own `a`/`rc` pre-releases.
+
+**Migration policy:** v1 used the `ipl` app (migrations 0001–0063); v2 restarted at `src/experiments/migrations/0001`, so v1 → v2 is not a migration upgrade (the README tells v1 users to stay on v1.0.2).
+- Within an unmerged PR, edit its own migration in place.
+- From `v2.0.0a4` on, merged migrations aren't rewritten; changes go in new migrations. If an alpha still needs a database reset, the release notes say so.
+- At rc1, reset the v2 history: delete `0001`–`00NN`, regenerate `0001_initial` with `makemigrations`, and fold the data migrations still needed on a fresh database (e.g. `0005_create_default_filer_folders`, `0006_add_r_script_to_filer_instruments`) into one hand-written `0002` RunPython migration. Reset the test server. Release notes say alpha/beta databases must be recreated: export experiments from the admin first, then import them.
+- From 2.0.0, migrations are append-only.
+
+**Release checklist (every tag)**
+1. Main is green (tests and docs build).
+2. Bump `pyproject.toml` `version` and run `uv lock`, in a "Release vX" commit on main (skip if the version is already right, as for a4, bumped in #39).
+3. Tag `vX` on that commit and push the tag.
+4. Create the GitHub Release from the tag (`--prerelease` for a/b/rc). Start from the auto-generated notes and add **Highlights**, **Breaking changes / migration notes**, and **Upgrading** (Docker tag to pull, whether a database reset is needed).
+5. Update the Status column in the Suggested PR Sequence table.
+
+**One-off fixes**
+- Before a4: replace the hardcoded `release = "v2.0.0"` in `docs/source/conf.py` with the installed package version (`importlib.metadata.version("e-Babylab")`), so the docs show the version they were built from.
+- At 2.0.0: point Docker `latest` at the newest stable tag instead of the tip of main (`flavor: latest=auto` in `publish.yaml`), and add an `edge` tag for main, so production users pulling `latest` get a release.
+- At 2.0.0: change the README banner from "v2 in development" to stable, and point v1 users at the 2.0.0 install docs.
