@@ -66,6 +66,10 @@ def _s(x, y, t):
         ([_s(0, 10, 0), _s(10, 10, 34), _s(10, 10, 68)], None, 34),  # off-screen
         ([_s(10, 10, 0), _s(10, 10, 1000)], None, MAX_SAMPLE_GAP_MS),  # gap capped
         ([_s(10, 10, 50), _s(10, 10, 20)], None, 0),  # out-of-order never subtracts
+        # t < 0: recorded while the stimulus was loading, before trial start
+        ([_s(10, 10, -68), _s(10, 10, -34), _s(10, 10, 0)], None, 0),
+        ([_s(10, 10, -20), _s(10, 10, 14), _s(10, 10, 48)], None, 48),  # clipped at 0
+        ([_s(10, 10, -500), _s(10, 10, 30)], None, 0),  # capped gap ends before 0
     ],
 )
 def test_dwell_time(samples, target, expected):

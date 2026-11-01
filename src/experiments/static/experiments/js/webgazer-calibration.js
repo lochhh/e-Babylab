@@ -11,10 +11,13 @@ let samplingInterval = 34;
 let timeToSaccade = 1000;
 let timePerPoint = 2050;
 let gazeInterval;
+// Samples keep absolute performance.now() times; getGazeData() reports them
+// relative to clockStart, the gaze origin (trial start once setGazeOrigin is called)
 let webgazer_data = [];
 let clockStart;
 export function resetGazeData() { webgazer_data = []; }
-export function getGazeData() { return webgazer_data; }
+export function getGazeData() { return webgazer_data.map(d => ({ ...d, t: d.t - clockStart })); }
+export function setGazeOrigin(time) { clockStart = time; }
 export function setTimePerPoint(ms) { timePerPoint = ms; }
 
 /**
@@ -254,7 +257,7 @@ let validateGaze = function (trialObj) {
 };
 
 export let startGazeRecording = function () {
-    // reset webgazer.clockStart
+    // default gaze origin until the trial starts (setGazeOrigin)
     clockStart = performance.now();
     gazeInterval = setInterval(() => {
         webgazer.getCurrentPrediction().then(handleGazeDataUpdate);
@@ -274,7 +277,7 @@ let handleGazeDataUpdate = function (data) {
         const d = {
             x: Math.round(data.x),
             y: Math.round(data.y),
-            t: performance.now() - clockStart,
+            t: performance.now(),
         };
         webgazer_data.push(d);
     }

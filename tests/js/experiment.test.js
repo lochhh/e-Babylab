@@ -28,10 +28,11 @@ vi.mock('../../src/experiments/static/experiments/js/webgazer-calibration.js', (
   calibrate:          vi.fn(),
   resetGazeData:      vi.fn(),
   getGazeData:        vi.fn().mockReturnValue([]),
+  setGazeOrigin:      vi.fn(),
 }))
 
 import { webcam } from '../../src/experiments/static/experiments/js/webcam.js'
-import { initWebgazer } from '../../src/experiments/static/experiments/js/webgazer-calibration.js'
+import { initWebgazer, setGazeOrigin } from '../../src/experiments/static/experiments/js/webgazer-calibration.js'
 import { init } from '../../src/experiments/static/experiments/js/experiment.js'
 
 const BASE_HTML = `
@@ -479,6 +480,23 @@ describe('experiment.js — keypress response', () => {
     await flush()
     expect(fetch).toHaveBeenCalled()
     expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+})
+
+describe('experiment.js — gaze timing', () => {
+  it('sets the gaze origin to the trial start time, after stimuli are shown', async () => {
+    makeEnv({
+      recordingOption: 'EYE',
+      trials: [makeTrial({ record_gaze: true, max_duration: 10 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush(30)
+    await new Promise(r => setTimeout(r, 30))
+    await flush(30)
+    const post = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes('storeresult'))
+    const startTime = Number(post[1].body.get('start_time'))
+    expect(setGazeOrigin).toHaveBeenCalledWith(startTime)
   })
 })
 

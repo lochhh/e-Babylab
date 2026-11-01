@@ -7,6 +7,7 @@ import {
     calibrate,
     resetGazeData,
     getGazeData,
+    setGazeOrigin,
     setTimePerPoint,
 } from './webgazer-calibration.js';
 
@@ -208,6 +209,8 @@ export function init() {
             const trialObj = values[0];
 
             trialObj.start_time = performance.now();
+            // Gaze t is relative to trial start; samples while stimuli loaded are negative
+            setGazeOrigin(trialObj.start_time);
 
             const trialDonePromises = [];
             if (trialObj.stimulus_type === 'video' && trialObj.require_user_input === 'NO') {

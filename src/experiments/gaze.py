@@ -91,7 +91,8 @@ def dwell_time(
     """Return how long gaze stayed in the target, in milliseconds.
 
     Each interval between consecutive samples is credited to the first sample
-    of the pair, capped at ``MAX_SAMPLE_GAP_MS``. Off-screen samples never count.
+    of the pair, capped at ``MAX_SAMPLE_GAP_MS``. Off-screen samples never count,
+    nor does time before trial start (``t < 0``, while stimuli were loading).
 
     Args:
         samples (Sequence[GazeSample]): Time-ordered gaze samples.
@@ -110,5 +111,8 @@ def dwell_time(
         cell = roi_cell(current["x"], current["y"], width, height, rows, cols)
         if 0 in cell or (target is not None and cell != target):
             continue
-        total += min(max(following["t"] - current["t"], 0.0), MAX_SAMPLE_GAP_MS)
+        gap = min(max(following["t"] - current["t"], 0.0), MAX_SAMPLE_GAP_MS)
+        start = max(current["t"], 0.0)  # time before trial start doesn't count
+        end = current["t"] + gap
+        total += max(end - start, 0.0)
     return total
