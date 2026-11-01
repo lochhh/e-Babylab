@@ -107,6 +107,14 @@ def _upload_merge(request, run_uuid):
     logger.info(f"Received last file of {base_filename}, merge files.")
 
     webcam_files = find_files(base_filename)
+    if webcam_files:
+        # New chunks under a taken name are a new recording (e.g. a calibration
+        # repeated twice before the same trial), so number it rather than
+        # overwrite; a retried merge has no chunks and keeps the existing file.
+        n = 2
+        while fs.exists(target):
+            target = f"{base_filename}_{n}.webm"
+            n += 1
     merge_files(target, webcam_files)
     for webcam_file in webcam_files:
         fs.delete(webcam_file)

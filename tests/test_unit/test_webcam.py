@@ -277,6 +277,44 @@ class TestWebcamUpload:
         trial_result.refresh_from_db()
         assert trial_result.webcam_file.name == "trial.webm"
 
+    @pytest.mark.parametrize(
+        "existing,expected",
+        [(["trial.webm"], "trial_2.webm"), (["trial.webm", "trial_2.webm"], "trial_3.webm")],
+    )
+    def test_post_merge_keeps_earlier_recording_of_the_same_name(
+        self,
+        client,
+        subjectdata_factory,
+        trialresult_factory,
+        experiment_factory,
+        tmp_path,
+        monkeypatch,
+        existing,
+        expected,
+    ):
+        """A new recording under a taken name gets a numbered suffix, not an overwrite.
+
+        E.g. a calibration repeated twice before the same trial (pausing again
+        during that trial) is recorded twice under the same trial number.
+        """
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        trial_result = trialresult_factory(subject=subject)
+        for name in existing:
+            (tmp_path / name).write_bytes(b"earlier")
+        (tmp_path / "trial-00000.webm").write_bytes(b"later")
+
+        client.post(
+            _webcam_upload_url(subject.id),
+            data={"filename": "trial", "trialResultId": str(trial_result.id)},
+        )
+        for name in existing:
+            assert (tmp_path / name).read_bytes() == b"earlier"
+        assert (tmp_path / expected).read_bytes() == b"later"
+        trial_result.refresh_from_db()
+        assert trial_result.webcam_file.name == expected
+
     def test_post_merge_without_chunks_saves_no_file(
         self,
         client,
