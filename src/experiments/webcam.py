@@ -1,6 +1,7 @@
 """Views for webcam/microphone recording and file upload handling."""
 
 import logging
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -80,9 +81,17 @@ def webcam_test_upload(request, run_uuid):
 
 
 def _upload_chunk(request):
-    """Store a single uploaded chunk in WEBCAM_ROOT, replacing any existing file."""
+    """Store a single uploaded chunk in WEBCAM_ROOT, replacing any existing file.
+
+    The first chunk of a recording also removes unmerged chunks left under the
+    same name, e.g. by a trial that was interrupted by a pause and restarted.
+    """
     fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
     webcam_file = request.FILES["file"]
+    first_chunk = re.fullmatch(r"(.+)-0{5}\.webm", webcam_file.name)
+    if first_chunk:
+        for stale in find_files(get_valid_filename(first_chunk.group(1))):
+            fs.delete(stale)
     if fs.exists(webcam_file.name):
         fs.delete(webcam_file.name)
     fs.save(get_valid_filename(webcam_file.name), webcam_file)
@@ -98,6 +107,14 @@ def _upload_merge(request, run_uuid):
     logger.info(f"Received last file of {base_filename}, merge files.")
 
     webcam_files = find_files(base_filename)
+    if webcam_files:
+        # New chunks under a taken name are a new recording (e.g. a calibration
+        # repeated twice before the same trial), so number it rather than
+        # overwrite; a retried merge has no chunks and keeps the existing file.
+        n = 2
+        while fs.exists(target):
+            target = f"{base_filename}_{n}.webm"
+            n += 1
     merge_files(target, webcam_files)
     for webcam_file in webcam_files:
         fs.delete(webcam_file)
