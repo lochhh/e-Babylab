@@ -589,8 +589,8 @@ export function init() {
             if (trialObj.response_keys.indexOf('click') !== -1) {
                 if (clickHandler) { document.removeEventListener('click', clickHandler); }
                 clickHandler = function (event) {
-                    // Ignore clicks on exit button
-                    if (!event.target.closest('#exit-button')) {
+                    // Ignore clicks on the exit button and its confirmation modal
+                    if (!event.target.closest('#exit-button, #exitStudyModal')) {
                         const key = `mouseX: ${event.screenX} - mouseY: ${event.screenY}`;
                         trialObj.keysPressed.push(key);
                         console.log("Trial ended with click.");

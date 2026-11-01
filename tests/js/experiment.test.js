@@ -505,6 +505,25 @@ describe('experiment.js — click response', () => {
     expect(fetch).toHaveBeenCalled()
     expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
   })
+
+  it('ignores clicks in the exit confirmation modal', async () => {
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ require_user_input: 'YES', response_keys: ['click'], max_duration: 500 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(1)
+    await flush()
+    // "Quit" / "Return to study" are not responses to the trial
+    document.getElementById('exitStudyModal').innerHTML = '<button id="confirmExitButton"></button>'
+    document.getElementById('confirmExitButton').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flush()
+    await vi.advanceTimersByTimeAsync(10)
+    await flush()
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining('storeresult'), expect.anything())
+  })
 })
 
 describe('experiment.js — exit button', () => {
