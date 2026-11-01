@@ -211,8 +211,10 @@ class Reporter:
 
         unique_trial_number is False when trial_number values repeat, in which
         case callers must derive an ordinal position from the queryset order.
-        Attention getter and PAUSE rows share another trial's number by design,
-        so they are ignored by that check (they stay in the queryset).
+        Attention getter, PAUSE and calibration rows can share another trial's
+        number by design (a calibration repeated on resume takes the number of
+        the trial it precedes), so they are ignored by that check (they stay in
+        the queryset).
         """
         outer_pks = list(
             OuterBlockItem.objects.filter(listitem__pk=subject.listitem.pk).values_list(
@@ -229,7 +231,12 @@ class Reporter:
         ).order_by("pk", "trial_number")
         # Attention getter and PAUSE rows share another trial's number by design
         trial_numbers = (
-            qs.exclude(trialitem__trial_type=TrialItem.ATTENTION_GETTER)
+            qs.exclude(
+                trialitem__trial_type__in=[
+                    TrialItem.ATTENTION_GETTER,
+                    TrialItem.CALIBRATION,
+                ]
+            )
             .exclude(key_pressed="PAUSE")
             .values_list("trial_number", flat=True)
         )

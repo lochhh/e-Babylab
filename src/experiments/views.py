@@ -289,21 +289,52 @@ def _attention_getter_dict(subject_data):
     return create_trial_dict(ag, ag.blockitem, last.trial_number)
 
 
-def _next_trials(subject_data):
+def _recalibration_dict(subject_data, trial_number):
+    """Return the most recently completed calibration trial dict, or None.
+
+    A reloaded run page starts WebGazer without calibration data, so the
+    calibration is repeated. It takes the number of the trial it precedes, so
+    report rows pair up and its recording doesn't overwrite the original's.
+    """
+    if subject_data.experiment.recording_option not in _EYE_TRACKING_OPTIONS:
+        return None
+    last = (
+        TrialResult.objects.filter(
+            subject=subject_data, trialitem__trial_type=TrialItem.CALIBRATION
+        )
+        .exclude(key_pressed="PAUSE")
+        .select_related("trialitem__blockitem")
+        .order_by("-pk")
+        .first()
+    )
+    if last is None:
+        return None
+    return create_trial_dict(last.trialitem, last.trialitem.blockitem, trial_number)
+
+
+def _next_trials(subject_data, resuming=False):
     """Return the next trial dict and the one after it, either may be None.
 
     The next trial is the last trial's attention getter if its dwell check
-    failed and trials remain, otherwise the next pending trial. The second
-    one lets the frontend preload its video during the current trial.
+    failed and trials remain, otherwise the next pending trial. When resuming
+    (the run page is reloaded), the attention getter is skipped and the most
+    recent completed calibration is repeated first. The second one lets the
+    frontend preload its video during the current trial.
     """
     pending = _pending_trials(subject_data)
     first, second = (
         create_trial_dict(*t) if t else None
         for t in (next(pending, None), next(pending, None))
     )
-    attention_getter = _attention_getter_dict(subject_data)
-    if attention_getter and first:
-        return [attention_getter, first]
+    if not first:
+        return [None, None]
+    lead = (
+        _recalibration_dict(subject_data, first["trial_number"])
+        if resuming
+        else _attention_getter_dict(subject_data)
+    )
+    if lead:
+        return [lead, first]
     return [first, second]
 
 
@@ -360,7 +391,7 @@ def experiment_run(request, run_uuid):
             subject_data.listitem = experiment.get_list_item()
             subject_data.save()
 
-        first, upcoming = _next_trials(subject_data)
+        first, upcoming = _next_trials(subject_data, resuming=True)
         # Every pending video trial plus every attention getter video, so the page
         # can create and unlock (iOS) a video element for each before the
         # participant's fullscreen tap

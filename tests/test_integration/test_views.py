@@ -771,23 +771,25 @@ class TestAttentionGetter:
         assert _next(client, sd) == {"done": True}
 
     @pytest.mark.django_db
-    def test_pause_between_trial_and_attention_getter_still_shows_it(
+    def test_nexttrial_ignores_pause_rows_in_the_dwell_check(
         self, client, subjectdata_factory, dwell_experiment
     ):
-        """Resuming after a pause still shows the pending attention getter.
+        """A PAUSE row is never mistaken for a zero-dwell trial result.
 
-        A PAUSE row is stored when the global timeout fires with the pause page
-        enabled — e.g. before or while the attention getter plays. On resume, the
-        latest non-PAUSE result is still the failed trial, so its attention getter
-        is shown.
+        In a normal run a PAUSE row never comes between storeresult and
+        nexttrial, as pausing reloads /run (resuming skips the attention getter;
+        see TestResume). It can if the run is open in two tabs: one tab pauses
+        between the other tab's storeresult and nexttrial. A PAUSE row has no
+        gaze data, so read as a result it would fail the dwell check and show
+        an attention getter after a trial that passed.
         """
-        exp, listitem, trial, _, ag = dwell_experiment
+        exp, listitem, trial, second, _ = dwell_experiment
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
-        _store(sd, trial, 0)
+        _store(sd, trial, 500)
         exp_models.TrialResult.objects.create(
-            subject=sd, trialitem=trial, key_pressed="PAUSE", trial_number=2
+            subject=sd, trialitem=trial, key_pressed="PAUSE", trial_number=1
         )
-        assert _next(client, sd)["trial"]["trial_id"] == ag.pk
+        assert _next(client, sd)["trial"]["trial_id"] == second.pk
 
     @pytest.mark.django_db
     def test_attention_getters_skipped_in_sequence(
@@ -822,20 +824,6 @@ class TestAttentionGetter:
         assert data["upcoming"]["trial_id"] == second.pk
 
     @pytest.mark.django_db
-    def test_experiment_run_resumes_with_attention_getter(
-        self, client, subjectdata_factory, dwell_experiment
-    ):
-        """Reloading /run after a failed check starts with the attention getter."""
-        exp, listitem, trial, _, ag = dwell_experiment
-        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
-        exp.save()
-        sd = subjectdata_factory(experiment=exp, listitem=listitem)
-        _store(sd, trial, 0)
-        url = reverse("experiments:experimentRun", args=[sd.pk])
-        payload = json.loads(client.get(url).content.decode())
-        assert payload["trial"]["trial_id"] == ag.pk
-
-    @pytest.mark.django_db
     def test_experiment_run_videos_include_attention_getters(
         self, client, subjectdata_factory, filer_file_factory, dwell_experiment
     ):
@@ -867,6 +855,204 @@ class TestAttentionGetter:
         sd = subjectdata_factory(experiment=exp, listitem=listitem)
         _store(sd, trial, 500)
         _store(sd, second if completed == "trials" else ag, 500, trial_number=2)
+        response = client.get(reverse("experiments:experimentEnd", args=[sd.pk]))
+        # equality, not `in`: b"COMPLETE" is a substring of b"INCOMPLETE"
+        assert response.content.strip() == expected
+
+
+# ---------------------------------------------------------------------------
+# Resuming after a pause (experimentRun reload)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def calibrated_experiment(dwell_experiment, trialitem_factory):
+    """dwell_experiment with a calibration trial first: Cal #1, T1 #2, T2 #3."""
+    exp, listitem, trial, second, ag = dwell_experiment
+    cal = trialitem_factory(
+        blockitem=trial.blockitem, label="Cal", code="CAL", position=0
+    )
+    cal.trial_type = "CAL"
+    cal.save()
+    exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
+    exp.save()
+    return exp, listitem, cal, trial, second, ag
+
+
+def _pause(sd, trial, trial_number):
+    exp_models.TrialResult.objects.create(
+        subject=sd, trialitem=trial, key_pressed="PAUSE", trial_number=trial_number
+    )
+
+
+def _run(client, sd):
+    url = reverse("experiments:experimentRun", args=[sd.pk])
+    return json.loads(client.get(url).content.decode())
+
+
+class TestResume:
+    """A reloaded run page recalibrates and never starts with an attention getter.
+
+    Reloading /run (resuming from the pause page) starts a fresh WebGazer with no
+    calibration data, so the most recently completed calibration trial is shown
+    again, under the number of the pending trial it precedes.
+    """
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("recording_option", ["EYE", "ALL"])
+    @pytest.mark.parametrize("paused_mid_trial", [False, True])
+    def test_recalibrates_then_continues_with_next_pending_trial(
+        self,
+        client,
+        subjectdata_factory,
+        calibrated_experiment,
+        recording_option,
+        paused_mid_trial,
+    ):
+        """Completed calibration is shown again under the next trial's number.
+
+        A trial interrupted by the pause has no result, so it comes next.
+        """
+        exp, listitem, cal, trial, second, _ = calibrated_experiment
+        exp.recording_option = recording_option
+        exp.save()
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _store(sd, cal, 0, trial_number=1)
+        if paused_mid_trial:
+            _pause(sd, trial, 2)
+            expected_next, expected_number = trial, 2
+        else:
+            _store(sd, trial, 500, trial_number=2)
+            _pause(sd, second, 3)
+            expected_next, expected_number = second, 3
+        payload = _run(client, sd)
+        assert payload["trial"]["trial_id"] == cal.pk
+        assert payload["trial"]["trial_number"] == expected_number
+        assert payload["upcoming"]["trial_id"] == expected_next.pk
+        assert payload["upcoming"]["trial_number"] == expected_number
+
+    @pytest.mark.django_db
+    def test_repeats_most_recent_calibration(
+        self, client, subjectdata_factory, trialitem_factory, calibrated_experiment
+    ):
+        """With two calibrations completed, the later one is repeated."""
+        exp, listitem, cal, trial, second, _ = calibrated_experiment
+        recal = trialitem_factory(
+            blockitem=trial.blockitem, label="Recal", code="RECAL", position=2
+        )
+        recal.trial_type = "CAL"
+        recal.save()
+        second.position = 3
+        second.save()
+        # Order: Cal #1, T1 #2, Recal #3, T2 #4
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _store(sd, cal, 0, trial_number=1)
+        _store(sd, trial, 500, trial_number=2)
+        _store(sd, recal, 0, trial_number=3)
+        payload = _run(client, sd)
+        assert payload["trial"]["trial_id"] == recal.pk
+        assert payload["trial"]["trial_number"] == 4
+        assert payload["upcoming"]["trial_id"] == second.pk
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("recording_option", ["NON", "AUD", "VID"])
+    def test_no_recalibration_without_eye_tracking(
+        self, client, subjectdata_factory, calibrated_experiment, recording_option
+    ):
+        """Without eye-tracking, resuming continues with the next pending trial."""
+        exp, listitem, cal, trial, _, _ = calibrated_experiment
+        exp.recording_option = recording_option
+        exp.save()
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _store(sd, cal, 0, trial_number=1)
+        _pause(sd, trial, 2)
+        assert _run(client, sd)["trial"]["trial_id"] == trial.pk
+
+    @pytest.mark.django_db
+    def test_unfinished_calibration_is_shown_once(
+        self, client, subjectdata_factory, calibrated_experiment
+    ):
+        """Pausing before calibration finished: it is simply the next pending trial."""
+        exp, listitem, cal, trial, _, _ = calibrated_experiment
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _pause(sd, cal, 1)
+        payload = _run(client, sd)
+        assert payload["trial"]["trial_id"] == cal.pk
+        assert payload["upcoming"]["trial_id"] == trial.pk
+
+    @pytest.mark.django_db
+    def test_no_recalibration_when_all_trials_are_done(
+        self, client, subjectdata_factory, calibrated_experiment
+    ):
+        """Nothing left to run means nothing to recalibrate for."""
+        exp, listitem, cal, trial, second, _ = calibrated_experiment
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        for number, t in enumerate((cal, trial, second), start=1):
+            _store(sd, t, 500, trial_number=number)
+        assert _run(client, sd)["trial"] is None
+
+    @pytest.mark.django_db
+    def test_paused_attention_getter_is_skipped_after_recalibration(
+        self, client, subjectdata_factory, calibrated_experiment
+    ):
+        """Pausing during an attention getter resumes with the next trial.
+
+        The run page recalibrates first; once the calibration result is stored,
+        the dwell check sees calibration as the latest result, so the attention
+        getter is not shown again.
+        """
+        exp, listitem, cal, trial, second, ag = calibrated_experiment
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _store(sd, cal, 0, trial_number=1)
+        _store(sd, trial, 0, trial_number=2)
+        _pause(sd, ag, 2)
+        payload = _run(client, sd)
+        assert payload["trial"]["trial_id"] == cal.pk
+        assert payload["upcoming"]["trial_id"] == second.pk
+        _store(sd, cal, 0, trial_number=3)
+        assert _next(client, sd)["trial"]["trial_id"] == second.pk
+
+    @pytest.mark.django_db
+    def test_attention_getter_skipped_without_calibration_trial(
+        self, client, subjectdata_factory, dwell_experiment
+    ):
+        """With no calibration to repeat, resume starts the next trial, not AG."""
+        exp, listitem, trial, second, ag = dwell_experiment
+        exp.experiment_page_tpl = "{% autoescape off %}{{ trials }}{% endautoescape %}"
+        exp.save()
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        _store(sd, trial, 0)
+        _pause(sd, ag, 1)
+        payload = _run(client, sd)
+        assert payload["trial"]["trial_id"] == second.pk
+        assert payload["upcoming"] is None
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "finished_second,expected", [(True, b"COMPLETE"), (False, b"INCOMPLETE")]
+    )
+    def test_repeated_calibration_counts_once_towards_completion(
+        self,
+        client,
+        subjectdata_factory,
+        calibrated_experiment,
+        finished_second,
+        expected,
+    ):
+        """The end page counts distinct trials, so a repeated calibration counts once.
+
+        Counting result rows instead, Cal + T1 + repeated Cal would reach the
+        list's 3 trials and show the thank-you page without T2 being done.
+        """
+        exp, listitem, cal, trial, second, _ = calibrated_experiment
+        exp.thank_you_page_tpl, exp.thank_you_abort_page_tpl = "COMPLETE", "INCOMPLETE"
+        exp.save()
+        sd = subjectdata_factory(experiment=exp, listitem=listitem)
+        results = [(1, cal), (2, trial), (3, cal)]
+        if finished_second:
+            results.append((3, second))
+        for number, t in results:
+            _store(sd, t, 500, trial_number=number)
         response = client.get(reverse("experiments:experimentEnd", args=[sd.pk]))
         # equality, not `in`: b"COMPLETE" is a substring of b"INCOMPLETE"
         assert response.content.strip() == expected

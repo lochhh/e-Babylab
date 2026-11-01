@@ -860,6 +860,47 @@ def test_attention_getter_rows_keep_trial_numbers_unique(
 
 
 @pytest.mark.django_db
+def test_repeated_calibration_keeps_trial_numbers_unique(
+    monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
+):
+    """A calibration repeated on resume shares the next trial's number; all rows stay."""
+    cal = trialitem_factory(label="Cal")
+    cal.trial_type = "CAL"
+    cal.save()
+    first = trialitem_factory(blockitem=cal.blockitem, label="T1", position=2)
+    second = trialitem_factory(blockitem=cal.blockitem, label="T2", position=3)
+    listitem = cal.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    rows = ((cal, 1), (first, 2), (cal, 3), (second, 3))
+    for t, number in rows:
+        rpt.TrialResult.objects.create(subject=sd, trialitem=t, trial_number=number)
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    qs, unique = rep._get_trial_results(sd)
+    assert unique is True
+    assert list(qs.values_list("trialitem", "trial_number")) == [
+        (t.pk, number) for t, number in rows
+    ]
+
+
+@pytest.mark.django_db
+def test_different_trials_sharing_a_number_are_not_unique(
+    monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
+):
+    """Legacy results where two trials share a number fall back to ordinal numbering."""
+    first = trialitem_factory(label="T1")
+    second = trialitem_factory(blockitem=first.blockitem, label="T2", position=2)
+    listitem = first.blockitem.outerblockitem.listitem
+    sd = subjectdata_factory(experiment=listitem.experiment, listitem=listitem)
+    for t in (first, second):
+        rpt.TrialResult.objects.create(subject=sd, trialitem=t, trial_number=1)
+
+    rep = make_reporter(monkeypatch, tmp_path, listitem.experiment)
+    _, unique = rep._get_trial_results(sd)
+    assert unique is False
+
+
+@pytest.mark.django_db
 def test_pause_row_sharing_trial_number_keeps_unique(
     monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
 ):

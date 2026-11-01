@@ -43,7 +43,7 @@ Fields in boldface are mandatory.
   - eye-tracking and key presses or clicks, or
   - eye-tracking, video, and key presses or clicks.
 - `Loading image` is an optional field for specifying the image to be shown before the end page of an experiment, while media uploads are still in progress. This can be an image with a message asking participants to keep their browser windows open while the captured media are still being uploaded.
-- `Include pause page` provides the option to redirect participants to a pause page when they fail to complete an experiment within a given time or when the exit button is clicked during an experiment, instead of ending an experiment immediately. Pause events are recorded in the results against the trial that was on screen, including attention getters and the first trial.
+- `Include pause page` provides the option to redirect participants to a pause page when they fail to complete an experiment within a given time or when the exit button is clicked during an experiment, instead of ending an experiment immediately. Pause events are recorded in the results against the trial that was on screen, including attention getters and the first trial. On resuming, a regular or eye-tracking calibration trial that was interrupted by the pause starts again from the beginning, and an attention getter that was interrupted is not shown again: the experiment carries on with the next trial. In eye-tracking experiments where the participant has already completed an eye-tracking calibration trial, resuming starts by repeating the most recent one before the experiment carries on. The repeated calibration appears in the results under the trial number of the trial that follows it.
 - `Show gaze estimations` allows WebGazer estimations to be visualised as a red dot to check if eye-tracking is working properly. This is typically used for debugging purposes but should be disabled in actual experiments.
 
 :::{note}
@@ -222,7 +222,7 @@ The trial form is grouped into sections. The eye-tracking sections, `Enable eye-
 
 **Gaze dwell time check**
 
-A gaze dwell time check is optional and can be added to any regular trial in an experiment whose _recording option_ includes eye-tracking. It launches an attention getter when the participant has not looked at the trial's dwell target for long enough: if their dwell time on the target is less than the minimum dwell time, the selected attention getter is shown once, straight after the trial. The experiment then carries on with the next trial (the trial is not repeated). No attention getter is shown after the final trial of an experiment. Leave these fields empty on trials that do not need a check.
+A gaze dwell time check is optional and can be added to any regular trial in an experiment whose _recording option_ includes eye-tracking. It launches an attention getter when the participant has not looked at the trial's dwell target for long enough: if their dwell time on the target is less than the minimum dwell time, the selected attention getter is shown once, straight after the trial. The experiment then carries on with the next trial (the trial is not repeated). No attention getter is shown after the final trial of an experiment, or when the participant resumes from the pause page. Leave these fields empty on trials that do not need a check.
 
 An _attention getter_ is a trial with `Trial type` = `Attention getter`. Attention getters are skipped in the normal trial order and are only shown when a gaze dwell time check launches them.
 
