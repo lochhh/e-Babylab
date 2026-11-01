@@ -58,10 +58,12 @@ export let initWebgazer = function () {
                   //console.log(clock); /* elapsed time in milliseconds since webgazer.begin() was called */
                 })
                 .saveDataAcrossSessions(false)
-                .removeMouseEventListeners()
                 .begin()
                 .then(() => {
-                    webgazer.showVideoPreview(true)
+                    // begin() adds mouse click/move listeners that train the gaze
+                    // model; remove them afterwards so only calibration trains it
+                    webgazer.removeMouseEventListeners()
+                            .showVideoPreview(true)
                             .showPredictionPoints(showPredictions)
                             .applyKalmanFilter(true);
 
