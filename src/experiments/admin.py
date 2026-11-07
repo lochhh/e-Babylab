@@ -1,13 +1,15 @@
 """Admin configuration for the experiments application."""
 
 from django.conf import settings
-from django.contrib import admin
-from django.db import models
+from django.contrib import admin, messages
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.db import models, transaction
 from django.db.models import Q
-from django.forms import Textarea
+from django.forms import BaseInlineFormSet, ModelForm, Script, Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 
+from .flowchart import list_flowchart
 from .forms import ExperimentForm, QuestionInlineFormSet
 from .models import (
     AnswerInteger,
@@ -27,6 +29,42 @@ from .models import (
     TrialItem,
     TrialResult,
 )
+
+# Recording options that include eye-tracking
+EYE_RECORDING_OPTIONS = (Experiment.EYE, Experiment.ALL)
+
+
+def eye_off_text(dwell: int, ags: int, cals: int, past: bool = False) -> str:
+    """Describe what turning off eye-tracking changes, omitting zero parts.
+
+    Args:
+        dwell (int): Number of trials whose gaze dwell time checks are cleared.
+        ags (int): Number of attention getters reset to Regular.
+        cals (int): Number of calibration trials reset to Regular.
+        past (bool): Use past tense (cleared/reset) instead of future (clear/reset).
+
+    Returns:
+        str: E.g. "clear gaze dwell time checks on 1 trial and reset 4 attention
+        getters to Regular", or "" if all counts are zero.
+
+    """
+
+    def n(count, noun):
+        return f"{count} {noun}{'' if count == 1 else 's'}"
+
+    parts = []
+    if dwell:
+        verb = "cleared" if past else "clear"
+        parts.append(f"{verb} gaze dwell time checks on {n(dwell, 'trial')}")
+    resets = [
+        n(c, w)
+        for c, w in ((ags, "attention getter"), (cals, "calibration trial"))
+        if c
+    ]
+    if resets:
+        parts.append(f"reset {' and '.join(resets)} to Regular")
+    return " and ".join(parts)
+
 
 # Custom Help Text
 TEMPLATES_HELP_TEXT = " ".join(
@@ -62,7 +100,6 @@ CDI_HELP_TEXT = " ".join(
 
 GRID_LAYOUT_HELP_TEXT = " ".join(
     [
-        "<p>Note:",
         "<p><em>Rows</em> and <em>Columns</em> are for defining a grid layout"
         " (nrow * ncol), for establishing areas of interest (applicable to"
         " click responses and/or eye-tracking). <br />",
@@ -71,8 +108,12 @@ GRID_LAYOUT_HELP_TEXT = " ".join(
         " right side (1,2) of the visual stimulus. <br />",
         "A 2*2 grid would allow for identifying top-left (1,1), top-right (1,2),"
         " bottom-left (2,1), and bottom-right (2,2) clicks and/or gazes. <br />",
-        "<em>Calibration points</em> for eye-tracking are defined"
-        " in percentages. <br />",
+    ]
+)
+
+CALIBRATION_HELP_TEXT = " ".join(
+    [
+        "Calibration points for eye-tracking are defined in percentages. <br />",
         "For instance, specifying [10,50] places the visual stimulus at 10%"
         " of the width of the screen from the left edge and 50% of the"
         " height of the screen from the top edge. <br />",
@@ -164,6 +205,84 @@ class ExperimentScopedPermissionMixin:
 # ---------------------------------------------------------------------------
 
 
+class TrialItemInlineFormSet(BaseInlineFormSet):
+    """Cross-row checks that per-form validation can't see within a single save."""
+
+    def clean(self):
+        """Reject pointing at an attention getter being unflagged or deleted now."""
+        super().clean()
+        live = [f for f in self.forms if getattr(f, "cleaned_data", None)]
+        removed = {
+            f.instance.pk
+            for f in live
+            if f.instance.pk
+            and (
+                f.cleaned_data.get("DELETE")
+                or f.cleaned_data.get("trial_type") != TrialItem.ATTENTION_GETTER
+            )
+        }
+        for form in live:
+            ag = form.cleaned_data.get("attention_getter")
+            if (
+                ag is not None
+                and not form.cleaned_data.get("DELETE")
+                and ag.pk in removed
+            ):
+                form.add_error(
+                    "attention_getter",
+                    f"'{ag.label}' is being changed from an attention getter or"
+                    " deleted in this save.",
+                )
+
+
+class TrialItemForm(ModelForm):
+    """Trial form without label colons (Django 6 renders file/FK labels as legends)."""
+
+    def __init__(self, *args, **kwargs):
+        """Default the label suffix to empty."""
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+    HIDDEN_FIELD_PREFIXES = {
+        "trial_type": "Trial type",
+        "record_gaze": "Enable eye-tracking",
+    }
+
+    def clean(self):
+        """Clear dwell-check values when the trial is not a regular trial."""
+        cleaned = super().clean()
+        if cleaned.get("trial_type", TrialItem.REGULAR) != TrialItem.REGULAR:
+            cleared = {
+                "attention_getter": None,
+                "min_dwell_time": None,
+                "dwell_target_type": TrialItem.ANY,
+                "dwell_target_row": None,
+                "dwell_target_col": None,
+            }
+            cleaned.update({k: v for k, v in cleared.items() if k in self.fields})
+        return cleaned
+
+    def _update_errors(self, errors):
+        """Show errors on fields hidden from this form as non-field errors."""
+        error_dict = getattr(errors, "error_dict", {})
+        hidden = error_dict.keys() - self.fields.keys() - {NON_FIELD_ERRORS}
+        moved = []
+        for name in hidden:
+            prefix = self.HIDDEN_FIELD_PREFIXES.get(name, "Gaze dwell time check")
+            moved += [
+                ValidationError(
+                    "%(prefix)s: %(msg)s To edit these settings, set the"
+                    " experiment's Recording option (General Settings) to include"
+                    " eye-tracking.",
+                    params={"prefix": prefix, "msg": " ".join(err.messages)},
+                )
+                for err in error_dict.pop(name)
+            ]
+        if moved:
+            error_dict.setdefault(NON_FIELD_ERRORS, []).extend(moved)
+        super()._update_errors(errors)
+
+
 class TrialItemInline(admin.StackedInline):
     """Inline admin for editing trial items within a block item."""
 
@@ -173,31 +292,117 @@ class TrialItemInline(admin.StackedInline):
     verbose_name_plural = "Trials"
     inline_classes = ["grp-collapse grp-open"]
     sortable_field_name = "position"
+    form = TrialItemForm
+    formset = TrialItemInlineFormSet
     fieldsets = (
+        (None, {"fields": ("label", "code", "position", "trial_type")}),
         (
-            None,
+            "Stimulus",
             {
                 "fields": (
-                    "label",
-                    "code",
                     "visual_onset",
                     "visual_file",
                     "audio_onset",
                     "audio_file",
-                    "user_input",
-                    "response_keys",
                     "max_duration",
-                    "record_media",
-                    "record_gaze",
-                    "is_calibration",
-                    "calibration_points",
-                    ("grid_row", "grid_col"),
-                    "position",
-                ),
+                )
+            },
+        ),
+        ("Response", {"fields": ("user_input", "response_keys")}),
+        ("Recording", {"fields": ("record_media", "record_gaze")}),
+        (
+            "Grid",
+            {
+                "fields": (("grid_row", "grid_col"),),
                 "description": f'<div class="help">{GRID_LAYOUT_HELP_TEXT}</div>',
             },
         ),
+        (
+            "Eye-tracking calibration",
+            {
+                "classes": ("eye-calibration",),
+                "fields": ("calibration_points",),
+                "description": f'<div class="help">{CALIBRATION_HELP_TEXT}</div>',
+            },
+        ),
+        (
+            "Gaze dwell time check",
+            {
+                "classes": ("dwell-check",),
+                "fields": (
+                    "attention_getter",
+                    "min_dwell_time",
+                    "dwell_target_type",
+                    ("dwell_target_row", "dwell_target_col"),
+                ),
+                "description": (
+                    '<div class="help">Launch an attention getter trial immediately'
+                    " after this trial if the participant's dwell time on the dwell"
+                    " target falls below the minimum dwell time. Requires"
+                    " <em>Enable eye-tracking</em> (Recording).</div>"
+                ),
+            },
+        ),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        """Drop eye-tracking fields unless the parent block's experiment records gaze.
+
+        Args:
+            request: The current request.
+            obj: The parent ``BlockItem``, or None on the add page (show all).
+
+        Returns:
+            The fieldsets to render. Omitted fields keep their saved values.
+
+        """
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj is None:
+            return fieldsets
+        experiment = obj.outerblockitem.listitem.experiment
+        if experiment.recording_option in (Experiment.EYE, Experiment.ALL):
+            return fieldsets
+        eye_only = {"trial_type", "record_gaze"}
+        kept = []
+        for name, opts in fieldsets:
+            if set(opts.get("classes", ())) & {"eye-calibration", "dwell-check"}:
+                continue
+            fields = [f for f in opts["fields"] if f not in eye_only]
+            kept.append((name, {**opts, "fields": fields}))
+        return kept
+
+    class Media:
+        """Show the eye-tracking sections that apply to the trial type."""
+
+        js = (Script("experiments/js/admin/trial-type-toggle.js", type="module"),)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Offer only attention getters from the same list as the edited block."""
+        if db_field.name == "attention_getter":
+            match = getattr(request, "resolver_match", None)
+            object_id = match.kwargs.get("object_id") if match else None
+            listitem_id = (
+                BlockItem.objects.filter(pk=object_id)
+                .values_list("outerblockitem__listitem", flat=True)
+                .first()
+                if object_id
+                else None
+            )
+            kwargs["queryset"] = TrialItem.objects.filter(
+                trial_type=TrialItem.ATTENTION_GETTER,
+                blockitem__outerblockitem__listitem=listitem_id,
+            ).select_related("blockitem__outerblockitem")
+        field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "attention_getter":
+            field.help_text = (
+                f"{field.help_text} Lists every trial marked as an attention"
+                " getter in this list, from any block."
+            ).strip()
+            field.label_from_instance = lambda t: (
+                f"{t.label} — {t.blockitem.outerblockitem.outer_block_name}"
+                f" › {t.blockitem.label}"  # noqa: RUF001
+            )
+        return field
 
 
 class BlockItemInline(admin.StackedInline):
@@ -486,11 +691,99 @@ class ExperimentAdmin(
     search_fields = ["exp_name"]
     change_list_filter_template = "admin/filter_listing.html"
 
+    class Media:
+        """Confirm before a recording option change clears eye-tracking settings."""
+
+        js = (
+            Script("experiments/js/admin/recording-option-confirm.js", type="module"),
+        )
+
+    @staticmethod
+    def _experiment_trials(experiment):
+        """Return the trials of an experiment as a queryset."""
+        return TrialItem.objects.filter(
+            blockitem__outerblockitem__listitem__experiment=experiment
+        )
+
+    def eye_tracking_counts(self, experiment):
+        """Count the trials that turning off eye-tracking would change.
+
+        Args:
+            experiment: The experiment whose trials are counted.
+
+        Returns:
+            A (dwell, attention_getters, calibrations) tuple of trial counts.
+
+        """
+        trials = self._experiment_trials(experiment)
+        return (
+            trials.filter(
+                Q(attention_getter__isnull=False) | Q(min_dwell_time__isnull=False)
+            ).count(),
+            trials.filter(trial_type=TrialItem.ATTENTION_GETTER).count(),
+            trials.filter(trial_type=TrialItem.CALIBRATION).count(),
+        )
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Give the recording option select what the confirmation script needs."""
+        form = super().get_form(request, obj, **kwargs)
+        if obj is not None:
+            dwell, ags, cals = self.eye_tracking_counts(obj)
+            form.base_fields["recording_option"].widget.attrs.update(
+                {
+                    "data-initial": obj.recording_option,
+                    "data-eye-values": ",".join(EYE_RECORDING_OPTIONS),
+                    "data-dwell-count": dwell,
+                    "data-attention-getter-count": ags,
+                    "data-calibration-count": cals,
+                }
+            )
+        return form
+
     def save_model(self, request, obj, form, change):
-        """Assign the current user as owner when creating a new experiment."""
+        """Assign the owner; clear eye-tracking settings if recording turns it off."""
         if getattr(obj, "user", None) is None:
             obj.user = request.user
+        old = (
+            Experiment.objects.filter(pk=obj.pk)
+            .values_list("recording_option", flat=True)
+            .first()
+            if change
+            else None
+        )
         obj.save()
+        if (
+            old in EYE_RECORDING_OPTIONS
+            and obj.recording_option not in EYE_RECORDING_OPTIONS
+        ):
+            self._clear_eye_tracking(request, obj)
+
+    def _clear_eye_tracking(self, request, experiment):
+        """Clear dwell checks and reset calibration/attention getter trials."""
+        with transaction.atomic():
+            trials = self._experiment_trials(experiment)
+            dwell, _, _ = self.eye_tracking_counts(experiment)
+            # Dwell checks first so no trial still references an attention getter
+            trials.update(
+                attention_getter=None,
+                min_dwell_time=None,
+                dwell_target_type=TrialItem.ANY,
+                dwell_target_row=None,
+                dwell_target_col=None,
+            )
+            ags = trials.filter(trial_type=TrialItem.ATTENTION_GETTER).update(
+                trial_type=TrialItem.REGULAR
+            )
+            cals = trials.filter(trial_type=TrialItem.CALIBRATION).update(
+                trial_type=TrialItem.REGULAR
+            )
+        text = eye_off_text(dwell, ags, cals, past=True)
+        if text:
+            self.message_user(
+                request,
+                f"Recording option no longer includes eye-tracking: {text}.",
+                messages.SUCCESS,
+            )
 
     @admin.display(description="Actions")
     def experiment_buttons(self, obj):
@@ -523,6 +816,14 @@ class ListItemAdmin(
         "list_name",
         "experiment",
     )
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        """Add the list's Mermaid flowchart to the change page."""
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj is not None:
+            extra_context["flowchart"] = list_flowchart(obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
 
 class OuterBlockItemAdmin(

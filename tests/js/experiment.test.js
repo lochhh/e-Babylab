@@ -28,10 +28,11 @@ vi.mock('../../src/experiments/static/experiments/js/webgazer-calibration.js', (
   calibrate:          vi.fn(),
   resetGazeData:      vi.fn(),
   getGazeData:        vi.fn().mockReturnValue([]),
+  setGazeOrigin:      vi.fn(),
 }))
 
 import { webcam } from '../../src/experiments/static/experiments/js/webcam.js'
-import { initWebgazer } from '../../src/experiments/static/experiments/js/webgazer-calibration.js'
+import { initWebgazer, setGazeOrigin } from '../../src/experiments/static/experiments/js/webgazer-calibration.js'
 import { init } from '../../src/experiments/static/experiments/js/experiment.js'
 
 const BASE_HTML = `
@@ -55,7 +56,7 @@ function makeTrial(overrides = {}) {
   return {
     trial_id: 1,
     trial_number: 1,
-    trial_type: 'image',
+    stimulus_type: 'image',
     label: 'test',
     visual_file: '/media/test.jpg',
     audio_file: '',
@@ -89,7 +90,7 @@ function makeEnv({
     trial: trials[0] ?? null,
     upcoming: trials[1] ?? null,
     videos: trials
-      .filter(t => t.trial_type === 'video')
+      .filter(t => t.stimulus_type === 'video')
       .map(t => ({ trial_id: t.trial_id, visual_file: t.visual_file })),
   })
 
@@ -308,6 +309,58 @@ describe('experiment.js — global timeout', () => {
   })
 })
 
+describe('experiment.js — pause redirect carries the trial on screen', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('adds trialitem and trial_number to the pause URL on timeout', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 500 })],
+      globalTimeout: '100',
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(110)
+    await flush()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('adds the params when the exit button is clicked mid-trial', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 500 })],
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('still carries the last trial after its result was posted', async () => {
+    const { locationReplace } = makeEnv({
+      trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 50 })],
+      includePausePage: 'true',
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(100)
+    await flush()
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('storeresult'), expect.anything())
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenLastCalledWith('/test-uuid/run/pause?trialitem=7&trial_number=3')
+  })
+
+  it('uses the plain pause URL when no trial is on screen', () => {
+    const { locationReplace } = makeEnv({ trials: [], includePausePage: 'true' })
+    document.getElementById('exit-button').click()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause')
+  })
+})
+
 describe('experiment.js — video trial', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
@@ -316,7 +369,7 @@ describe('experiment.js — video trial', () => {
     HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
     const { locationReplace } = makeEnv({
       recordingOption: 'NON',
-      trials: [makeTrial({ trial_type: 'video', require_user_input: 'NO' })],
+      trials: [makeTrial({ stimulus_type: 'video', require_user_input: 'NO' })],
     })
     await flush()
     document.getElementById('fullscreen-button').click()
@@ -345,8 +398,8 @@ describe('experiment.js — video trial', () => {
       recordingOption: 'NON',
       trials: [
         makeTrial({ trial_id: 1 }),
-        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
-        makeTrial({ trial_id: 3, trial_type: 'video', visual_file: '/media/b.mp4' }),
+        makeTrial({ trial_id: 2, stimulus_type: 'video', visual_file: '/media/a.mp4' }),
+        makeTrial({ trial_id: 3, stimulus_type: 'video', visual_file: '/media/b.mp4' }),
       ],
     })
     await flush()
@@ -366,7 +419,7 @@ describe('experiment.js — video trial', () => {
       recordingOption: 'NON',
       trials: [
         makeTrial({ trial_id: 1, max_duration: 500 }),
-        makeTrial({ trial_id: 2, trial_type: 'video', visual_file: '/media/a.mp4' }),
+        makeTrial({ trial_id: 2, stimulus_type: 'video', visual_file: '/media/a.mp4' }),
       ],
     })
     await flush()
@@ -380,6 +433,28 @@ describe('experiment.js — video trial', () => {
     expect(document.querySelector('.trial-image')).not.toBeNull()
     expect(video.preload).toBe('auto')
     expect(load.mock.contexts).toContain(video)
+  })
+
+  it('keeps an attention getter video element (hidden, rewound) for reuse', async () => {
+    HTMLVideoElement.prototype.play = vi.fn().mockReturnValue(Promise.resolve())
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ stimulus_type: 'video', require_user_input: 'NO', is_attention_getter: true })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    const video = document.querySelector('#video-container-1 > video')
+    video.dispatchEvent(new Event('canplay'))
+    await vi.advanceTimersByTimeAsync(1)
+    await flush()
+    video.currentTime = 3
+    video.dispatchEvent(new Event('ended'))
+    await flush()
+    const container = document.querySelector('#video-container-1')
+    expect(container).not.toBeNull()          // regular trials remove it
+    expect(container.style.display).toBe('none')
+    expect(video.currentTime).toBe(0)
   })
 })
 
@@ -408,6 +483,23 @@ describe('experiment.js — keypress response', () => {
   })
 })
 
+describe('experiment.js — gaze timing', () => {
+  it('sets the gaze origin to the trial start time, after stimuli are shown', async () => {
+    makeEnv({
+      recordingOption: 'EYE',
+      trials: [makeTrial({ record_gaze: true, max_duration: 10 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush(30)
+    await new Promise(r => setTimeout(r, 30))
+    await flush(30)
+    const post = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes('storeresult'))
+    const startTime = Number(post[1].body.get('start_time'))
+    expect(setGazeOrigin).toHaveBeenCalledWith(startTime)
+  })
+})
+
 describe('experiment.js — click response', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
@@ -430,6 +522,25 @@ describe('experiment.js — click response', () => {
     await flush()
     expect(fetch).toHaveBeenCalled()
     expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('thankyou'))
+  })
+
+  it('ignores clicks in the exit confirmation modal', async () => {
+    makeEnv({
+      recordingOption: 'NON',
+      trials: [makeTrial({ require_user_input: 'YES', response_keys: ['click'], max_duration: 500 })],
+    })
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(1)
+    await flush()
+    // "Quit" / "Return to study" are not responses to the trial
+    document.getElementById('exitStudyModal').innerHTML = '<button id="confirmExitButton"></button>'
+    document.getElementById('confirmExitButton').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flush()
+    await vi.advanceTimersByTimeAsync(10)
+    await flush()
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining('storeresult'), expect.anything())
   })
 })
 

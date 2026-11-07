@@ -199,6 +199,31 @@ class TestWebcamUpload:
         assert response.status_code == 204
         assert (tmp_path / "trial-0.webm").read_bytes() == b"new data"
 
+    def test_first_chunk_discards_chunks_of_an_interrupted_recording(
+        self, client, subjectdata_factory, experiment_factory, tmp_path, monkeypatch
+    ):
+        """A restarted trial reuses its file name; stale chunks must not be merged.
+
+        A trial interrupted by a pause leaves unmerged chunks behind. When the
+        trial restarts, its first chunk starts a new recording, so leftover
+        chunks of that name (e.g. a longer interrupted attempt) are removed.
+        """
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        for i in range(3):
+            (tmp_path / f"1_trial2_t_u-{i:05d}.webm").write_bytes(b"stale")
+        (tmp_path / "1_trial2_t_u2-00000.webm").write_bytes(b"other trial")
+        chunk = SimpleUploadedFile(
+            "1_trial2_t_u-00000.webm", b"new", content_type="video/webm"
+        )
+        client.post(_webcam_upload_url(subject.id), data={"file": chunk})
+        assert sorted(p.name for p in tmp_path.iterdir()) == [
+            "1_trial2_t_u-00000.webm",
+            "1_trial2_t_u2-00000.webm",
+        ]
+        assert (tmp_path / "1_trial2_t_u-00000.webm").read_bytes() == b"new"
+
     def test_post_merge_request_merges_chunks_and_saves_to_trial_result(
         self,
         client,
@@ -251,6 +276,44 @@ class TestWebcamUpload:
         assert (tmp_path / "trial.webm").read_bytes() == b"part0part1"
         trial_result.refresh_from_db()
         assert trial_result.webcam_file.name == "trial.webm"
+
+    @pytest.mark.parametrize(
+        "existing,expected",
+        [(["trial.webm"], "trial_2.webm"), (["trial.webm", "trial_2.webm"], "trial_3.webm")],
+    )
+    def test_post_merge_keeps_earlier_recording_of_the_same_name(
+        self,
+        client,
+        subjectdata_factory,
+        trialresult_factory,
+        experiment_factory,
+        tmp_path,
+        monkeypatch,
+        existing,
+        expected,
+    ):
+        """A new recording under a taken name gets a numbered suffix, not an overwrite.
+
+        E.g. a calibration repeated twice before the same trial (pausing again
+        during that trial) is recorded twice under the same trial number.
+        """
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        exp = _make_experiment(experiment_factory)
+        subject = subjectdata_factory(experiment=exp)
+        trial_result = trialresult_factory(subject=subject)
+        for name in existing:
+            (tmp_path / name).write_bytes(b"earlier")
+        (tmp_path / "trial-00000.webm").write_bytes(b"later")
+
+        client.post(
+            _webcam_upload_url(subject.id),
+            data={"filename": "trial", "trialResultId": str(trial_result.id)},
+        )
+        for name in existing:
+            assert (tmp_path / name).read_bytes() == b"earlier"
+        assert (tmp_path / expected).read_bytes() == b"later"
+        trial_result.refresh_from_db()
+        assert trial_result.webcam_file.name == expected
 
     def test_post_merge_without_chunks_saves_no_file(
         self,
