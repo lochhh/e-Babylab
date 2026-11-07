@@ -30,6 +30,7 @@ from .models import (
     TrialResult,
 )
 from .reporter import Reporter
+from .webcam import recover_recordings
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
@@ -385,6 +386,9 @@ def experiment_run(request, run_uuid):
     subject_data = get_object_or_404(SubjectData, pk=run_uuid)
     experiment = subject_data.experiment
     loading_image = experiment.loading_image if experiment.loading_image else ""
+
+    # A previous visit may have left finished trials' recordings unmerged
+    recover_recordings(subject_data)
 
     try:
         if subject_data.listitem is None:

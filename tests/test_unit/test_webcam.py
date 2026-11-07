@@ -9,16 +9,21 @@ These tests exercise:
   Also test error handling.
 - find_files, merge_files helper functions: test that these functions correctly find and
   merge chunks belonging to the same trial, and that they handle edge cases.
+- recover_recordings: test that chunks left behind by a finished trial whose merge
+  request never arrived are merged into a partial recording and attached.
 """
 
+import os
+import time
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from experiments.webcam import find_files, merge_files
+from experiments.webcam import find_files, merge_files, recover_recordings
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -433,6 +438,14 @@ class TestMergeFiles:
         merge_files("merged.webm", ["chunk-0.webm", "chunk-1.webm"])
         assert (tmp_path / "merged.webm").read_bytes() == b"hello world"
 
+    def test_deletes_chunks_after_merging(self, tmp_path, monkeypatch):
+        """Merged chunks are removed so they cannot be merged again."""
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        (tmp_path / "chunk-0.webm").write_bytes(b"hello ")
+        (tmp_path / "chunk-1.webm").write_bytes(b"world")
+        merge_files("merged.webm", ["chunk-0.webm", "chunk-1.webm"])
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["merged.webm"]
+
     def test_overwrites_existing_target(self, tmp_path, monkeypatch):
         """An existing target file is replaced by the merge result."""
         monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
@@ -455,3 +468,117 @@ class TestMergeFiles:
             assert not target.exists()
         else:
             assert target.read_bytes() == existing
+
+
+# ---------------------------------------------------------------------------
+# recover_recordings
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestRecoverRecordings:
+    """Tests for merging chunks left behind by a finished trial."""
+
+    @pytest.fixture
+    def finished(self, tmp_path, monkeypatch, subjectdata_factory, trialresult_factory):
+        """Return a finished trial result without a recording, and its base name."""
+        monkeypatch.setattr(settings, "WEBCAM_ROOT", str(tmp_path), raising=False)
+        subject = subjectdata_factory()
+        result = trialresult_factory(subject=subject)
+        result.trial_number = 5
+        result.save()
+        base = f"P1_trial5_{result.trialitem.label}_{subject.id}"
+        return result, base
+
+    @staticmethod
+    def _write_chunks(tmp_path, base, count=2, age=None):
+        """Write ``count`` chunks of ``base``, optionally aged by ``age`` seconds."""
+        for n in range(count):
+            chunk = tmp_path / f"{base}-{n:05d}.webm"
+            chunk.write_bytes(f"part{n}".encode())
+            if age:
+                then = time.time() - age
+                os.utime(chunk, (then, then))
+
+    def test_merges_leftover_chunks_into_a_partial_recording(self, tmp_path, finished):
+        """Leftover chunks of a finished trial become its partial recording."""
+        result, base = finished
+        self._write_chunks(tmp_path, base)
+
+        recover_recordings(result.subject)
+
+        assert (tmp_path / f"{base}_partial.webm").read_bytes() == b"part0part1"
+        assert not list(tmp_path.glob(f"{base}-*"))
+        result.refresh_from_db()
+        assert result.webcam_file.name == f"{base}_partial.webm"
+
+    def test_leaves_chunks_of_a_trial_interrupted_by_a_pause(self, tmp_path, finished):
+        """A pause row shares the interrupted trial's number but is not its result.
+
+        The interrupted trial's chunks are discarded when the trial restarts.
+        """
+        result, base = finished
+        result.key_pressed = "PAUSE"
+        result.save()
+        self._write_chunks(tmp_path, base)
+
+        recover_recordings(result.subject)
+
+        result.refresh_from_db()
+        assert not result.webcam_file
+        assert len(list(tmp_path.glob(f"{base}-*"))) == 2
+
+    def test_keeps_a_trial_that_already_has_a_recording(self, tmp_path, finished):
+        """A result with a recording is not given leftover chunks of the same name."""
+        result, base = finished
+        result.webcam_file.name = f"{base}.webm"
+        result.save()
+        self._write_chunks(tmp_path, base)
+
+        recover_recordings(result.subject)
+
+        result.refresh_from_db()
+        assert result.webcam_file.name == f"{base}.webm"
+        assert len(list(tmp_path.glob(f"{base}-*"))) == 2
+
+    @pytest.mark.parametrize(("age", "recovered"), [(5 * 60, False), (15 * 60, True)])
+    def test_leaves_chunks_newer_than_min_age(self, tmp_path, finished, age, recovered):
+        """Chunks that may still be uploading are left for the merge request."""
+        result, base = finished
+        self._write_chunks(tmp_path, base, age=age)
+
+        recover_recordings(result.subject, min_age=timedelta(minutes=10))
+
+        result.refresh_from_db()
+        assert bool(result.webcam_file) is recovered
+        assert (tmp_path / f"{base}_partial.webm").exists() is recovered
+
+    def test_keeps_an_earlier_partial_recording_of_the_same_name(
+        self, tmp_path, finished
+    ):
+        """A taken partial name gets a numbered suffix instead of being overwritten."""
+        result, base = finished
+        (tmp_path / f"{base}_partial.webm").write_bytes(b"earlier")
+        self._write_chunks(tmp_path, base)
+
+        recover_recordings(result.subject)
+
+        assert (tmp_path / f"{base}_partial.webm").read_bytes() == b"earlier"
+        result.refresh_from_db()
+        assert result.webcam_file.name == f"{base}_partial_2.webm"
+
+    def test_ignores_chunks_of_another_trial_or_participant(
+        self, tmp_path, finished, subjectdata_factory
+    ):
+        """Only chunks named after this result's trial and participant are merged."""
+        result, base = finished
+        other_trial = base.replace("_trial5_", "_trial6_")
+        other_subject = base.replace(str(result.subject.id), str(uuid.uuid4()))
+        self._write_chunks(tmp_path, other_trial)
+        self._write_chunks(tmp_path, other_subject)
+
+        recover_recordings(result.subject)
+
+        result.refresh_from_db()
+        assert not result.webcam_file
+        assert len(list(tmp_path.glob("*-0000*.webm"))) == 4
