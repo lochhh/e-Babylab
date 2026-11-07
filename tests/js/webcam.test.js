@@ -200,5 +200,33 @@ describe('webcam', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(w.getLength()).toBe(0)
     })
+
+    describe('after uploading gives up on repeated failures', () => {
+      const fail = () => Promise.reject(new TypeError('Failed to fetch'))
+
+      it('resolves a pending wait for the queue to empty', async () => {
+        vi.useFakeTimers()
+        vi.stubGlobal('fetch', vi.fn(fail))
+        const w = await queueChunk()
+        const drained = vi.fn()
+        w.waitForQueue(0).then(drained)
+
+        w.startUploading('uuid')
+        await vi.advanceTimersByTimeAsync(120000)
+
+        expect(w.getLength()).toBe(2) // nothing was uploaded
+        expect(drained).toHaveBeenCalled()
+      })
+
+      it('resolves a later wait straight away', async () => {
+        vi.useFakeTimers()
+        vi.stubGlobal('fetch', vi.fn(fail))
+        const w = await queueChunk()
+        w.startUploading('uuid')
+        await vi.advanceTimersByTimeAsync(120000)
+
+        await expect(w.waitForQueue(0)).resolves.toBeUndefined()
+      })
+    })
   })
 })

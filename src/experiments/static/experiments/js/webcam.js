@@ -57,6 +57,9 @@ export function createWebcam() {
 	// Maximum number of upload errors until upload is stopped
 	const maxUploadErrors = 10;
 
+	// Set when uploading stopped after maxUploadErrors; the queue will not empty
+	let gaveUp = false;
+
 	// Time in ms after which a pending upload request is aborted
 	const uploadTimeout = 30000;
 
@@ -88,7 +91,8 @@ export function createWebcam() {
 	 * @param {number} length of queue at which the Promise should be resolved
 	 */
 	w.waitForQueue = function (length) {
-		if (length === uploadQueue.getLength()) {
+		// After giving up nothing more is sent, so waiting would never end
+		if (gaveUp || length === uploadQueue.getLength()) {
 			return Promise.resolve();
 		}
 
@@ -300,6 +304,12 @@ export function createWebcam() {
 			} else {
 				console.error('Too many errors while uploading. Stop uploading.');
 				w.stopUploading();
+				// Release everyone waiting for the queue; the server recovers what was sent
+				gaveUp = true;
+				for (const callbacks of Object.values(queueNotify)) {
+					callbacks.forEach(callback => callback());
+				}
+				queueNotify = {};
 			}
 		});
 	};
