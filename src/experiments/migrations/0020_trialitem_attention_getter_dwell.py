@@ -6,6 +6,27 @@ import experiments.models
 from django.db import migrations, models
 
 
+def _run_deferred_checks(schema_editor):
+    # PostgreSQL refuses to ALTER a table with pending deferred FK checks,
+    # and the next operation alters experiments_trialitem.
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('SET CONSTRAINTS ALL IMMEDIATE')
+
+
+def calibration_flag_to_trial_type(apps, schema_editor):
+    """Keep existing calibration trials as calibration trials."""
+    TrialItem = apps.get_model('experiments', 'TrialItem')
+    TrialItem.objects.filter(is_calibration=True).update(trial_type='CAL')
+    _run_deferred_checks(schema_editor)
+
+
+def trial_type_to_calibration_flag(apps, schema_editor):
+    """Restore the calibration flag when the migration is reversed."""
+    TrialItem = apps.get_model('experiments', 'TrialItem')
+    TrialItem.objects.filter(trial_type='CAL').update(is_calibration=True)
+    _run_deferred_checks(schema_editor)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -39,6 +60,7 @@ class Migration(migrations.Migration):
             name='trial_type',
             field=models.CharField(choices=[('REG', 'Regular'), ('CAL', 'Eye-tracking calibration'), ('AG', 'Attention getter')], default='REG', help_text="Calibration and attention getter trials need an experiment that records eye-tracking. Attention getters are skipped in the normal trial order and only shown when another trial's gaze dwell time check fails.", max_length=3, verbose_name='trial type'),
         ),
+        migrations.RunPython(calibration_flag_to_trial_type, trial_type_to_calibration_flag),
         migrations.RemoveField(
             model_name='trialitem',
             name='is_calibration',

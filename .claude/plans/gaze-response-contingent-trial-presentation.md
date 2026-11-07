@@ -330,7 +330,7 @@ The order of 2.1–2.4 follows the roadmap and can change by priority (Stage 5 i
 **Migration policy:** v1 used the `ipl` app (migrations 0001–0063); v2 restarted at `src/experiments/migrations/0001`, so v1 → v2 is not a migration upgrade (the README tells v1 users to stay on v1.0.2).
 - Within an unmerged PR, edit its own migration in place.
 - From `v2.0.0a4` on, merged migrations aren't rewritten; changes go in new migrations. If an alpha still needs a database reset, the release notes say so.
-- At rc1, reset the v2 history: delete `0001`–`00NN`, regenerate `0001_initial` with `makemigrations`, and fold the data migrations still needed on a fresh database (e.g. `0005_create_default_filer_folders`, `0006_add_r_script_to_filer_instruments`) into one hand-written `0002` RunPython migration. Reset the test server. Release notes say alpha/beta databases must be recreated: export experiments from the admin first, then import them.
+- At rc1, reset the v2 history: delete `0001`–`00NN`, regenerate `0001_initial` with `makemigrations`, and fold the data migrations still needed on a fresh database (e.g. `0005_create_default_filer_folders`, `0006_add_r_script_to_filer_instruments`) into one hand-written `0002` RunPython migration. Delete `tests/test_integration/test_migrations.py` (it tests `0020`'s calibration-flag data step, which the reset removes). Reset the test server. Release notes say alpha/beta databases must be recreated: export experiments from the admin first, then import them.
 - From 2.0.0, migrations are append-only.
 
 **Release checklist (every tag)**
