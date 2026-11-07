@@ -426,6 +426,57 @@ describe('experiment.js — interrupted between trials', () => {
   })
 })
 
+describe('experiment.js — leaving after the last trial', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('still goes to the thank-you page once uploads finish', async () => {
+    const listen = vi.spyOn(document, 'addEventListener')
+    const { locationReplace } = makeEnv({
+      recordingOption: 'VID',
+      trials: [makeTrial({ max_duration: 500 })],
+      includePausePage: 'true',
+    })
+    const onFullscreenChange = listen.mock.calls.findLast(([ev]) => ev === 'fullscreenchange')[1]
+    listen.mockRestore()
+    let drain
+    vi.mocked(webcam.waitForQueue).mockReturnValue(new Promise(r => { drain = r }))
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(600) // the only trial ends; waiting for uploads
+    await flush()
+
+    onFullscreenChange()
+    await vi.advanceTimersByTimeAsync(31000)
+    expect(locationReplace).not.toHaveBeenCalled()
+
+    drain()
+    await flush()
+    expect(locationReplace).toHaveBeenCalledTimes(1)
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/thankyou')
+  })
+
+  it('goes to the thank-you page, not the pause page, when the exit button is clicked', async () => {
+    const { locationReplace } = makeEnv({
+      recordingOption: 'VID',
+      trials: [makeTrial({ max_duration: 500 })],
+      includePausePage: 'true',
+    })
+    vi.mocked(webcam.waitForQueue).mockReturnValue(new Promise(() => {}))
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(600) // the only trial ends; waiting for uploads
+    await flush()
+
+    document.getElementById('exit-button').click()
+
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/thankyou')
+    expect(locationReplace).not.toHaveBeenCalledWith(expect.stringContaining('pause'))
+  })
+})
+
 describe('experiment.js — pause redirect carries the trial on screen', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
@@ -461,6 +512,10 @@ describe('experiment.js — pause redirect carries the trial on screen', () => {
       trials: [makeTrial({ trial_id: 7, trial_number: 3, max_duration: 50 })],
       includePausePage: 'true',
     })
+    // Hold the next-trial request: the run is between trials, not finished
+    const respond = fetch.getMockImplementation()
+    vi.mocked(fetch).mockImplementation((url, ...rest) =>
+      String(url).includes('/run/nexttrial') ? new Promise(() => {}) : respond(url, ...rest))
     await flush()
     document.getElementById('fullscreen-button').click()
     await flush()

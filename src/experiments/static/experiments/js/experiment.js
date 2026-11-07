@@ -58,6 +58,9 @@ export function init() {
     // Set by interruptRun (global timeout or fullscreen exit); stops the run
     let interrupted = false;
 
+    // Set once the last trial is done: nothing can interrupt the run, and exiting goes to the thank-you page
+    let finishing = false;
+
     // How long interruptRun waits for queued recordings to upload before giving up (ms)
     const EXIT_UPLOAD_WAIT = 30000;
 
@@ -140,6 +143,8 @@ export function init() {
      */
     const finishExperiment = function () {
         clearTimeout(globaltimer);
+        // Every trial is done: leaving fullscreen while uploads finish is not a pause
+        finishing = true;
         webgazer.pause();
         waitForWebcamUploadToFinish().then(() => {
             webcam.stopUploading();
@@ -681,10 +686,11 @@ export function init() {
     };
 
     /**
-     * Go to the pause page, or the thank-you page if the experiment has none.
+     * Go to the pause page, or the thank-you page if the experiment has none
+     * or every trial is already done (there is nothing left to resume).
      */
     const goToExitPage = function () {
-        if (include_pause_page) {
+        if (include_pause_page && !finishing) {
             window.location.replace(pauseUrl());
         } else {
             window.location.replace(`/${subjectUuid}/run/thankyou`);
@@ -698,7 +704,7 @@ export function init() {
      * whatever is left is recovered by the server.
      */
     const interruptRun = function () {
-        if (interrupted) return;
+        if (interrupted || finishing) return;
         interrupted = true;
         clearTimeout(globaltimer);
         removeFullscreenListeners();
