@@ -112,7 +112,7 @@ Once AG result is stored, `last` is the AG → sequence continues. Idempotent on
 
 **Verification:** Parametrised pytest for `roi_cell`/`dwell_time`, `list_flowchart`, validation rules (incl. formset retype case), `nexttrial` (low dwell → AG; sufficient dwell / AG / no eye recording / calibration → sequence; AG → continue; no AG after final trial), pause trial recording, completeness count, reporter numbering + dwell/trial-type columns, recording-option cleanup, import remapping; 100% Python coverage. Vitest for pause tracking and the recording-option confirm. Playwright: admin trial-type toggle; attention getter happy path through to thank-you page.
 
-**PR 2a remaining:** user review of #39 → mark ready → merge. Then release `v2.0.0a4` (see Release Plan).
+**PR 2a:** merged as #39 (2026-11-07). The unsent uploads fix (PR 2a-fix) lands before `v2.0.0a4` is released (see Release Plan).
 
 ---
 
@@ -291,7 +291,8 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 | PR | Stage | Est. scope | Status |
 |----|-------|-----------|--------|
 | PR 1 | Stage 1: Dynamic trial fetching (`nexttrial` API) | Medium — pure refactor, no new features | Released in `v2.0.0a3` |
-| PR 2a | Stage 2: Server-side dwell check + attention getter trial type + Mermaid read-only flowchart | Large | Open (#39), draft, CI green → `v2.0.0a4` |
+| PR 2a | Stage 2: Server-side dwell check + attention getter trial type + Mermaid read-only flowchart | Large | Merged (#39) → `v2.0.0a4` |
+| PR 2a-fix | Stage 2 follow-up: recover unsent media uploads, wait for uploads on fullscreen exit / global timeout | Medium | Branch `interrupted-trials`, PR not yet opened → `v2.0.0a4` |
 | PR 2b | Stage 2: Interactive Reactflow admin editor for trial branching | Large — custom admin view + bundled JS | Not started |
 | PR 3 | Stage 3: Response-contingent branching (`TrialBranchRule`, feedback audio, `is_success`) | Medium | Not started → `v2.0.0a5` |
 | PR 4 | Stage 4: Block-level accumulated conditions (`BlockTransitionRule`, session accumulators) | Large | Not started |
@@ -315,7 +316,7 @@ PR 5 (gaze-triggered) is needed for looking-while-listening and active learning 
 | Release | Contents | Gate |
 |---|---|---|
 | `v2.0.0a3` | PR 1 (#31) dynamic trial fetching, plus #35, #36, #38 | Done 2026-09-27 |
-| `v2.0.0a4` | PR 2a (#39): attention getters, gaze dwell time check, trial type, Mermaid flowchart | #39 merged |
+| `v2.0.0a4` | PR 2a (#39): attention getters, gaze dwell time check, trial type, Mermaid flowchart; PR 2a-fix: recovery of unsent media uploads | #39 and PR 2a-fix merged |
 | `v2.0.0a5` | PR 3: response-contingent branching, feedback audio, repeat (incl. repeat after AG) | PR 3 merged; MVP feature-complete |
 | `v2.0.0b1` | Freeze: no new features or model changes, only fixes and docs | Researchers trial a real MVP design on the test server |
 | `v2.0.0rc1` | Migration reset, docs refresh (incl. Trial screenshot), release notes | Beta feedback resolved |
