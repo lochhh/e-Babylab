@@ -10,6 +10,7 @@ vi.mock('../../src/experiments/static/experiments/js/webcam.js', () => ({
     initStream:     vi.fn(),
     startRecording: vi.fn(),
     stopRecording:  vi.fn(),
+    abandonRecording: vi.fn(),
     startUploading: vi.fn(),
     stopUploading:  vi.fn(),
     getLength:      vi.fn(),
@@ -125,6 +126,7 @@ function makeEnv({
   vi.mocked(webcam.getLength).mockReturnValue(0)
   vi.mocked(webcam.waitForQueue).mockResolvedValue(undefined)
   vi.mocked(webcam.stopRecording).mockResolvedValue(undefined)
+  vi.mocked(webcam.abandonRecording).mockResolvedValue(undefined)
   vi.mocked(initWebgazer).mockResolvedValue(undefined)
 
   init()
@@ -306,6 +308,121 @@ describe('experiment.js — global timeout', () => {
     await vi.advanceTimersByTimeAsync(110)
     await flush()
     expect(locationReplace).toHaveBeenCalledWith(expect.stringContaining('pause'))
+  })
+})
+
+describe.each([
+  ['the global timeout', { globalTimeout: '100' }, () => vi.advanceTimersByTimeAsync(110)],
+  // Earlier tests' init() calls left their listeners on document, so call only this one's
+  ['leaving fullscreen', {}, (onFullscreenChange) => onFullscreenChange()],
+])('experiment.js — %s waits for queued uploads', (_, env, leaveBy) => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  let onFullscreenChange
+  const leave = () => leaveBy(onFullscreenChange)
+
+  // A video trial still running when the participant leaves
+  const start = async () => {
+    const listen = vi.spyOn(document, 'addEventListener')
+    const result = makeEnv({
+      recordingOption: 'VID',
+      trials: [makeTrial({ max_duration: 5000 })],
+      includePausePage: 'true',
+      ...env,
+    })
+    onFullscreenChange = listen.mock.calls.findLast(([ev]) => ev === 'fullscreenchange')[1]
+    listen.mockRestore()
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    return result
+  }
+  const PAUSE = '/test-uuid/run/pause?trialitem=1&trial_number=1'
+
+  it('goes to the pause page once the upload queue is empty', async () => {
+    const { locationReplace } = await start()
+    let drain
+    vi.mocked(webcam.waitForQueue).mockReturnValue(new Promise(r => { drain = r }))
+
+    await leave()
+    await flush()
+    expect(locationReplace).not.toHaveBeenCalled()
+
+    drain()
+    await flush()
+    expect(locationReplace).toHaveBeenCalledWith(PAUSE)
+    expect(webcam.stopUploading).toHaveBeenCalled()
+  })
+
+  it('stops the interrupted recording without a merge request', async () => {
+    await start()
+    await leave()
+    await flush()
+    expect(webcam.abandonRecording).toHaveBeenCalled()
+    expect(webcam.stopRecording).not.toHaveBeenCalled()
+  })
+
+  it('stops waiting after 30 seconds', async () => {
+    const { locationReplace } = await start()
+    vi.mocked(webcam.waitForQueue).mockReturnValue(new Promise(() => {}))
+
+    await leave()
+    await flush()
+    await vi.advanceTimersByTimeAsync(29000)
+    expect(locationReplace).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1100)
+    await flush()
+    expect(locationReplace).toHaveBeenCalledWith(PAUSE)
+  })
+
+  it('does not store a trial that ends while waiting', async () => {
+    await start()
+    vi.mocked(webcam.waitForQueue).mockReturnValue(new Promise(() => {}))
+
+    await leave()
+    await flush()
+    await vi.advanceTimersByTimeAsync(6000)
+    await flush()
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining('storeresult'), expect.anything())
+  })
+})
+
+describe('experiment.js — interrupted between trials', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('does not show the next trial that arrives after leaving fullscreen', async () => {
+    const listen = vi.spyOn(document, 'addEventListener')
+    const { locationReplace } = makeEnv({
+      recordingOption: 'VID',
+      trials: [makeTrial({ trial_id: 1, max_duration: 500 }), makeTrial({ trial_id: 2, trial_number: 2 })],
+      includePausePage: 'true',
+    })
+    const onFullscreenChange = listen.mock.calls.findLast(([ev]) => ev === 'fullscreenchange')[1]
+    listen.mockRestore()
+    // Hold the next-trial request so the participant leaves while it is in flight
+    let sendNextTrial
+    const respond = fetch.getMockImplementation()
+    vi.mocked(fetch).mockImplementation((url, ...rest) => String(url).includes('/run/nexttrial')
+      ? new Promise(r => { sendNextTrial = () => r(respond(url, ...rest)) })
+      : respond(url, ...rest))
+    await flush()
+    document.getElementById('fullscreen-button').click()
+    await flush()
+    await vi.advanceTimersByTimeAsync(600) // trial 1 ends; its result is stored
+    await flush()
+    expect(sendNextTrial).toBeDefined()
+
+    onFullscreenChange()
+    sendNextTrial()
+    await flush()
+
+    expect(webcam.startRecording).toHaveBeenCalledTimes(1) // trial 2 never starts
+    expect(document.querySelector('.trial-image')).toBeNull()
+    await flush()
+    expect(locationReplace).toHaveBeenCalledWith('/test-uuid/run/pause?trialitem=1&trial_number=1')
   })
 })
 
