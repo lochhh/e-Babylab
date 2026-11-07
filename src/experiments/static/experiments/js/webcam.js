@@ -57,6 +57,9 @@ export function createWebcam() {
 	// Maximum number of upload errors until upload is stopped
 	const maxUploadErrors = 10;
 
+	// Set when uploading stopped after maxUploadErrors; the queue will not empty
+	let gaveUp = false;
+
 	// Time in ms after which a pending upload request is aborted
 	const uploadTimeout = 30000;
 
@@ -88,7 +91,8 @@ export function createWebcam() {
 	 * @param {number} length of queue at which the Promise should be resolved
 	 */
 	w.waitForQueue = function (length) {
-		if (length === uploadQueue.getLength()) {
+		// After giving up nothing more is sent, so waiting would never end
+		if (gaveUp || length === uploadQueue.getLength()) {
 			return Promise.resolve();
 		}
 
@@ -210,6 +214,36 @@ export function createWebcam() {
 	};
 
 	/**
+	 * Stop recording a trial that was interrupted, without a merge request, and
+	 * drop its queued chunks so they don't hold up finished trials' uploads.
+	 * The front chunk is kept because it may be uploading; the server discards
+	 * the interrupted trial's chunks when it restarts.
+	 */
+	w.abandonRecording = function () {
+		if (!recording) return Promise.resolve();
+
+		return new Promise(resolve => {
+			const afterStop = function () {
+				mediaRecorder.removeEventListener("stop", afterStop);
+				recording = false;
+				const kept = new Queue();
+				for (let i = 0; uploadQueue.getLength(); i++) {
+					const item = uploadQueue.dequeue();
+					const abandoned = 'number' in item && item.fileName === currentFileName;
+					if (i === 0 || !abandoned) kept.enqueue(item);
+				}
+				uploadQueue = kept;
+				notify();
+				console.log("Abandon webcam recording");
+				resolve();
+			};
+
+			mediaRecorder.addEventListener("stop", afterStop);
+			mediaRecorder.stop();
+		});
+	};
+
+	/**
 	 * Start uploading in background.
 	 */
 	w.startUploading = function (subjectUuid) {
@@ -234,12 +268,15 @@ export function createWebcam() {
 
 		const formData = new FormData();
 		const chunkData = uploadQueue.peek();
-		let chunkFileName;
+		// What this request sends, for the log
+		let description;
 		if ('trialResultId' in chunkData) {
 			formData.append('trialResultId', chunkData.trialResultId);
 			formData.append('filename', chunkData.fileName);
+			description = `Merge request for ${chunkData.fileName}`;
 		} else {
-			chunkFileName = `${chunkData.fileName}-${String(chunkData.number).padStart(5, '0')}.webm`;
+			const chunkFileName = `${chunkData.fileName}-${String(chunkData.number).padStart(5, '0')}.webm`;
+			description = `Upload of ${chunkFileName}`;
 			const file = new File([chunkData.data], chunkFileName, { type: codec });
 			formData.append('file', file);
 			formData.append('type', codec);
@@ -256,20 +293,26 @@ export function createWebcam() {
 			if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
 			return response.status === 204 ? null : response.json();
 		}).then(data => {
-			console.log(`Upload of ${chunkFileName} was successful.`);
+			console.log(`${description} was successful.`);
 			uploadErrors = 0;
 			uploadQueue.dequeue();
 			notify();
 			uploadChunk();
 		}).catch(error => {
 			uploadErrors++;
-			console.error(`Upload of ${chunkFileName} failed.`, error);
+			console.error(`${description} failed.`, error);
 			if (uploadErrors < maxUploadErrors) {
 				// Back off so a brief outage does not use up all retries at once.
 				uploadTimer = setTimeout(uploadChunk, recordingInterval * uploadErrors);
 			} else {
 				console.error('Too many errors while uploading. Stop uploading.');
 				w.stopUploading();
+				// Release everyone waiting for the queue; the server recovers what was sent
+				gaveUp = true;
+				for (const callbacks of Object.values(queueNotify)) {
+					callbacks.forEach(callback => callback());
+				}
+				queueNotify = {};
 			}
 		});
 	};

@@ -2,6 +2,7 @@
 
 import importlib
 import pathlib
+from datetime import timedelta
 from types import SimpleNamespace
 from zipfile import ZipFile as _RealZipFile
 
@@ -334,6 +335,32 @@ def test_create_report_returns_path_in_reports_root(
     out = rep.create_report()
     assert isinstance(out, str)
     assert str(tmp_path) in out
+
+
+def test_create_report_recovers_leftover_recordings_first(
+    monkeypatch, tmp_path, subjectdata_factory
+):
+    """Chunks left by participants who never resumed are attached before reporting.
+
+    Only chunks untouched for 10 minutes are recovered, so a participant who is
+    still uploading keeps their merge request.
+    """
+    subject = subjectdata_factory()
+    rep = make_reporter(monkeypatch, tmp_path, subject.experiment)
+    _patch_create_report(monkeypatch, rep, subject)
+    calls = []
+    monkeypatch.setattr(
+        rpt,
+        "recover_recordings",
+        lambda s, **kwargs: calls.append((s.pk, kwargs)),
+    )
+    monkeypatch.setattr(
+        rep, "create_trial_worksheet", lambda _: calls.append("trials") or DummyDF([])
+    )
+
+    rep.create_report()
+
+    assert calls == [(subject.pk, {"min_age": timedelta(minutes=10)}), "trials"]
 
 
 def test_create_report_zip_contains_xlsx(monkeypatch, tmp_path, subjectdata_factory):

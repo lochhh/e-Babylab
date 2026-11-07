@@ -3,11 +3,14 @@
 import logging
 import re
 import shutil
+import time
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+from django.db.models import Q
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -111,13 +114,8 @@ def _upload_merge(request, run_uuid):
         # New chunks under a taken name are a new recording (e.g. a calibration
         # repeated twice before the same trial), so number it rather than
         # overwrite; a retried merge has no chunks and keeps the existing file.
-        n = 2
-        while fs.exists(target):
-            target = f"{base_filename}_{n}.webm"
-            n += 1
+        target = _unused_name(fs, base_filename)
     merge_files(target, webcam_files)
-    for webcam_file in webcam_files:
-        fs.delete(webcam_file)
 
     try:
         trial_result_id = int(request.POST["trialResultId"])
@@ -145,6 +143,60 @@ def webcam_upload(request, run_uuid):
     return HttpResponseBadRequest("Missing file or trialResultId.")
 
 
+def _unused_name(fs, stem):
+    """Return ``stem.webm``, or ``stem_2.webm``, ``stem_3.webm``... if taken."""
+    target = f"{stem}.webm"
+    n = 2
+    while fs.exists(target):
+        target = f"{stem}_{n}.webm"
+        n += 1
+    return target
+
+
+def recover_recordings(subject: SubjectData, min_age: timedelta = timedelta(0)) -> None:
+    """Attach chunks left behind by finished trials whose merge request never came.
+
+    A participant who leaves the run page before the upload queue empties
+    leaves a finished trial's chunks on disk, unmerged. They are always the
+    start of the recording, so they are merged into ``<name>_partial.webm`` and
+    attached to the trial result. Chunks of interrupted trials (no result) are
+    left alone; they are discarded when the trial restarts.
+
+    Args:
+        subject (SubjectData): The participant whose trial results are checked.
+        min_age (timedelta): Only recover chunks older than this, so that
+            recordings still uploading are left to their merge request.
+
+    """
+    fs = FileSystemStorage(location=settings.WEBCAM_ROOT)
+    root = Path(settings.WEBCAM_ROOT)
+    cutoff = time.time() - min_age.total_seconds()
+    results = (
+        subject.trialresult_set.filter(Q(webcam_file="") | Q(webcam_file__isnull=True))
+        # A pause row shares the interrupted trial's number and label, but that
+        # trial never finished; its chunks are discarded when it restarts
+        .exclude(key_pressed="PAUSE")
+        .select_related("trialitem")
+        .order_by("-pk")
+    )
+    for result in results:
+        # The run page prefixes the participant ID, which the run template sets,
+        # so match on the part the server knows: _trial<n>_<label>_<uuid>
+        suffix = get_valid_filename(
+            f"_trial{result.trial_number}_{result.trialitem.label}_{subject.id}"
+        )
+        chunks = sorted(p.name for p in root.glob(f"*{suffix}-{'[0-9]' * 5}.webm"))
+        if not chunks:
+            continue
+        if min_age and any((root / c).stat().st_mtime > cutoff for c in chunks):
+            continue
+        target = _unused_name(fs, chunks[0].rsplit("-", 1)[0] + "_partial")
+        merge_files(target, chunks)
+        result.webcam_file = target
+        result.save(update_fields=["webcam_file"])
+        logger.info(f"Recovered {len(chunks)} unmerged chunks into {target}.")
+
+
 def find_files(base_filename):
     """Retrieve uploaded chunk filenames matching the given base filename."""
     root = Path(settings.WEBCAM_ROOT)
@@ -152,11 +204,12 @@ def find_files(base_filename):
 
 
 def merge_files(target, files):
-    """Merge chunk files into a single target file.
+    """Merge chunk files into a single target file, then delete the chunks.
 
     An existing target is overwritten. If ``files`` is empty, nothing is
     written and any existing target is left untouched, so a retried merge
     (whose chunks were already merged and deleted) keeps the merged file.
+    Chunks are only deleted once the target is fully written.
     """
     if not files:
         return
@@ -170,3 +223,5 @@ def merge_files(target, files):
         for fname in files:
             with (root / fname).open("rb") as infile:
                 shutil.copyfileobj(infile, outfile)
+    for fname in files:
+        (root / fname).unlink()

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createWebcam } from '../../src/experiments/static/experiments/js/webcam.js'
 
 function makeWebcam({ getUserMedia = async () => ({}) } = {}) {
@@ -63,6 +63,81 @@ describe('webcam', () => {
     await Promise.all([recordPromise, stopPromise])
   })
 
+  it('abandonRecording stops the recorder without queueing a merge request', async () => {
+    let dataAvailableHandler
+    const stopped = vi.fn()
+    class MockMR {
+      constructor() { this._ev = {} }
+      start() { this._ev['start']?.forEach(fn => fn()) }
+      stop() { stopped(); this._ev['stop']?.forEach(fn => fn()) }
+      addEventListener(ev, fn) { (this._ev[ev] ??= []).push(fn); if (ev === 'dataavailable') dataAvailableHandler = fn }
+      removeEventListener(ev, fn) { if (this._ev[ev]) this._ev[ev] = this._ev[ev].filter(l => l !== fn) }
+    }
+    MockMR.isTypeSupported = () => true
+    const stream = { getTracks: () => [{ stop: vi.fn() }] }
+    const w = makeWebcam({ getUserMedia: async () => stream })
+    vi.stubGlobal('MediaRecorder', MockMR) // after makeWebcam, which stubs its own
+    await w.initStream('VID')
+    await w.startRecording('test-file', 'VID', Promise.resolve(stream))
+    dataAvailableHandler({ data: new Blob(['x']) })
+
+    await w.abandonRecording()
+
+    expect(stopped).toHaveBeenCalled()
+    expect(w.getLength()).toBe(1) // the chunk, but no merge request
+    // Recording has ended, so a later recording can start
+    await expect(w.startRecording('next', 'VID', Promise.resolve(stream))).resolves.toBeUndefined()
+  })
+
+  describe('abandonRecording drops the abandoned recording\'s queued chunks', () => {
+    let w, stream, recorder
+    // Deliver n chunks to the current recording
+    const emit = (n) => {
+      for (let i = 0; i < n; i++) recorder._ev['dataavailable'].forEach(fn => fn({ data: new Blob(['x']) }))
+    }
+    beforeEach(async () => {
+      class MockMR {
+        constructor() { this._ev = {}; recorder = this }
+        start() { this._ev['start']?.forEach(fn => fn()) }
+        stop() { this._ev['stop']?.forEach(fn => fn()) }
+        addEventListener(ev, fn) { (this._ev[ev] ??= []).push(fn) }
+        removeEventListener(ev, fn) { this._ev[ev] = this._ev[ev].filter(l => l !== fn) }
+      }
+      MockMR.isTypeSupported = () => true
+      stream = { getTracks: () => [{ stop: vi.fn() }] }
+      w = makeWebcam({ getUserMedia: async () => stream })
+      vi.stubGlobal('MediaRecorder', MockMR) // after makeWebcam, which stubs its own
+      await w.initStream('VID')
+    })
+
+    it('keeps a finished recording\'s chunks and merge request', async () => {
+      await w.startRecording('finished', 'VID', Promise.resolve(stream))
+      emit(1)
+      await w.stopRecording(7)
+      await w.startRecording('interrupted', 'VID', Promise.resolve(stream))
+      emit(2)
+      expect(w.getLength()).toBe(4)
+
+      await w.abandonRecording()
+
+      expect(w.getLength()).toBe(2) // finished chunk + its merge request
+    })
+
+    it('keeps the front chunk, which may be uploading', async () => {
+      await w.startRecording('interrupted', 'VID', Promise.resolve(stream))
+      emit(3)
+
+      await w.abandonRecording()
+
+      expect(w.getLength()).toBe(1)
+    })
+  })
+
+  it('abandonRecording is safe when not recording', async () => {
+    const w = makeWebcam()
+    await expect(w.abandonRecording()).resolves.toBeUndefined()
+  })
+
   describe('uploading', () => {
     afterEach(() => {
       vi.useRealTimers()
@@ -124,6 +199,47 @@ describe('webcam', () => {
 
       await vi.advanceTimersByTimeAsync(1000)
       expect(w.getLength()).toBe(0)
+    })
+
+    it('names the recording in the merge request log', async () => {
+      vi.useFakeTimers()
+      vi.stubGlobal('fetch', vi.fn(ok))
+      const log = vi.spyOn(console, 'log')
+      const w = await queueChunk()
+
+      w.startUploading('uuid')
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(log).toHaveBeenCalledWith('Merge request for test-file was successful.')
+      expect(log).not.toHaveBeenCalledWith(expect.stringContaining('undefined'))
+    })
+
+    describe('after uploading gives up on repeated failures', () => {
+      const fail = () => Promise.reject(new TypeError('Failed to fetch'))
+
+      it('resolves a pending wait for the queue to empty', async () => {
+        vi.useFakeTimers()
+        vi.stubGlobal('fetch', vi.fn(fail))
+        const w = await queueChunk()
+        const drained = vi.fn()
+        w.waitForQueue(0).then(drained)
+
+        w.startUploading('uuid')
+        await vi.advanceTimersByTimeAsync(120000)
+
+        expect(w.getLength()).toBe(2) // nothing was uploaded
+        expect(drained).toHaveBeenCalled()
+      })
+
+      it('resolves a later wait straight away', async () => {
+        vi.useFakeTimers()
+        vi.stubGlobal('fetch', vi.fn(fail))
+        const w = await queueChunk()
+        w.startUploading('uuid')
+        await vi.advanceTimersByTimeAsync(120000)
+
+        await expect(w.waitForQueue(0)).resolves.toBeUndefined()
+      })
     })
   })
 })

@@ -716,6 +716,34 @@ class TestExperimentRun:
         # The view serialises trials to JSON and injects it into the template context
         assert b"trial_id" in response.content
 
+    def test_recovers_leftover_recordings_on_resume(
+        self,
+        client,
+        monkeypatch,
+        experiment_factory,
+        listitem_factory,
+        outerblock_factory,
+        blockitem_factory,
+        trialitem_factory,
+        subjectdata_factory,
+    ):
+        """Loading the run page recovers chunks the previous visit left unmerged."""
+        _, _, sd = self._setup(
+            experiment_factory,
+            listitem_factory,
+            outerblock_factory,
+            blockitem_factory,
+            trialitem_factory,
+            subjectdata_factory,
+        )
+        calls = []
+        monkeypatch.setattr(
+            "experiments.views.recover_recordings",
+            lambda subject, **kwargs: calls.append((subject.pk, kwargs)),
+        )
+        client.get(reverse("experiments:experimentRun", args=(sd.pk,)))
+        assert calls == [(sd.pk, {})]
+
     def test_returns_404_for_nonexistent_subject(self, client):
         """Verify a 404 is returned for an unknown run UUID."""
         url = reverse("experiments:experimentRun", args=(str(uuid.uuid4()),))

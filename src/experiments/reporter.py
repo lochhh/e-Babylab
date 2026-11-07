@@ -33,9 +33,14 @@ from .models import (
     TrialItem,
     TrialResult,
 )
+from .webcam import recover_recordings
 
 # Create a logger for this file
 logger = logging.getLogger(__name__)
+
+# Chunks untouched for this long are no longer uploading, so their trial's
+# merge request is not coming (the run page uploads a chunk every second)
+RECOVERY_MIN_AGE = datetime.timedelta(minutes=10)
 
 
 class WebgazerSheets(NamedTuple):
@@ -385,6 +390,10 @@ class Reporter:
         # For each subject
         subjects = SubjectData.objects.filter(experiment__pk=self.experiment.pk)
         for subject in subjects:
+            # Attach recordings of participants who left before their uploads
+            # finished; recent chunks may still be uploading, so leave those
+            recover_recordings(subject, min_age=RECOVERY_MIN_AGE)
+
             # Create excel report
             workbook_file = get_valid_filename(
                 f"{subject.participant_id}_{self.experiment.exp_name}"

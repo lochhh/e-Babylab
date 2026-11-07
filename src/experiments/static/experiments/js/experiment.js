@@ -55,6 +55,18 @@ export function init() {
     // Last trial shown (attention getters included); null only before the first trial starts
     let currentTrial = null;
 
+    // Set by interruptRun (global timeout or fullscreen exit); stops the run
+    let interrupted = false;
+
+    // Set once the last trial is done: nothing can interrupt the run, and exiting goes to the thank-you page
+    let finishing = false;
+
+    // How long interruptRun waits for queued recordings to upload before giving up (ms)
+    const EXIT_UPLOAD_WAIT = 30000;
+
+    // A promise that never settles, to stop a trial's promise chain
+    const halt = () => new Promise(() => {});
+
     /**
      * Pause page URL, carrying the trial on screen so the server can record it.
      * @returns {string}
@@ -115,14 +127,7 @@ export function init() {
      * Setup global timeout.
      */
     const setGlobalTimer = function () {
-        globaltimer = setTimeout(() => {
-            webcam.stopUploading();
-            if (include_pause_page) {
-                window.location.replace(pauseUrl());
-            } else {
-                window.location.replace(`/${subjectUuid}/run/thankyou`);
-            }
-        }, Number(global_timeout));
+        globaltimer = setTimeout(interruptRun, Number(global_timeout));
     };
 
     /**
@@ -138,6 +143,8 @@ export function init() {
      */
     const finishExperiment = function () {
         clearTimeout(globaltimer);
+        // Every trial is done: leaving fullscreen while uploads finish is not a pause
+        finishing = true;
         webgazer.pause();
         waitForWebcamUploadToFinish().then(() => {
             webcam.stopUploading();
@@ -228,6 +235,8 @@ export function init() {
             return Promise.race(trialDonePromises);
 
         }).then(trialObj => {
+            // The run was interrupted mid-trial: the trial is not stored
+            if (interrupted) return halt();
             console.log(trialObj);
             if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
             if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
@@ -253,8 +262,11 @@ export function init() {
         }).then(trialObj => {
             return webcam.stopRecording(trialObj.resultId);
         }).then(() => {
+            if (interrupted) return halt();
             return fetchNextTrial();
         }).then(data => {
+            // Interrupted while the next trial was on its way: don't show it
+            if (interrupted) return;
             if (data.done) {
                 finishExperiment();
             } else {
@@ -272,9 +284,7 @@ export function init() {
             webgazer.pause();
 
             if (keydownHandler) { document.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
-            document.removeEventListener('mozfullscreenchange', onFullscreenChange);
-            document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
-            document.removeEventListener('fullscreenchange', onFullscreenChange);
+            removeFullscreenListeners();
             exitFullscreen();
 
             fetch(`/${subjectUuid}/run/error`)
@@ -676,21 +686,52 @@ export function init() {
     };
 
     /**
-     * Go to exit/pause page.
+     * Go to the pause page, or the thank-you page if the experiment has none
+     * or every trial is already done (there is nothing left to resume).
      */
-    const terminateStudy = function () {
-        if (include_pause_page) {
+    const goToExitPage = function () {
+        if (include_pause_page && !finishing) {
             window.location.replace(pauseUrl());
         } else {
             window.location.replace(`/${subjectUuid}/run/thankyou`);
         }
     };
 
+    /**
+     * Interrupt the run after a global timeout or fullscreen exit.
+     * The interrupted trial is not stored and its recording is abandoned.
+     * Recordings of finished trials get up to EXIT_UPLOAD_WAIT ms to upload;
+     * whatever is left is recovered by the server.
+     */
+    const interruptRun = function () {
+        if (interrupted || finishing) return;
+        interrupted = true;
+        clearTimeout(globaltimer);
+        removeFullscreenListeners();
+        webgazer.pause();
+        removeTrialImage();
+        document.querySelectorAll('video, audio').forEach(media => media.pause());
+        webcam.abandonRecording()
+            .then(() => Promise.race([
+                waitForWebcamUploadToFinish(),
+                new Promise(resolve => setTimeout(resolve, EXIT_UPLOAD_WAIT)),
+            ]))
+            .then(() => {
+                webcam.stopUploading();
+                goToExitPage();
+            });
+    };
+
     const onFullscreenChange = function () {
         const fullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
         if (!fullScreen) {
-            terminateStudy();
+            interruptRun();
         }
+    };
+    const removeFullscreenListeners = function () {
+        document.removeEventListener('mozfullscreenchange', onFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
     };
     document.addEventListener('mozfullscreenchange', onFullscreenChange);
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
@@ -701,7 +742,7 @@ export function init() {
     });
 
     document.getElementById('confirmExitButton')?.addEventListener('click', function () {
-        terminateStudy();
+        goToExitPage();
     });
 
     const exitModalElement = document.getElementById('exitStudyModal');
@@ -712,6 +753,13 @@ export function init() {
         exitModalElement.addEventListener('show.bs.modal', function () {
             document.querySelectorAll('.container:not(#exitStudyModal)').forEach(el => el.setAttribute('inert', ''));
         });
+        // Move focus out before Bootstrap hides the box with aria-hidden, which
+        // browsers block (and warn about) while a button inside still has focus
+        exitModalElement.addEventListener('hide.bs.modal', function () {
+            if (exitModalElement.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        });
         exitModalElement.addEventListener('hidden.bs.modal', function () {
             document.querySelectorAll('.container').forEach(el => el.removeAttribute('inert'));
         });
@@ -721,7 +769,7 @@ export function init() {
         if (webcam.getLength()) { // Upload queue not empty, show warning modal
             exitModal?.show();
         } else {
-            terminateStudy();
+            goToExitPage();
         }
     });
 

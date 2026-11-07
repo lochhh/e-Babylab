@@ -103,15 +103,16 @@ Once AG result is stored, `last` is the AG → sequence continues. Idempotent on
 
 **Skipped (add when needed):** preloading AG video (loads on fetch; add if delay noticeable). "Repeat trial after AG" option deferred to Stage 3 (shares repeat semantics with `repeat_mode`).
 
-**Follow-up — unsent media uploads (found testing PR 2a, not started):** recordings upload as 1 s chunks through a sequential queue, with a merge request queued last; leaving the run page drops whatever is still queued. A *finished* trial then keeps its uploaded chunks on disk, unmerged and unlinked — always a prefix (end cut off; sequential queue means no gaps), and without the merge request there's no reliable completeness signal. Seen in the dev DB: participant 4 (`7740…`) `dwell-look-left` #5, 4 of ~5–6 chunks.
+**Follow-up — unsent media uploads (found testing PR 2a; fixed on branch `interrupted-trials`, before `v2.0.0a4`):** recordings upload as 1 s chunks through a sequential queue, with a merge request queued last; leaving the run page drops whatever is still queued. A *finished* trial then keeps its uploaded chunks on disk, unmerged and unlinked — always a prefix (end cut off; sequential queue means no gaps), and without the merge request there's no reliable completeness signal. Seen in the dev DB: participant 4 (`7740…`) `dwell-look-left` #5, 4 of ~5–6 chunks.
 - Only the exit button warns (Quit/Return to study modal). **Leaving fullscreen, the global timeout, closing the tab, crashes and network drops lose uploads silently.** Normal completion waits for the queue.
-- **B (agreed direction):** server-side recovery: merge leftover chunks of a result that has no `webcam_file` into `…_partial.webm`, attach it, and flag it as partial in the Trials sheet so researchers decide. When to run it is open: on resume, at report time, or both. Interrupted trials (no result) keep today's behaviour (chunks discarded when the trial restarts).
-- **Silent exits:** give fullscreen exit and the global timeout the same pending-upload handling as the exit button, e.g. keep the loading image up / wait for the queue before the pause page. Scope open.
+- **B (built):** `webcam.recover_recordings(subject, min_age)` merges leftover chunks of a result that has no `webcam_file` into `…_partial.webm` (numbered if taken) and attaches it; the `_partial` name is the flag in the admin and the Trials sheet. Chunks are matched on `_trial<n>_<label>_<uuid>` because the run template sets the participant-ID prefix. Runs on resume (`experiment_run`, no age limit) and at report time (`Reporter.create_report`, only chunks untouched for 10 min, so participants still uploading keep their merge request). Each recording is recovered once. Pause rows are skipped (they share the interrupted trial's number and label). Interrupted trials (no result) keep today's behaviour (chunks discarded when the trial restarts).
+- **Silent exits (built for fullscreen exit and the global timeout):** `interruptRun` stops the run (the interrupted trial isn't stored or followed by the next trial), abandons its recording without a merge request and drops its queued chunks except the one that may be uploading (`webcam.abandonRecording`), and shows the loading image while waiting up to 30 s for the queue before the pause/thank-you page. Not covered: closing the tab, crashes, network drops — recovery handles those.
+- **Uploads giving up (built):** after 10 failed uploads `webcam.js` stops uploading, so the queue never empties and finishing waited forever (already on `main`). Giving up now releases every `waitForQueue` wait, so the participant reaches the thank-you page (debrief, completion code, delete option); the server recovers what was sent.
 - **C (later, larger):** keep the unsent queue in IndexedDB across the pause and finish uploading after resuming; only helps participants who resume, in the same browser.
 
 **Verification:** Parametrised pytest for `roi_cell`/`dwell_time`, `list_flowchart`, validation rules (incl. formset retype case), `nexttrial` (low dwell → AG; sufficient dwell / AG / no eye recording / calibration → sequence; AG → continue; no AG after final trial), pause trial recording, completeness count, reporter numbering + dwell/trial-type columns, recording-option cleanup, import remapping; 100% Python coverage. Vitest for pause tracking and the recording-option confirm. Playwright: admin trial-type toggle; attention getter happy path through to thank-you page.
 
-**PR 2a remaining:** user review of #39 → mark ready → merge. Then release `v2.0.0a4` (see Release Plan).
+**PR 2a:** merged as #39 (2026-11-07). The unsent uploads fix (PR 2a-fix) lands before `v2.0.0a4` is released (see Release Plan).
 
 ---
 
@@ -290,7 +291,8 @@ The interactive Reactflow admin editor (PR 2b) uses a **scoped Vite build** in `
 | PR | Stage | Est. scope | Status |
 |----|-------|-----------|--------|
 | PR 1 | Stage 1: Dynamic trial fetching (`nexttrial` API) | Medium — pure refactor, no new features | Released in `v2.0.0a3` |
-| PR 2a | Stage 2: Server-side dwell check + attention getter trial type + Mermaid read-only flowchart | Large | Open (#39), draft, CI green → `v2.0.0a4` |
+| PR 2a | Stage 2: Server-side dwell check + attention getter trial type + Mermaid read-only flowchart | Large | Merged (#39) → `v2.0.0a4` |
+| PR 2a-fix | Stage 2 follow-up: recover unsent media uploads, wait for uploads on fullscreen exit / global timeout | Medium | Branch `interrupted-trials`, PR not yet opened → `v2.0.0a4` |
 | PR 2b | Stage 2: Interactive Reactflow admin editor for trial branching | Large — custom admin view + bundled JS | Not started |
 | PR 3 | Stage 3: Response-contingent branching (`TrialBranchRule`, feedback audio, `is_success`) | Medium | Not started → `v2.0.0a5` |
 | PR 4 | Stage 4: Block-level accumulated conditions (`BlockTransitionRule`, session accumulators) | Large | Not started |
@@ -314,7 +316,7 @@ PR 5 (gaze-triggered) is needed for looking-while-listening and active learning 
 | Release | Contents | Gate |
 |---|---|---|
 | `v2.0.0a3` | PR 1 (#31) dynamic trial fetching, plus #35, #36, #38 | Done 2026-09-27 |
-| `v2.0.0a4` | PR 2a (#39): attention getters, gaze dwell time check, trial type, Mermaid flowchart | #39 merged |
+| `v2.0.0a4` | PR 2a (#39): attention getters, gaze dwell time check, trial type, Mermaid flowchart; PR 2a-fix: recovery of unsent media uploads | #39 and PR 2a-fix merged |
 | `v2.0.0a5` | PR 3: response-contingent branching, feedback audio, repeat (incl. repeat after AG) | PR 3 merged; MVP feature-complete |
 | `v2.0.0b1` | Freeze: no new features or model changes, only fixes and docs | Researchers trial a real MVP design on the test server |
 | `v2.0.0rc1` | Migration reset, docs refresh (incl. Trial screenshot), release notes | Beta feedback resolved |
