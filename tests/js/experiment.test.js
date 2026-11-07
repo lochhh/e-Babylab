@@ -742,4 +742,18 @@ describe('experiment.js — exit button', () => {
     document.getElementById('exit-button').click()
     expect(showSpy).toHaveBeenCalled()
   })
+
+  it('moves focus out of the exit box as it closes', () => {
+    makeEnv({ recordingOption: 'NON', trials: [] })
+    const modal = document.getElementById('exitStudyModal')
+    modal.innerHTML = '<button id="return-to-study">Return to study</button>'
+    const button = document.getElementById('return-to-study')
+    button.focus()
+    expect(document.activeElement).toBe(button)
+
+    // Bootstrap fires this before hiding the box with aria-hidden
+    modal.dispatchEvent(new Event('hide.bs.modal'))
+
+    expect(document.activeElement).not.toBe(button)
+  })
 })

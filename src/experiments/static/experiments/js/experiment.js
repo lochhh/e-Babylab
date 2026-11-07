@@ -753,6 +753,13 @@ export function init() {
         exitModalElement.addEventListener('show.bs.modal', function () {
             document.querySelectorAll('.container:not(#exitStudyModal)').forEach(el => el.setAttribute('inert', ''));
         });
+        // Move focus out before Bootstrap hides the box with aria-hidden, which
+        // browsers block (and warn about) while a button inside still has focus
+        exitModalElement.addEventListener('hide.bs.modal', function () {
+            if (exitModalElement.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        });
         exitModalElement.addEventListener('hidden.bs.modal', function () {
             document.querySelectorAll('.container').forEach(el => el.removeAttribute('inert'));
         });
