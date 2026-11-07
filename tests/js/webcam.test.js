@@ -201,6 +201,19 @@ describe('webcam', () => {
       expect(w.getLength()).toBe(0)
     })
 
+    it('names the recording in the merge request log', async () => {
+      vi.useFakeTimers()
+      vi.stubGlobal('fetch', vi.fn(ok))
+      const log = vi.spyOn(console, 'log')
+      const w = await queueChunk()
+
+      w.startUploading('uuid')
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(log).toHaveBeenCalledWith('Merge request for test-file was successful.')
+      expect(log).not.toHaveBeenCalledWith(expect.stringContaining('undefined'))
+    })
+
     describe('after uploading gives up on repeated failures', () => {
       const fail = () => Promise.reject(new TypeError('Failed to fetch'))
 

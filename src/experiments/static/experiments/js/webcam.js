@@ -268,12 +268,15 @@ export function createWebcam() {
 
 		const formData = new FormData();
 		const chunkData = uploadQueue.peek();
-		let chunkFileName;
+		// What this request sends, for the log
+		let description;
 		if ('trialResultId' in chunkData) {
 			formData.append('trialResultId', chunkData.trialResultId);
 			formData.append('filename', chunkData.fileName);
+			description = `Merge request for ${chunkData.fileName}`;
 		} else {
-			chunkFileName = `${chunkData.fileName}-${String(chunkData.number).padStart(5, '0')}.webm`;
+			const chunkFileName = `${chunkData.fileName}-${String(chunkData.number).padStart(5, '0')}.webm`;
+			description = `Upload of ${chunkFileName}`;
 			const file = new File([chunkData.data], chunkFileName, { type: codec });
 			formData.append('file', file);
 			formData.append('type', codec);
@@ -290,14 +293,14 @@ export function createWebcam() {
 			if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
 			return response.status === 204 ? null : response.json();
 		}).then(data => {
-			console.log(`Upload of ${chunkFileName} was successful.`);
+			console.log(`${description} was successful.`);
 			uploadErrors = 0;
 			uploadQueue.dequeue();
 			notify();
 			uploadChunk();
 		}).catch(error => {
 			uploadErrors++;
-			console.error(`Upload of ${chunkFileName} failed.`, error);
+			console.error(`${description} failed.`, error);
 			if (uploadErrors < maxUploadErrors) {
 				// Back off so a brief outage does not use up all retries at once.
 				uploadTimer = setTimeout(uploadChunk, recordingInterval * uploadErrors);
