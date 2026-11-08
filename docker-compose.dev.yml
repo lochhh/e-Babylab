@@ -22,7 +22,6 @@ services:
     volumes:
       - ./src:/usr/src/app # Mount source code for live reload
       - ./tests:/usr/src/tests # Mount tests directory
-      - venv_cache:/usr/src/.venv # Preserve virtual environment
       - ./media:/usr/src/app/media # Match prod media path
       - ./webcam:/usr/src/app/webcam
       - ./reports:/usr/src/app/reports
@@ -60,5 +59,4 @@ services:
         max-size: "5m"
 
 volumes:
-  venv_cache:
   postgres_data_dev:
