@@ -156,9 +156,9 @@ class SubjectDataForm(models.ModelForm):
         subject_data = super().save(commit=False)
         subject_data.experiment = self.experiment
         subject_data.id = self.uuid
-        max_id = SubjectData.objects.filter(
-            experiment=self.experiment.pk
-        ).aggregate(Max("participant_id"))["participant_id__max"]
+        max_id = SubjectData.objects.filter(experiment=self.experiment.pk).aggregate(
+            Max("participant_id")
+        )["participant_id__max"]
         subject_data.participant_id = (max_id or 0) + 1
         subject_data.save()
 
