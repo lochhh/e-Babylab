@@ -7,11 +7,12 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 from datetime import date
+from importlib import metadata
 
 project = "e-Babylab"
 author = "Chang Huan Lo"
-copyright = f"2022–{date.today().year}, {author}"
-release = "v2.0.0"
+copyright = f"2022–{date.today().year}, {author}"  # noqa: A001 (Sphinx config name)
+release = f"v{metadata.version(project)}"
 github_url = f"https://github.com/lochhh/{project}"
 
 # -- General configuration ---------------------------------------------------
