@@ -1,13 +1,13 @@
 
   var Module = typeof createMediapipeSolutionsPackedAssets !== 'undefined' ? createMediapipeSolutionsPackedAssets : {};
-  
+
   if (!Module.expectedDataFileDownloads) {
     Module.expectedDataFileDownloads = 0;
   }
   Module.expectedDataFileDownloads++;
   (function() {
    var loadPackage = function(metadata) {
-  
+
       var PACKAGE_PATH = '';
       if (typeof window === 'object') {
         PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
@@ -22,12 +22,12 @@
         err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
-    
+
       var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
       var PACKAGE_UUID = metadata['package_uuid'];
-    
+
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
-        
+
         if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
@@ -38,7 +38,7 @@
           });
           return;
         }
-      
+
         var xhr = new XMLHttpRequest();
         xhr.open('GET', packageName, true);
         xhr.responseType = 'arraybuffer';
@@ -89,7 +89,7 @@
       function handleError(error) {
         console.error('package error:', error);
       };
-    
+
         var fetchedCallback = null;
         var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
@@ -101,9 +101,9 @@
             fetched = data;
           }
         }, handleError);
-      
+
     function runWithFS() {
-  
+
       function assert(check, msg) {
         if (!check) throw msg + new Error().stack;
       }
@@ -135,7 +135,7 @@ Module['FS_createPath']("/third_party/mediapipe/modules", "face_detection", true
             },
             finish: function(byteArray) {
               var that = this;
-      
+
           Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
             Module['removeRunDependency']('fp ' + that.name);
           }, function() {
@@ -145,26 +145,26 @@ Module['FS_createPath']("/third_party/mediapipe/modules", "face_detection", true
               err('Preloading file ' + that.name + ' failed');
             }
           }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
-  
+
               this.requests[this.name] = null;
             }
           };
-      
+
               var files = metadata['files'];
               for (var i = 0; i < files.length; ++i) {
                 new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
               }
-      
-        
+
+
       function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
         assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
-        
+
           // Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
-    
+
             var files = metadata['files'];
             for (var i = 0; i < files.length; ++i) {
               DataRequest.prototype.requests[files[i].filename].onload();
@@ -173,9 +173,9 @@ Module['FS_createPath']("/third_party/mediapipe/modules", "face_detection", true
 
       };
       Module['addRunDependency']('datafile_blaze-out/k8-opt/genfiles/third_party/mediapipe/web/solutions/face_mesh/face_mesh_solution_packed_assets.data');
-    
+
       if (!Module.preloadResults) Module.preloadResults = {};
-    
+
         Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
         if (fetched) {
           processPackageData(fetched);
@@ -183,7 +183,7 @@ Module['FS_createPath']("/third_party/mediapipe/modules", "face_detection", true
         } else {
           fetchedCallback = processPackageData;
         }
-      
+
     }
     if (Module['calledRun']) {
       runWithFS();
@@ -191,9 +191,9 @@ Module['FS_createPath']("/third_party/mediapipe/modules", "face_detection", true
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
     }
-  
+
    }
    loadPackage({"files": [{"filename": "/third_party/mediapipe/modules/face_landmark/face_landmark_with_attention.tflite", "start": 0, "end": 2495952, "audio": 0}, {"filename": "/third_party/mediapipe/modules/face_landmark/face_landmark.tflite", "start": 2495952, "end": 3737848, "audio": 0}, {"filename": "/third_party/mediapipe/modules/face_geometry/data/geometry_pipeline_metadata_landmarks.binarypb", "start": 3737848, "end": 3757224, "audio": 0}, {"filename": "/third_party/mediapipe/modules/face_detection/face_detection_short_range.tflite", "start": 3757224, "end": 3986256, "audio": 0}], "remote_package_size": 3986256, "package_uuid": "f5f855ab-ba1b-4fdf-8b0a-77c2c611502f"});
-  
+
   })();
-  
+

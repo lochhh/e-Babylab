@@ -284,7 +284,10 @@ class TestWebcamUpload:
 
     @pytest.mark.parametrize(
         "existing,expected",
-        [(["trial.webm"], "trial_2.webm"), (["trial.webm", "trial_2.webm"], "trial_3.webm")],
+        [
+            (["trial.webm"], "trial_2.webm"),
+            (["trial.webm", "trial_2.webm"], "trial_3.webm"),
+        ],
     )
     def test_post_merge_keeps_earlier_recording_of_the_same_name(
         self,

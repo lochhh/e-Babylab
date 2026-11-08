@@ -1,5 +1,5 @@
-"This script generates the data files required for setting up 
-an Instrument (for CDI-IRT administrations) on e-Babylab. 
+"This script generates the data files required for setting up
+an Instrument (for CDI-IRT administrations) on e-Babylab.
 Change the definitions for 'lang', 'type', and 'resp' as needed."
 
 
@@ -17,10 +17,10 @@ poly_mode <- "Flexi" # "Fixed" or "Flexi"
 criteria <- "incl.anyFinite" # or "excl.Inf" — for evaluation of log = -inf
 gen_list <- c("Female", "Male")
 
-########## Functions 
+########## Functions
 # Convert item_id to an integer
 convert_item_id <- function(data) {
-  data %>% 
+  data %>%
     mutate(item_id = as.integer(gsub("item_", "", item_id)))
 }
 
@@ -35,18 +35,18 @@ prep_data <- function(){
     data_ws <<- data_ws %>% filter(data_id %in% admin_ws$data_id)
   }
   items_ws <<- get_item_data(lang, type) %>% convert_item_id
-  
+
   # reduce datasets
   items_ws <<- subset(items_ws, item_kind=="word")
   num_words <<- nrow(items_ws)
   data_ws <<- data_ws %>% filter(item_id %in% items_ws$item_id)
   if (type == "WS" | (type == "WG" & resp == "production")) {
-    data_ws <- data_ws %>% 
+    data_ws <- data_ws %>%
       mutate(value = ifelse(value %in% c("produces", "yes", "sometimes", "often"),
                             1,
                             0))
   } else if (type == "WG" & resp == "comprehension") { # WG
-    data_ws <- data_ws %>% 
+    data_ws <- data_ws %>%
       mutate(value = ifelse(value %in% c("no", "never", "not yet", "") | is.na(value),
                             0,
                             1))
@@ -85,25 +85,25 @@ mle_model <- function(dfdata,...){
   if (type == "WS") { # check CDI type
     scores <<- dfdata$production
     scores <<- scores[scores != 0] # remove zeros
-    check <<- scores[scores != 0] 
+    check <<- scores[scores != 0]
     if (length(check) > item_threshold) {
       mle(LL, start = list(m = mean(scores), sd = sd(scores)),
           method = "L-BFGS-B")
     } else{
       NaN
-    } 
+    }
   } else if (type == "WG") { # check CDI type
     if (resp == "comprehension"){
       scores <<- dfdata$comprehension
       scores <<- scores[scores != 0] # remove zeros
-      check <<- scores[scores != 0] 
+      check <<- scores[scores != 0]
     } else if (resp == "production"){
       scores <<- dfdata$production
       scores <<- scores[scores != 0] # remove zeros
       check <<- scores[scores != 0]
     }
-    if (length(check) > item_threshold) { 
-      mle(LL, start = list(m = mean(scores), sd = sd(scores)))#, 
+    if (length(check) > item_threshold) {
+      mle(LL, start = list(m = mean(scores), sd = sd(scores)))#,
       # method = "L-BFGS-B")
     } else{
       NaN
@@ -121,10 +121,10 @@ fill_in_and_sort <- function(dfage,df){
 
 # Configuration for polynomial
 poly_cfg <- function(mode = "Flexi"){
-  
+
   age <<- admin_data_all$age %>% unique %>% sort
   ageN <- count(admin_data_all,age)
-  
+
   # Measures size
   if (median(as.matrix(ageN[,2])) > 200){
     size <- "large"
@@ -136,10 +136,10 @@ poly_cfg <- function(mode = "Flexi"){
     size <- "tiny"
   }
   print(size)
-  
+
   if (mode == "Fixed"){
     matrix(3, length(age), 1, dimnames = list(c(age), c("poly")))
-    
+
   } else if (mode == "Flexi"){
     if(type == "WS"){
       # Flexi Poly
@@ -160,9 +160,9 @@ poly_cfg <- function(mode = "Flexi"){
         mutate(poly = ifelse(X2 < 100, 1, 3))
       # Extract poly num only
       as.matrix(temp_df[,3])
-      
+
     } else if (type == "WG" & resp == "production"){
-      
+
       # Flexi Poly Original
       df_mad <- admin_data_all %>% select(age,all_of(resp))
       df_mad <- aggregate(. ~ age, df_mad, function(x) c(median = median(x), mad = mad(x)))
@@ -205,10 +205,10 @@ log_pdf <- function(df){
 # Filter log dnorm pdf
 filter_log_pdf <- function(df, criteria){
   if(criteria == "excl.Inf"){
-    
+
     df$filt <- is.finite(as.numeric(map(df$log,sum)))
   } else if (criteria == "incl.anyFinite"){
-    
+
     df$filt <- as.numeric(map(df$log,ls.is.finite))
   } else {
     cat("Input error.")
@@ -352,30 +352,30 @@ np_param <- param %>% subset(value == 0)
 slope <- param %>% group_by(sex,age) %>% summarise(slope = get_slope(B))
 
 for (gen in c("Female", "Male")) {
-  
-  slope2 = slope %>% ungroup() %>% filter(sex == gen) %>% 
+
+  slope2 = slope %>% ungroup() %>% filter(sex == gen) %>%
     select(age, slope) %>% spread(age, slope)
-  Bmin = np_param %>% ungroup() %>% filter(sex == gen) %>% 
+  Bmin = np_param %>% ungroup() %>% filter(sex == gen) %>%
     select(age, B) %>% spread(age, B)
   poly_unnest <- poly_purr %>% unnest(cols = c(data))
-  
-  lm_p_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>% 
-    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>% 
+
+  lm_p_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>%
+    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>%
     mutate(word_id = item_id) %>%
     select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
-  lm_p_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>% 
-    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>% 
+  lm_p_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 1) %>%
+    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>%
     mutate(word_id = item_id) %>%
     select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
-  lm_np_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>% 
-    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>% 
+  lm_np_mean = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>%
+    select(age, lm_mean, item_id) %>% spread(age, lm_mean) %>%
     mutate(word_id = item_id) %>%
     select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
-  lm_np_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>% 
-    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>% 
+  lm_np_sd = poly_unnest %>% ungroup() %>% filter(sex == gen & value == 0) %>%
+    select(age, lm_sd, item_id) %>% spread(age, lm_sd) %>%
     mutate(word_id = item_id) %>%
     select(-item_id) %>% select(word_id, colnames(.[,1:(ncol(.)-1)]))
-  
+
   if (type == "WS") {
     fname1 <- paste("p_m", gen, lang, type, sep="-")
     fname1 <- paste(fname1, "csv", sep = ".")
@@ -403,14 +403,14 @@ for (gen in c("Female", "Male")) {
     fname6 <- paste("Slope", gen, lang, type, resp, sep="-")
     fname6 <- paste(fname6, "csv", sep = ".")
   }
-  
+
   readr::write_csv(lm_p_mean, fname1)
   readr::write_csv(lm_p_sd, fname2)
   readr::write_csv(lm_np_mean, fname3)
   readr::write_csv(lm_np_sd, fname4)
   readr::write_csv(Bmin, fname5)
   readr::write_csv(slope2, fname6)
-  
+
 }
 
 fname7 <- paste("word_list", lang, type, resp, sep="-")
@@ -436,15 +436,15 @@ items <- mirt(data_irt, 1, itemtype = "2PL", method = "EM", SE=TRUE)
 for (i in 1:(length(items@ParObjects$pars) - 1)){
   print(i)
   if (i == 1) {
-    irtparam <- coef(items, IRTpars=TRUE)[[i]][1,1:4] 
+    irtparam <- coef(items, IRTpars=TRUE)[[i]][1,1:4]
   } else {
-    irtparam <- rbind(irtparam, coef(items, IRTpars=TRUE)[[i]][1,1:4]) 
+    irtparam <- rbind(irtparam, coef(items, IRTpars=TRUE)[[i]][1,1:4])
   }
 }
 rownames(irtparam) <- 1:nrow(irtparam)
 
-IRT_Parameters <- irtparam %>% data.frame() %>% 
-  mutate(word_id = as.integer(names(data_irt))) %>% 
+IRT_Parameters <- irtparam %>% data.frame() %>%
+  mutate(word_id = as.integer(names(data_irt))) %>%
   select(word_id, colnames(.[,1:(ncol(.)-1)]))
 
 if (type == "WG") {
