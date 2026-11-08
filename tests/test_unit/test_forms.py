@@ -34,7 +34,7 @@ class TestConsentForm:
         experiment = experiment_factory()
         cq = consent_question_factory(text="I agree", experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
-        key = "question_%d" % cq.pk
+        key = f"question_{cq.pk}"
         assert key in form.fields
         field = form.fields[key]
         assert isinstance(field, django_forms.ChoiceField)
@@ -47,7 +47,7 @@ class TestConsentForm:
         experiment = experiment_factory()
         cq = consent_question_factory(experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
-        key = "question_%d" % cq.pk
+        key = f"question_{cq.pk}"
         choices = dict(form.fields[key].choices)
         assert "yes" in choices
         assert "no" in choices
@@ -61,7 +61,7 @@ class TestConsentForm:
         experiment = experiment_factory()
         cq = consent_question_factory(experiment=experiment)
         form = exp_forms.ConsentForm(experiment=experiment)
-        key = "question_%d" % cq.pk
+        key = f"question_{cq.pk}"
         assert "required" in form.fields[key].widget.attrs.get("class", "")
 
     def test_multiple_consent_questions_all_added(
@@ -72,12 +72,12 @@ class TestConsentForm:
         cq1 = consent_question_factory(text="Q1", experiment=experiment, position=1)
         cq2 = consent_question_factory(text="Q2", experiment=experiment, position=2)
         form = exp_forms.ConsentForm(experiment=experiment)
-        assert "question_%d" % cq1.pk in form.fields
-        assert "question_%d" % cq2.pk in form.fields
+        assert f"question_{cq1.pk}" in form.fields
+        assert f"question_{cq2.pk}" in form.fields
 
 
 # ---------------------------------------------------------------------------
-# SubjectDataForm – __init__
+# SubjectDataForm - __init__
 # ---------------------------------------------------------------------------
 
 
@@ -92,7 +92,7 @@ class TestSubjectDataFormInit:
             text="Name", experiment=experiment, question_type=exp_models.Question.TEXT
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.CharField)
         assert form.fields[key].label == "Name"
 
@@ -108,7 +108,7 @@ class TestSubjectDataFormInit:
             choices="Red, Blue",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.ChoiceField)
         assert isinstance(form.fields[key].widget, django_forms.RadioSelect)
 
@@ -124,7 +124,7 @@ class TestSubjectDataFormInit:
             choices="Female, Male",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.ChoiceField)
         assert isinstance(form.fields[key].widget, django_forms.RadioSelect)
 
@@ -140,7 +140,7 @@ class TestSubjectDataFormInit:
             choices="A, B",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.ChoiceField)
         assert isinstance(form.fields[key].widget, django_forms.Select)
         # First choice must be empty sentinel
@@ -159,7 +159,7 @@ class TestSubjectDataFormInit:
             choices="X, Y, Z",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.MultipleChoiceField)
         assert isinstance(form.fields[key].widget, django_forms.CheckboxSelectMultiple)
 
@@ -174,7 +174,7 @@ class TestSubjectDataFormInit:
             question_type=exp_models.Question.INTEGER,
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.IntegerField)
 
     def test_num_range_question_sets_min_max(
@@ -189,7 +189,7 @@ class TestSubjectDataFormInit:
             choices="1, 10",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         field = form.fields[key]
         assert isinstance(field, django_forms.IntegerField)
         assert field.min_value == 1
@@ -206,7 +206,7 @@ class TestSubjectDataFormInit:
             choices="6, 36",
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert isinstance(form.fields[key], django_forms.DateField)
 
     def test_required_question_sets_required_true_and_css(
@@ -221,7 +221,7 @@ class TestSubjectDataFormInit:
             required=True,
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert form.fields[key].required is True
         assert "required" in form.fields[key].widget.attrs.get("class", "")
 
@@ -237,7 +237,7 @@ class TestSubjectDataFormInit:
             required=False,
         )
         form = exp_forms.SubjectDataForm(experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert form.fields[key].required is False
         assert "list-unstyled" in form.fields[key].widget.attrs.get("class", "")
 
@@ -250,12 +250,12 @@ class TestSubjectDataFormInit:
             text="Name", experiment=experiment, question_type=exp_models.Question.TEXT
         )
         post_data = {
-            "question_%d" % q.pk: "Alice",
+            f"question_{q.pk}": "Alice",
             "resolution_w": "1920",
             "resolution_h": "1080",
         }
         form = exp_forms.SubjectDataForm(data=post_data, experiment=experiment)
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert form.fields[key].initial == "Alice"
 
     def test_no_questions_produces_only_hidden_fields(self, experiment_factory):
@@ -267,7 +267,7 @@ class TestSubjectDataFormInit:
 
 
 # ---------------------------------------------------------------------------
-# SubjectDataForm – clean (age validation)
+# SubjectDataForm - clean (age validation)
 # ---------------------------------------------------------------------------
 
 
@@ -277,14 +277,14 @@ class TestSubjectDataFormClean:
 
     def _make_form_with_dob(self, experiment, question, dob_str):
         """Build a bound form with the given date of birth string."""
-        key = "question_%d" % question.pk
+        key = f"question_{question.pk}"
         data = {key: dob_str, "resolution_w": "0", "resolution_h": "0"}
         return exp_forms.SubjectDataForm(data=data, experiment=experiment)
 
     def test_age_within_range_is_valid(self, experiment_factory, question_factory):
         """Verify a date of birth within the allowed age range passes validation."""
         experiment = experiment_factory()
-        # age range 6–36 months; a 12-month-old should pass
+        # age range 6-36 months; a 12-month-old should pass
         q = question_factory(
             text="DOB",
             experiment=experiment,
@@ -312,7 +312,7 @@ class TestSubjectDataFormClean:
         dob_str = three_months_ago.strftime("%Y-%m-%d")
         form = self._make_form_with_dob(experiment, q, dob_str)
         assert not form.is_valid()
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert key in form.errors
 
     def test_clean_invalid_date_does_not_raise(
@@ -328,13 +328,13 @@ class TestSubjectDataFormClean:
             required=True,
         )
         data = {
-            "question_%d" % q.pk: "not-a-date",
+            f"question_{q.pk}": "not-a-date",
             "resolution_w": "0",
             "resolution_h": "0",
         }
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert not form.is_valid()
-        assert "question_%d" % q.pk in form.errors
+        assert f"question_{q.pk}" in form.errors
 
     def test_age_above_maximum_adds_error(self, experiment_factory, question_factory):
         """Verify a date of birth above the maximum age adds a validation error."""
@@ -351,12 +351,12 @@ class TestSubjectDataFormClean:
         dob_str = two_years_ago.strftime("%Y-%m-%d")
         form = self._make_form_with_dob(experiment, q, dob_str)
         assert not form.is_valid()
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         assert key in form.errors
 
 
 # ---------------------------------------------------------------------------
-# SubjectDataForm – save
+# SubjectDataForm - save
 # ---------------------------------------------------------------------------
 
 
@@ -375,7 +375,7 @@ class TestSubjectDataFormSave:
             question_type=exp_models.Question.TEXT,
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "Alice", "resolution_w": "1920", "resolution_h": "1080"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -395,7 +395,7 @@ class TestSubjectDataFormSave:
             question_type=exp_models.Question.TEXT,
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "Bob", "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -416,7 +416,7 @@ class TestSubjectDataFormSave:
             question_type=exp_models.Question.TEXT,
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "Carol", "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -434,7 +434,7 @@ class TestSubjectDataFormSave:
             question_type=exp_models.Question.INTEGER,
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "7", "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -454,7 +454,7 @@ class TestSubjectDataFormSave:
             choices="Red, Blue",
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "Red", "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -474,7 +474,7 @@ class TestSubjectDataFormSave:
             choices="US, UK",
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: "US", "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -494,7 +494,7 @@ class TestSubjectDataFormSave:
             choices="EN, FR, DE",
             required=True,
         )
-        key = "question_%d" % q.pk
+        key = f"question_{q.pk}"
         data = {key: ["EN", "FR"], "resolution_w": "0", "resolution_h": "0"}
         form = exp_forms.SubjectDataForm(data=data, experiment=experiment)
         assert form.is_valid(), form.errors
@@ -520,13 +520,13 @@ class TestQuestionInlineFormSet:
         from experiments.models import Question
 
         experiment = experiment_factory()
-        QuestionFormSet = django_forms.inlineformset_factory(
+        question_formset_class = django_forms.inlineformset_factory(
             exp_models.Experiment,
             Question,
             formset=QuestionInlineFormSet,
             fields=["text", "question_type", "required", "choices"],
         )
-        formset = QuestionFormSet(instance=experiment)
+        formset = question_formset_class(instance=experiment)
         initial_types = [
             f.initial.get("question_type") for f in formset.extra_forms if f.initial
         ]
@@ -547,14 +547,14 @@ class TestQuestionInlineFormSet:
         )
         # Set extra=0 to match UI behaviour (admin.py),
         # where no blank forms are shown when questions already exist
-        QuestionFormSet = django_forms.inlineformset_factory(
+        question_formset_class = django_forms.inlineformset_factory(
             exp_models.Experiment,
             Question,
             formset=QuestionInlineFormSet,
             fields=["text", "question_type", "required", "choices"],
             extra=0,
         )
-        formset = QuestionFormSet(instance=experiment)
+        formset = question_formset_class(instance=experiment)
         assert len(formset.initial_forms) == 1
         assert formset.initial_forms[0].instance == expected_question
 

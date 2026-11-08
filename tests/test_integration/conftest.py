@@ -37,7 +37,7 @@ def experiment_with_trials(
     blockitem_factory,
     trialitem_factory,
 ):
-    """Experiment with a complete trial hierarchy: list → outer block → block → trial."""
+    """Experiment with a full trial hierarchy: list → outer block → block → trial."""
     listitem = listitem_factory(experiment=simple_experiment)
     outerblock = outerblock_factory(listitem=listitem)
     block = blockitem_factory(outerblock=outerblock)

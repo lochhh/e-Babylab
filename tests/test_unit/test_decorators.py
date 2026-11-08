@@ -43,7 +43,6 @@ def factory():
 def auth_user(db):
     """Return an authenticated User fixture."""
     user = User.objects.create_user(username="alice", password="pass")
-    user.is_authenticated  # pre-warm
     return user
 
 

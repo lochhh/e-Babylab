@@ -47,6 +47,7 @@ ignore = ["D203", "D213", "RUF012"]
 "**/captcha.py" = ["D102"] # abstract base already documents the interface
 "**/template_defaults.py" = ["E501"] # line-too-long (HTML template strings)
 "**/migrations/*.py" = ["D"] # auto-generated files
+"docs/source/conf.py" = ["A001", "D100", "RUF001"] # Sphinx config names, en dash in copyright
 
 [tool.ruff.format]
 quote-style = "double"
