@@ -11,7 +11,7 @@ from importlib import metadata
 
 project = "e-Babylab"
 author = "Chang Huan Lo"
-copyright = f"2022–{date.today().year}, {author}"  # noqa: A001 (Sphinx config name)
+copyright = f"2022–{date.today().year}, {author}"
 release = f"v{metadata.version(project)}"
 github_url = f"https://github.com/lochhh/{project}"
 
