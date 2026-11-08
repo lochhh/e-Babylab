@@ -23,12 +23,13 @@ repos:
           exclude: ^tests/fixtures/
         - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
+    rev: v0.17.4
     hooks:
-      - id: ruff
+      - id: ruff-check
       - id: ruff-format
+        exclude: ^\.claude/  # keep hand-formatted code sketches in plans
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.1
     hooks:
       - id: mypy
         exclude: /migrations/
