@@ -140,21 +140,18 @@ All available commands can be found in the [Django documentation](https://docs.d
 
 ### Python
 
-`pyproject.toml` is not mounted inside the container, so dependency changes must be made outside it using [uv](https://docs.astral.sh/uv/). The `venv_cache` Docker volume persists the virtual environment across container restarts — simply rebuilding the image is not enough, because the volume overrides the image's venv on startup. You must clear the volume so Docker re-initialises it from the freshly built image.
+`pyproject.toml` is not mounted inside the container, so dependency changes must be made outside it using [uv](https://docs.astral.sh/uv/). The container runs the virtual environment built into the image, so rebuild the image after any change to `pyproject.toml` or `uv.lock`, including changes pulled from `main`.
 
 ```bash
-# 1. Add or remove the package (updates pyproject.toml and uv.lock)
+# 1. Change dependencies (updates pyproject.toml and/or uv.lock)
 uv add <package>
 uv remove <package>
+uv lock --upgrade                  # upgrade every locked package
 
-# 2. Stop containers and remove the venv volume (keeps database intact)
-docker compose -f docker-compose.dev.yml down
-docker volume rm e-babylab_venv_cache
-
-# 3. Rebuild the image and restart
+# 2. Rebuild the image and restart
 docker compose -f docker-compose.dev.yml up -d --build
 
-# 4. If the package adds Django apps with migrations, apply them
+# 3. If a package adds Django apps with migrations, apply them
 docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrate
 ```
 
@@ -191,9 +188,16 @@ docker compose -f docker-compose.dev.yml up -d --build
 
 Do this after:
 
-- Adding or removing a Python dependency (`pyproject.toml` / `uv.lock` changed)
+- Adding, removing or upgrading a Python dependency (`pyproject.toml` / `uv.lock` changed, including after pulling `main`)
 - Modifying `Dockerfile` (e.g. adding a system package)
 - Switching base image or Python version
+
+Add `--pull` to also fetch the latest base image (new uv release or Python patch version):
+
+```bash
+docker compose -f docker-compose.dev.yml build --pull web
+docker compose -f docker-compose.dev.yml up -d
+```
 
 You do **not** need to rebuild when changing Python source files under `src/` — those are volume-mounted and Django's dev server reloads them automatically.
 
@@ -253,4 +257,4 @@ docker compose -f docker-compose.dev.yml exec web uv run python manage.py migrat
 docker compose -f docker-compose.dev.yml exec web uv run python manage.py createsuperuser
 ```
 
-`down -v` removes Docker **named volumes** (`postgres_data_dev`, `venv_cache`) but not bind-mounted directories. The `rm -rf` step is optional — include it to also clear uploaded media, webcam recordings, and reports for a fully clean slate. These directories are recreated automatically when Django needs them.
+`down -v` removes Docker **named volumes** (`postgres_data_dev`) but not bind-mounted directories. The `rm -rf` step is optional — include it to also clear uploaded media, webcam recordings, and reports for a fully clean slate. These directories are recreated automatically when Django needs them.
