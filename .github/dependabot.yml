@@ -1,6 +1,6 @@
 # Monthly version updates, grouped into one PR per ecosystem.
 # Major updates get their own PRs so breaking changes stand out.
-# Security updates are separate and arrive as soon as an alert is raised.
+# Security updates arrive as soon as an alert is raised, in one PR per ecosystem.
 # pre-commit hooks are updated by pre-commit.ci (see .pre-commit-config.yaml).
 version: 2
 updates:
@@ -13,6 +13,9 @@ updates:
     groups:
       python:
         update-types: [minor, patch]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: npm
     directory: /tests
@@ -23,6 +26,9 @@ updates:
     groups:
       js:
         update-types: [minor, patch]
+      js-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
