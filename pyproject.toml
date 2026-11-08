@@ -60,12 +60,8 @@ dev = [
 	"pytest-django",
 	"pytest-mock",
 	"coverage",
-	"mypy",
 	"pre-commit",
-	"ruff",
 	"setuptools_scm",
-	"pandas-stubs",
-	"types-requests",
 ]
 docs = [
 	"myst-parser[linkify]",
