@@ -1,5 +1,7 @@
 ci:
   autoupdate_schedule: monthly
+# Vendored third-party assets are kept byte-identical to upstream
+exclude: ^src/experiments/static/experiments/(js/(vendor|mediapipe)/|.*\.min\.(js|css)$)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -29,6 +31,7 @@ repos:
     rev: v2.1.0
     hooks:
       - id: mypy
+        exclude: /migrations/
         additional_dependencies:
           - pandas-stubs
           - types-requests
