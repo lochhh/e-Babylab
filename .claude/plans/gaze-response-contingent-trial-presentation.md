@@ -307,7 +307,7 @@ PR 5 (gaze-triggered) is needed for looking-while-listening and active learning 
 
 ## Release Plan
 
-**Decisions (2026-11-01):** 2.0.0 is the MVP (Stages 1–3); PR 2b, 4, 5 and 6 ship as 2.x minor releases. One alpha per merged stage PR. Every tag gets a GitHub Release (pre-release for a/b/rc). Clean migration history at 2.0.0.
+**Decisions (2026-11-01):** 2.0.0 is the MVP (Stages 1–3); PR 2b, 4, 5 and 6 ship as 2.x minor releases. One alpha per merged stage PR. Alphas are tag-only (decided 2026-11-08); GitHub Releases start at `v2.0.0b1` (pre-release for b/rc). Clean migration history at 2.0.0.
 
 **Versioning:** PEP 440 (`2.0.0a4`, `2.0.0b1`, `2.0.0rc1`), git tag `v<version>`. Pushing a `v*` tag publishes the Docker image `ghcr.io/lochhh/e-babylab:<version>` (`publish.yaml`; `{{major}}.{{minor}}` is skipped for pre-releases) and deploys the docs to gh-pages (`docs.yaml`), so the public docs always describe the latest tag, alphas included.
 
@@ -339,7 +339,7 @@ The order of 2.1–2.4 follows the roadmap and can change by priority (Stage 5 i
 1. Main is green (tests and docs build).
 2. Bump `pyproject.toml` `version` and run `uv lock`, in a "Release vX" commit on main (skip if the version is already right, as for a4, bumped in #39).
 3. Tag `vX` on that commit and push the tag.
-4. Create the GitHub Release from the tag (`--prerelease` for a/b/rc). Start from the auto-generated notes and add **Highlights**, **Breaking changes / migration notes**, and **Upgrading** (Docker tag to pull, whether a database reset is needed).
+4. From `v2.0.0b1` on (skip for alphas, which are tag-only): create the GitHub Release from the tag (`--prerelease` for b/rc). Start from the auto-generated notes and add **Highlights**, **Breaking changes / migration notes**, and **Upgrading** (Docker tag to pull, whether a database reset is needed).
 5. Update the Status column in the Suggested PR Sequence table.
 
 **One-off fixes**
