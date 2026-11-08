@@ -1,0 +1,35 @@
+# Monthly version updates, grouped into one PR per ecosystem.
+# Major updates get their own PRs so breaking changes stand out.
+# Security updates are separate and arrive as soon as an alert is raised.
+# pre-commit hooks are updated by pre-commit.ci (see .pre-commit-config.yaml).
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      python:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /tests
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      js:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
