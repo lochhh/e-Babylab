@@ -40,7 +40,10 @@ fix=true
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
-ignore = ["D203", "D213", "RUF012"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D205", "D102"] # missing-blank-line-after-summary, override docstrings
