@@ -39,7 +39,7 @@ exclude = ["__init__.py", "migrations"]
 fix=true
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T20", "SIM", "Q", "RUF"]
+select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "T10", "T20", "SIM", "Q", "RUF"]
 ignore = ["RUF012"]
 
 [tool.ruff.lint.pydocstyle]
