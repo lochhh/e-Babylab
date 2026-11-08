@@ -67,7 +67,7 @@ autodoc_default_options = {
 always_use_bars_union = True
 
 templates_path = ["_templates"]
-exclude_patterns = []
+exclude_patterns: list[str] = []
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -86,7 +86,8 @@ html_theme_options = {
             "name": "GitHub",
             # URL where the link will redirect
             "url": github_url,
-            # Icon class (if "type": "fontawesome"), or path to local image (if "type": "local")
+            # Icon class (if "type": "fontawesome"),
+            # or path to local image (if "type": "local")
             "icon": "fa-brands fa-github",
             # The type of image to be used (see below for details)
             "type": "fontawesome",

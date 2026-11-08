@@ -201,19 +201,19 @@ def patch_age_sex(monkeypatch, dob="2022-01-01", sex="female", choices="female, 
             return self._result
 
     class FakeAnswerText:
-        class objects:
+        class objects:  # noqa: N801 (mimics a Django model manager)
             @staticmethod
             def filter(*args, **kwargs):
                 return _FakeQS(SimpleNamespace(body=dob))
 
     class FakeAnswerRadio:
-        class objects:
+        class objects:  # noqa: N801 (mimics a Django model manager)
             @staticmethod
             def filter(*args, **kwargs):
                 return _FakeQS(SimpleNamespace(body=sex))
 
     class FakeQuestion:
-        class objects:
+        class objects:  # noqa: N801 (mimics a Django model manager)
             @staticmethod
             def filter(*args, **kwargs):
                 return _FakeQS(SimpleNamespace(choices=choices))
@@ -361,9 +361,11 @@ def test_estimate_cdi_keyerror_raises(monkeypatch):
     exp.instrument = instr
     patch_get_object_or_404(monkeypatch, sd, exp)
     patch_cdi_results_empty(monkeypatch)
+
     # Missing 'word' column in the words list CSV triggers KeyError
     def _raising_read_csv(*_a, **_k):
         raise KeyError("word")
+
     monkeypatch.setattr(cdi.pd, "read_csv", _raising_read_csv)
     patch_age_sex(monkeypatch)
 
@@ -526,8 +528,9 @@ def test_cdi_submit_valid_not_enough_unique_calls_generate_next(monkeypatch):
     monkeypatch.setattr(
         cdi,
         "cdi_generate_next_item",
-        lambda req, run_uuid: generate_called.__setitem__("called", True)
-        or HttpResponse("next"),
+        lambda req, run_uuid: (
+            generate_called.__setitem__("called", True) or HttpResponse("next")
+        ),
     )
 
     resp = cdi.cdi_submit(request, sd.pk)
@@ -611,8 +614,10 @@ def test_cdi_submit_estimate_cdi_keyerror_redirects_to_error_page(monkeypatch):
         "VocabularyChecklistForm",
         lambda *a, **k: SimpleNamespace(is_valid=lambda: True, cleaned_data=cleaned),
     )
+
     def _raise(*_):
         raise KeyError("word")
+
     monkeypatch.setattr(cdi, "estimate_cdi", _raise)
 
     resp = cdi.cdi_submit(request, sd.pk)

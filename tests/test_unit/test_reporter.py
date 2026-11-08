@@ -890,7 +890,7 @@ def test_attention_getter_rows_keep_trial_numbers_unique(
 def test_repeated_calibration_keeps_trial_numbers_unique(
     monkeypatch, tmp_path, subjectdata_factory, trialitem_factory
 ):
-    """A calibration repeated on resume shares the next trial's number; all rows stay."""
+    """A calibration repeated on resume shares the next trial's number; rows kept."""
     cal = trialitem_factory(label="Cal")
     cal.trial_type = "CAL"
     cal.save()
