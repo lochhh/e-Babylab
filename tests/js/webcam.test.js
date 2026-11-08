@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { createWebcam } from '../../src/experiments/static/experiments/js/webcam.js'
 
 function makeWebcam({ getUserMedia = async () => ({}) } = {}) {
@@ -169,6 +169,13 @@ describe('webcam', () => {
 
     it('times out a hung upload and retries it', async () => {
       vi.useFakeTimers()
+      // Fake timers don't drive AbortSignal.timeout() (since Vitest 4), so build it on the faked setTimeout
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockImplementation(ms => {
+        const controller = new AbortController()
+        setTimeout(() => controller.abort(new DOMException('The operation timed out.', 'TimeoutError')), ms)
+        return controller.signal
+      })
+      onTestFinished(() => timeoutSpy.mockRestore())
       const fetchMock = vi.fn().mockImplementationOnce(hang).mockImplementation(ok)
       vi.stubGlobal('fetch', fetchMock)
       const w = await queueChunk()
