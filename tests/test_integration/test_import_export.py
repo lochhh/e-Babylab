@@ -4,8 +4,6 @@ import io
 import zipfile
 
 import pytest
-from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
 from django.urls import reverse
 from filer.models import Folder
 from filer.models.filemodels import File as FilerFile
@@ -97,8 +95,15 @@ class TestExperimentImportView:
 
     @pytest.mark.django_db
     def test_post_zip_with_media_files(
-        self, client, experiment_factory, listitem_factory, outerblock_factory,
-        blockitem_factory, trialitem_factory, filer_file_factory, user
+        self,
+        client,
+        experiment_factory,
+        listitem_factory,
+        outerblock_factory,
+        blockitem_factory,
+        trialitem_factory,
+        filer_file_factory,
+        user,
     ):
         """Importing a ZIP with media creates the filer files and links them."""
         exp = experiment_factory(exp_name="MediaImport")
@@ -118,6 +123,7 @@ class TestExperimentImportView:
 
         assert FilerFile.objects.filter(original_filename="stim.mp4").exists()
         from experiments.models import TrialItem
+
         imported_trial = TrialItem.objects.exclude(pk=trial.pk).first()
         assert imported_trial is not None
         assert imported_trial.visual_file is not None
@@ -136,7 +142,9 @@ class TestExperimentImportView:
         url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        bad_file = SimpleUploadedFile("bad.zip", b"not a zip", content_type="application/zip")
+        bad_file = SimpleUploadedFile(
+            "bad.zip", b"not a zip", content_type="application/zip"
+        )
         response = client.post(url, {"import_file": bad_file})
 
         assert response.status_code == 200
@@ -152,7 +160,9 @@ class TestExperimentImportView:
         url = reverse("experiments:experimentImport")
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        bad_zip = SimpleUploadedFile("bad.zip", buf.getvalue(), content_type="application/zip")
+        bad_zip = SimpleUploadedFile(
+            "bad.zip", buf.getvalue(), content_type="application/zip"
+        )
         response = client.post(url, {"import_file": bad_zip})
 
         assert response.status_code == 200

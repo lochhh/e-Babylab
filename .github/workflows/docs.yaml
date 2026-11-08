@@ -18,7 +18,7 @@ on:
 
 # Cancel any in-progress runs if a new run is triggered for the same ref,
 # except for tags and main branch pushes.
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref_type != 'tag' }}
 
@@ -49,18 +49,18 @@ jobs:
     if: |
       (github.event_name == 'push' && github.ref_type == 'tag') ||
       (github.event_name == 'workflow_dispatch')
-    
+
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
       contents: read
       pages: write    # to deploy to Pages
       id-token: write # to verify the deployment originates from an appropriate source
-    
+
     # Deploy to the github-pages environment
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to GitHub Pages
