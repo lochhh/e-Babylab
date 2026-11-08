@@ -59,9 +59,6 @@ dev = [
 	"pytest-cov",
 	"pytest-django",
 	"pytest-mock",
-	"coverage",
-	"pre-commit",
-	"setuptools_scm",
 ]
 docs = [
 	"myst-parser[linkify]",
